@@ -9,12 +9,12 @@ import { filter, map, take } from 'rxjs';
   template: `
     <!-- iOS 27 home-screen apps blur the top of the page unless a fixed, coloured element taller
          than 10px touches the top edge. This strip matches the page colour, so it's invisible. -->
-    <div class="fixed inset-x-0 top-0 z-50 h-3 bg-zinc-950 pointer-events-none" aria-hidden="true"></div>
+    <div class="fixed inset-x-0 top-0 z-50 h-3 bg-ground pointer-events-none" aria-hidden="true"></div>
     @if (!ready()) {
       <!-- Shown while Firebase checks whether you're already signed in. -->
       <div class="fixed inset-0 grid place-items-center" role="status" aria-label="Loading">
         <div
-          class="size-8 rounded-full border-2 border-zinc-700 border-t-zinc-200 animate-spin"
+          class="size-8 rounded-full border-2 border-raised border-t-muted animate-spin"
         ></div>
       </div>
     }

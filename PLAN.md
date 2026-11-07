@@ -4,7 +4,7 @@ A calendar for upcoming game releases plus a library of the games I own, with ho
 
 This file is the source of truth for the plan. Claude ticks steps off and updates it as we go.
 
-**Status:** Steps 1–4 built and tested locally (Library, Calendar, alerts), plus a first Step 6 stat. Firestore rules published and sign-up turned off. Committed and pushed on 2026-11-07, so Vercel is deploying it. **Next for you:** deploy the hourly alert worker, then try it on the phone. Open questions and the choices Claude made while you were away are in [REVIEW.md](REVIEW.md).
+**Status:** Steps 1–5 built. Steps 1–4 are live on Vercel and working on the phone (alerts, calendar subscription, hourly worker). Step 5, the design pass, plus your follow-up requests (completion question, newest-first search, days in countdowns, date-change alerts for every game) are built and tested locally, **not committed yet**. Notes and answers are in [REVIEW.md](REVIEW.md).
 
 **Run it locally:** `npm start`, then open http://localhost:4200. This runs the app and the `/api` functions together (through `tsx`), reading secrets from `.env`. Checks: `npm test` (app and shared logic) and `npm run typecheck` (server functions).
 
@@ -94,7 +94,11 @@ Values marked 🔒 are secrets. They live in the local `.env` file (git-ignored)
   - [x] Settings: notifications on this phone (on/off), when (on the day, 1–7 days before), at what time, test notification, default platform, calendar link, sign out.
   - [x] PWA: service worker for notifications, app icons, manifest.
   - [ ] You: deploy the hourly worker (section 5 above), turn on notifications in Settings from the home-screen app, send a test.
-- [ ] **5. Design pass.** The `impeccable` skill isn't available in this setup, so the screens got a consistent dark design while being built (see REVIEW.md). A proper pass with an accent colour is still to do.
+- [x] **5. Design pass** with the `impeccable` skill (copied into this repo from the expenses tracker).
+  - [x] You picked the category standard: a native-feeling iOS dark app (large titles, grouped lists, switches, action sheets), polished to the level of Letterboxd and Things 3. PlayStation-style blue as the one accent. Brief in [PRODUCT.md](PRODUCT.md).
+  - [x] All screens redone: Calendar, Library, Search, Game, Settings, sign-in, sheets and messages. Settings is now a tab.
+  - [x] New app icon (white gamepad on blue) with a fresh link, so the phone stops showing a "G".
+  - [ ] You: delete and re-add the home-screen icon after the next deploy.
 - [ ] **6. Optional extras.**
   - [x] Completed tab shows "N in 2026" and total hours.
   - [ ] More stats if you want them.
@@ -205,3 +209,5 @@ Already built in: router view transitions (on) and Angular's `animate.enter` / `
 - **2026-11-07:** The top blur only shows on iOS 27 (a new system effect for home-screen apps, not on iOS 26). Added the reported workaround: an invisible 12px strip fixed to the top edge in the page colour.
 - **2026-11-07:** Built Steps 2–4 while you were away. Library (Firestore with an offline cache), add from Search with a status sheet, Library tabs and grid, Game screen with all your controls, trailer and screenshots. Calendar screen and the `.ics` subscription feed. Daily refresh, release alerts (push), test notification, Settings, service worker, app icons, and a Cloudflare Worker for hourly alerts. Release-date logic shared between app and server in `api/_lib/`. 21 tests pass; the server functions were tested locally against the real Firestore with temporary test data, deleted afterwards. Not tried on the phone yet: the Firestore rules aren't published, so saving is refused. Questions and choices are in REVIEW.md.
 - **2026-11-07:** You published the Firestore rules and turned off sign-up. Steps 1–4 committed and pushed to deploy on Vercel.
+- **2026-11-07:** Your answers to the review questions, done: marking a game Completed asks how far you got; "New date" alerts for every game; search shows the newest games first (and finds new ones IGDB's own search misses, like God of War Laufey); countdowns always show days. Design pass (Step 5) with the `impeccable` skill: you chose the standard iOS look, with Letterboxd and Things 3 as the bar. Every screen redone, new blue icon. 28 tests pass, all screens checked at phone size with real data. Not committed yet.
+- **2026-11-07:** Clear button on the search bar, calendar dates without the month, and pre-orders (switch on the game page, optional price, store and date; moves the game to Backlog). The design reviewer's fixes applied (top bar, Subscribe in the bar, contrast on sheets). 31 tests pass. Not committed yet.

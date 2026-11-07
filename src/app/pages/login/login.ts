@@ -13,57 +13,62 @@ const MESSAGES: Record<string, string> = {
 @Component({
   selector: 'app-login',
   template: `
-    <main class="min-h-dvh grid place-items-center px-4">
-      <form class="w-full max-w-xs space-y-6" (submit)="signIn($event)">
-        <div class="space-y-2 text-center">
-          <h1 class="text-3xl font-semibold tracking-tight">Game Tracker</h1>
-          <p class="text-zinc-400">Upcoming releases and the games you're playing.</p>
+    <main class="grid min-h-dvh place-items-center bg-ground px-4">
+      <form class="w-full max-w-sm" (submit)="signIn($event)">
+        <div class="text-center">
+          <img
+            src="icons/apple-touch-icon.png"
+            alt=""
+            class="mx-auto size-[72px] rounded-[16px] ring-[0.5px] ring-white/15"
+          />
+          <h1 class="mt-4 text-[28px] leading-[34px] font-bold">Game Tracker</h1>
+          <p class="mt-1 text-[15px] leading-5 text-muted">
+            Upcoming releases and the games you're playing.
+          </p>
         </div>
 
-        <div class="space-y-3">
-          <label class="block space-y-1">
-            <span class="text-sm text-zinc-400">Email</span>
+        <div class="grouped mt-8">
+          <label class="row">
+            <span class="w-20 shrink-0">Email</span>
             <input
               type="email"
               name="email"
               autocomplete="username"
               required
-              class="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2.5 outline-none focus:border-zinc-400"
+              placeholder="you@example.com"
+              class="min-w-0 flex-1 bg-transparent text-[17px] outline-none"
               [value]="email()"
               (input)="email.set(value($event))"
             />
           </label>
-          <label class="block space-y-1">
-            <span class="text-sm text-zinc-400">Password</span>
+          <label class="row">
+            <span class="w-20 shrink-0">Password</span>
             <input
               type="password"
               name="password"
               autocomplete="current-password"
               required
-              class="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2.5 outline-none focus:border-zinc-400"
+              placeholder="Required"
+              class="min-w-0 flex-1 bg-transparent text-[17px] outline-none"
               [value]="password()"
               (input)="password.set(value($event))"
             />
           </label>
         </div>
 
-        <button
-          type="submit"
-          class="w-full rounded-lg bg-zinc-100 text-zinc-950 font-medium py-2.5 hover:bg-white disabled:opacity-60"
-          [disabled]="busy()"
-        >
-          {{ busy() ? 'Signing in…' : 'Sign in' }}
+        <button type="submit" class="button-primary mt-6" [disabled]="busy()">
+          {{ busy() ? 'Signing In…' : 'Sign In' }}
         </button>
 
         @if (error()) {
-          <p class="text-sm text-red-400 text-center" role="alert">{{ error() }}</p>
+          <p class="mt-4 text-center text-[15px] leading-5 text-danger" role="alert">{{ error() }}</p>
         } @else if (notice()) {
-          <p class="text-sm text-zinc-300 text-center" role="status">{{ notice() }}</p>
+          <p class="mt-4 text-center text-[15px] leading-5 text-muted" role="status">{{ notice() }}</p>
         }
 
         <button
           type="button"
-          class="block mx-auto text-sm text-zinc-400 hover:text-zinc-100"
+          class="mx-auto mt-4 block text-[15px] text-accent active:opacity-60"
           (click)="resetPassword()"
         >
           Forgot password?

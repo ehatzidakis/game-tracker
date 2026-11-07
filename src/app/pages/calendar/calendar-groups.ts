@@ -30,7 +30,9 @@ export function calendarGroups(games: readonly TrackedGame[], today: string): Ca
 
   const since = addDays(today, -JUST_RELEASED_DAYS);
   const recent = relevant
-    .filter((g) => g.releasePrecision === 'day' && g.releaseDate! < today && g.releaseDate! >= since)
+    .filter(
+      (g) => g.releasePrecision === 'day' && g.releaseDate! < today && g.releaseDate! >= since,
+    )
     .sort(byDate)
     .reverse();
   for (const g of recent) add('recent', 'Just released', g);
@@ -44,7 +46,10 @@ export function calendarGroups(games: readonly TrackedGame[], today: string): Ca
   }
 
   const vague = relevant
-    .filter((g) => g.releasePrecision !== 'day' && g.releasePrecision !== 'tbd' && g.releaseDate! >= today)
+    .filter(
+      (g) =>
+        g.releasePrecision !== 'day' && g.releasePrecision !== 'tbd' && g.releaseDate! >= today,
+    )
     .sort(byDate);
   for (const g of vague) {
     const year = g.releaseDate!.slice(0, 4);

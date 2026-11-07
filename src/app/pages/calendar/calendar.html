@@ -1,73 +1,62 @@
-<div class="mb-2 flex items-center">
-  <h1 class="text-xl font-semibold">Upcoming</h1>
-  <button
-    type="button"
-    class="ml-auto flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-sm text-zinc-300"
-    (click)="subscribe()"
-  >
-    <svg lucideCalendarPlus [size]="16"></svg>
-    Subscribe
-  </button>
-</div>
+<h1 class="large-title">Calendar</h1>
 
 @if (library.loadError(); as error) {
-  <p
-    class="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-200"
-    role="alert"
-  >
-    {{ error }}
-  </p>
+  <p class="grouped mt-4 px-4 py-3 text-[15px] leading-5 text-danger" role="alert">{{ error }}</p>
 }
 
 @if (library.loading()) {
-  <p class="mt-6 text-sm text-zinc-500">Loading…</p>
+  <p class="mt-16 text-center text-[15px] text-muted">Loading…</p>
 } @else if (groups().length === 0) {
-  <div class="mt-12 text-center">
-    <p class="text-zinc-400 text-sm">
-      No upcoming games yet. Add some to your wishlist and their release dates show up here.
+  <div class="mx-auto mt-20 max-w-72 text-center">
+    <svg lucideCalendarDays [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
+    <p class="mt-4 text-[20px] leading-6 font-semibold">No upcoming games</p>
+    <p class="mt-1.5 text-[15px] leading-5 text-muted">
+      Add games from Search and their release dates show up here.
     </p>
-    <a routerLink="/search" class="mt-4 inline-block rounded-full bg-white/10 px-4 py-2 text-sm">
+    <a routerLink="/search" class="mt-4 inline-block text-[17px] text-accent active:opacity-60">
       Search games
     </a>
   </div>
 } @else {
   @for (group of groups(); track group.key) {
-    <section class="mt-5" [attr.aria-label]="group.title">
-      <h2
-        class="sticky top-0 z-10 -mx-4 bg-zinc-950/95 px-4 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500"
-      >
-        {{ group.title }}
-      </h2>
-      <ul class="divide-y divide-white/5">
+    <section [attr.aria-label]="group.title">
+      <h2 class="group-header">{{ group.title }}</h2>
+      <ul class="grouped" style="--sep-inset: 68px">
         @for (game of group.games; track game.igdbId) {
-          <li>
-            <a [routerLink]="['/game', game.igdbId]" class="flex items-center gap-3 py-2.5">
-              <!-- Day column: the date for exact releases, the vague label otherwise. -->
-              <div class="w-11 shrink-0 text-center">
-                @if (game.releasePrecision === 'day' && game.releaseDate) {
-                  <p class="text-lg font-semibold leading-none tabular-nums">
-                    {{ day(game.releaseDate) }}
-                  </p>
-                  <p class="mt-1 text-[11px] uppercase text-zinc-500">
-                    {{ weekday(game.releaseDate) }}
-                  </p>
-                } @else {
-                  <p class="text-[11px] leading-tight text-zinc-400">{{ game.releaseLabel }}</p>
-                }
-              </div>
-              <app-cover class="w-11 shrink-0 rounded-md" [coverId]="game.coverId" [name]="''" />
+          <li class="row p-0!">
+            <a [routerLink]="['/game', game.igdbId]" class="row py-2!">
+              <app-cover
+                class="w-10 shrink-0 rounded-[5px]!"
+                [coverId]="game.coverId"
+                [name]="''"
+              />
               <div class="min-w-0 flex-1">
-                <p class="truncate font-medium">{{ game.name }}</p>
-                <p class="truncate text-xs text-zinc-500">
-                  @if (countdown(game); as c) {
-                    <span class="text-zinc-300">{{ c }}</span>
-                  } @else if (group.key === 'recent') {
-                    Out {{ game.releaseLabel }}
-                  } @else if (game.releasePrecision !== 'day') {
-                    Date not announced yet
+                <p class="truncate">{{ game.name }}</p>
+                <p class="text-[15px] leading-5 text-muted">
+                  @if (game.releasePrecision === 'day' && game.releaseDate) {
+                    <time [attr.datetime]="game.releaseDate">{{
+                      shortDate(game.releaseDate, group.key === 'recent')
+                    }}</time>
+                    @if (countdown(game); as c) {
+                      ·
+                      <span
+                        class="whitespace-nowrap"
+                        [class.text-accent]="game.igdbId === nextId()"
+                        >{{ c }}</span
+                      >
+                    }
+                  } @else {
+                    {{ game.releaseLabel }}
                   }
                   @if (game.status !== 'wishlist') {
-                    · {{ game.status === 'backlog' ? 'Owned' : 'Playing' }}
+                    ·
+                    <span class="whitespace-nowrap">{{
+                      game.preordered
+                        ? 'Pre-ordered'
+                        : game.status === 'backlog'
+                          ? 'Owned'
+                          : 'Playing'
+                    }}</span>
                   }
                 </p>
               </div>
@@ -75,10 +64,16 @@
                 <svg
                   lucideBell
                   [size]="16"
-                  class="shrink-0 fill-current text-zinc-300"
-                  aria-label="Alert on"
+                  class="shrink-0 fill-current text-accent"
+                  aria-label="Release alert on"
                 ></svg>
               }
+              <svg
+                lucideChevronRight
+                [size]="18"
+                [strokeWidth]="2.25"
+                class="-mr-1 shrink-0 text-faint"
+              ></svg>
             </a>
           </li>
         }

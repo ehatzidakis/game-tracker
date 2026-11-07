@@ -1,6 +1,39 @@
 @import 'tailwindcss';
 
-/* Placeholder look until the Step 5 design pass. */
+/*
+ * Design: a native-feeling iOS dark app (see PRODUCT.md and DESIGN.md).
+ * True black ground, iOS grouped greys, one blue accent. Covers are the only imagery.
+ */
+@theme {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --color-ground: #000000;
+  /* Grouped list surfaces. */
+  --color-group: #1c1c1e;
+  --color-raised: #2c2c2e;
+  /* Pressed row, segmented control selection. */
+  --color-pressed: #3a3a3c;
+  --color-sep: rgb(84 84 88 / 0.65);
+  --color-label: #ffffff;
+  /* Secondary text: 5.9:1 on group, 7.3:1 on black. */
+  --color-muted: #98989f;
+  /* Decoration only (chevrons, empty stars), never text. */
+  --color-faint: #48484a;
+  /* Blue for text and icons (5:1 on group). */
+  --color-accent: #4c86ff;
+  /* Blue text on raised surfaces like sheets (5:1 on #2c2c2e). */
+  --color-accent-raised: #6a9bff;
+  /* Blue behind white text (5.2:1). */
+  --color-accent-fill: #2462e8;
+  --color-danger: #ff453a;
+  --color-fill: rgb(118 118 128 / 0.24);
+
+  --text-large-title: 34px;
+  --text-large-title--line-height: 41px;
+  --text-large-title--letter-spacing: 0.011em;
+}
+
 @layer base {
   html {
     /* An app, not a page: no zoom and no sideways drag, the page only scrolls up and down. */
@@ -11,15 +44,196 @@
     overflow-x: clip;
     -webkit-text-size-adjust: 100%;
     color-scheme: dark;
-    @apply bg-zinc-950;
+    background: var(--color-ground);
   }
 
   body {
     overflow-x: clip;
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
-    @apply bg-zinc-950 text-zinc-100 antialiased;
+    background: var(--color-ground);
+    color: var(--color-label);
+    font-size: 17px;
+    line-height: 22px;
+    letter-spacing: -0.02em;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'tnum' 0;
+    caret-color: var(--color-accent);
   }
+
+  ::selection {
+    background: rgb(76 134 255 / 0.4);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted);
+  }
+
+  /* Dates, counts, hours: figures line up. */
+  time,
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* iOS large title at the top of a screen; the shell's bar shows a small copy once it scrolls away. */
+  .large-title {
+    font-size: var(--text-large-title);
+    line-height: var(--text-large-title--line-height);
+    letter-spacing: var(--text-large-title--letter-spacing);
+    font-weight: 700;
+  }
+
+  /* Inset grouped list, as in iOS Settings. */
+  .grouped {
+    background: var(--color-group);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .grouped > .row + .row::before,
+  .grouped > * + .row::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: var(--sep-inset, 16px);
+    height: 0.5px;
+    background: var(--color-sep);
+  }
+  .row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 11px 16px;
+    text-align: left;
+  }
+  a.row:active,
+  button.row:active {
+    background: var(--color-pressed);
+  }
+  .row-value {
+    margin-left: auto;
+    color: var(--color-muted);
+    text-align: right;
+  }
+
+  /* Small caps-style header above a group, and the note under it. */
+  .group-header {
+    padding: 22px 16px 7px;
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .group-footer {
+    padding: 7px 16px 0;
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: -0.005em;
+    color: var(--color-muted);
+  }
+
+  /* iOS segmented control: <div class="segmented"><button aria-checked> */
+  .segmented {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 9px;
+    background: var(--color-fill);
+  }
+  .segmented > button {
+    min-height: 28px;
+    padding: 4px 2px;
+    border-radius: 7px;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--color-label);
+    white-space: nowrap;
+    transition: background-color 160ms ease-out;
+  }
+  .segmented > button[aria-checked='true'],
+  .segmented > button[aria-selected='true'] {
+    background: #636366;
+    font-weight: 600;
+    box-shadow:
+      0 3px 8px rgb(0 0 0 / 0.12),
+      0 3px 1px rgb(0 0 0 / 0.04);
+  }
+
+  /* iOS switch: <button role="switch" class="switch" aria-checked><span></span></button> */
+  .switch {
+    position: relative;
+    flex: none;
+    width: 51px;
+    height: 31px;
+    border-radius: 999px;
+    background: rgb(120 120 128 / 0.32);
+    transition: background-color 200ms ease-out;
+  }
+  .switch[aria-checked='true'] {
+    background: var(--color-accent-fill);
+  }
+  .switch > span {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow:
+      0 3px 8px rgb(0 0 0 / 0.15),
+      0 3px 1px rgb(0 0 0 / 0.06);
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .switch[aria-checked='true'] > span {
+    transform: translateX(20px);
+  }
+  .switch:disabled {
+    opacity: 0.5;
+  }
+
+  /* Filled blue button. */
+  .button-primary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 50px;
+    border-radius: 12px;
+    background: var(--color-accent-fill);
+    color: #fff;
+    font-weight: 600;
+  }
+  .button-primary:active {
+    filter: brightness(0.9);
+  }
+  .button-primary:disabled {
+    opacity: 0.6;
+  }
+}
+
+/* The search field draws its own clear button (iOS shows none, Chrome its own). */
+.search-field::-webkit-search-cancel-button {
+  display: none;
+  -webkit-appearance: none;
 }
 
 /* Sideways strips (screenshots) scroll inside themselves; the page never scrolls sideways. */

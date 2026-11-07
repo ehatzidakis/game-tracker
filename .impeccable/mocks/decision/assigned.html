@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<style>
+  :root { --ground:#0A0E16; --raise:#141B28; --ink:#E9EDF5; --mute:#8B95A9; --rule:rgba(233,237,245,.10); --blue:#3A78FF; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:390px; height:844px; overflow:hidden; background:var(--ground); color:var(--ink); font-family:Archivo, system-ui, sans-serif; }
+  .safe { height:47px; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:6px 20px 0; }
+  .kicker { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); font-weight:600; }
+  .sub { font-size:14px; color:var(--ink); border:1px solid var(--rule); border-radius:999px; padding:6px 12px; }
+  .next { padding:18px 20px 20px; border-bottom:1px solid var(--rule); }
+  .next .num { font-stretch:62%; font-weight:800; font-size:132px; line-height:.82; color:var(--blue); letter-spacing:-.02em; }
+  .next .unit { font-stretch:62%; font-weight:700; font-size:34px; color:var(--blue); margin-left:6px; }
+  .next p { margin-top:10px; font-size:17px; font-weight:600; }
+  .next small { display:block; margin-top:2px; font-size:14px; color:var(--mute); }
+  .month { display:flex; align-items:baseline; justify-content:space-between; margin:22px 20px 0; padding-bottom:6px; border-bottom:2px solid var(--ink); }
+  .month h2 { font-stretch:75%; font-weight:800; font-size:22px; letter-spacing:.04em; text-transform:uppercase; }
+  .month span { font-size:12px; color:var(--mute); letter-spacing:.1em; text-transform:uppercase; }
+  .month.vague { border-bottom:2px dashed var(--mute); }
+  .row { display:grid; grid-template-columns:54px 40px 1fr 20px; gap:12px; align-items:center; margin:0 20px; padding:10px 0; border-bottom:1px solid var(--rule); }
+  .day { text-align:left; }
+  .day b { display:block; font-stretch:62%; font-weight:800; font-size:44px; line-height:.9; }
+  .day i { font-style:normal; font-size:11px; letter-spacing:.12em; color:var(--mute); font-weight:600; }
+  .cover { width:40px; height:53px; border-radius:4px; }
+  .name { font-size:16px; font-weight:600; line-height:1.2; }
+  .meta { font-size:13px; color:var(--mute); margin-top:2px; }
+  .bell { width:16px; height:16px; border:2px solid var(--blue); border-radius:8px 8px 3px 3px; }
+  .off { border-color:var(--rule); }
+  .q { font-stretch:62%; font-weight:800; font-size:26px; line-height:1; color:var(--mute); }
+  nav { position:absolute; left:0; right:0; bottom:0; height:84px; padding-top:10px; display:grid; grid-template-columns:repeat(4,1fr); background:rgba(10,14,22,.96); border-top:1px solid var(--rule); }
+  nav a { text-align:center; font-size:11px; color:var(--mute); font-weight:600; }
+  nav a::before { content:""; display:block; width:22px; height:22px; margin:0 auto 4px; border:2px solid currentColor; border-radius:6px; }
+  nav a.on { color:var(--blue); }
+</style>
+</head>
+<body>
+<div class="safe"></div>
+<header><span class="kicker">Calendar</span><span class="sub">Subscribe</span></header>
+
+<section class="next">
+  <div><span class="num">12</span><span class="unit">DAYS</span></div>
+  <p>Grand Theft Auto VI</p>
+  <small>Thursday 19 November · PS5 · alert on</small>
+</section>
+
+<div class="month"><h2>Just released</h2><span>last 14 days</span></div>
+<div class="row">
+  <div class="day"><b>29</b><i>OCT</i></div>
+  <div class="cover" style="background:linear-gradient(160deg,#5a1d1d,#1b0d0d)"></div>
+  <div><p class="name">Phantom Blade Zero</p><p class="meta">PS5 · out 9 days ago</p></div>
+  <div class="bell off"></div>
+</div>
+
+<div class="month"><h2>November 2026</h2><span>1 release</span></div>
+<div class="row">
+  <div class="day"><b>19</b><i>THU</i></div>
+  <div class="cover" style="background:linear-gradient(160deg,#d0567a,#3a1f52)"></div>
+  <div><p class="name">Grand Theft Auto VI</p><p class="meta">PS5 · in 12 days</p></div>
+  <div class="bell"></div>
+</div>
+
+<div class="month"><h2>February 2027</h2><span>2 releases</span></div>
+<div class="row">
+  <div class="day"><b>12</b><i>FRI</i></div>
+  <div class="cover" style="background:linear-gradient(160deg,#2b6a6e,#0f2326)"></div>
+  <div><p class="name">Tomb Raider: Legacy of Atlantis</p><p class="meta">PS5 · in 3 months (97 days)</p></div>
+  <div class="bell off"></div>
+</div>
+<div class="row">
+  <div class="day"><b>23</b><i>TUE</i></div>
+  <div class="cover" style="background:linear-gradient(160deg,#4f7d3a,#1a2a14)"></div>
+  <div><p class="name">Fable</p><p class="meta">PS5 · in 4 months (108 days)</p></div>
+  <div class="bell"></div>
+</div>
+
+<div class="month vague"><h2>Later</h2><span>no exact date</span></div>
+<div class="row">
+  <div class="day"><span class="q">2028</span></div>
+  <div class="cover" style="background:linear-gradient(160deg,#7a6a4a,#221c12)"></div>
+  <div><p class="name">The Witcher IV</p><p class="meta">PS5 · TBA</p></div>
+  <div class="bell off"></div>
+</div>
+
+<nav><a>Library</a><a class="on">Calendar</a><a>Search</a><a>Settings</a></nav>
+</body>
+</html>

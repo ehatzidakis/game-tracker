@@ -1,15 +1,7 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
-import { Router } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
-import {
-  LucideBell,
-  LucideCalendar,
-  LucideChevronLeft,
-  LucidePlay,
-  LucidePlus,
-  LucideTrash2,
-} from '@lucide/angular';
+import { LucidePlay, LucidePlus } from '@lucide/angular';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
   COMPLETIONS,
@@ -18,27 +10,28 @@ import {
   type Release,
   type Status,
 } from '../../../../api/_lib/models.js';
-import { PLATFORMS, platformIgdbId, platformLabel, type PlatformKey } from '../../../../api/_lib/platforms.js';
+import {
+  PLATFORMS,
+  platformIgdbId,
+  platformLabel,
+  type PlatformKey,
+} from '../../../../api/_lib/platforms.js';
 import { pickRelease } from '../../../../api/_lib/release.js';
-import { countdown, isReleased } from '../../core/dates';
+import { countdown, isReleased, today } from '../../core/dates';
 import { coverUrl, IgdbService } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
+import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
 import { Cover } from '../../shared/cover';
-import { StatusPicker } from '../../shared/status-picker';
+import { ChoiceSheet } from '../../shared/choice-sheet';
+import { parsePrice, PreorderSheet } from '../../shared/preorder-sheet';
+
+const COMMON_STORES = ['PlayStation Store', 'Amazon', 'Xbox Store', 'Steam', 'Nintendo eShop'];
 
 @Component({
   selector: 'app-game',
-  imports: [
-    Cover,
-    LucideBell,
-    LucideCalendar,
-    LucideChevronLeft,
-    LucidePlay,
-    LucidePlus,
-    LucideTrash2,
-  ],
+  imports: [Cover, LucidePlay, LucidePlus],
   templateUrl: './game.html',
 })
 export class GamePage {
@@ -46,9 +39,9 @@ export class GamePage {
   readonly id = input.required<string>();
 
   private readonly igdb = inject(IgdbService);
-  private readonly picker = inject(StatusPicker);
+  private readonly sheet = inject(ChoiceSheet);
+  private readonly preorderSheet = inject(PreorderSheet);
   private readonly toast = inject(ToastService);
-  private readonly router = inject(Router);
   protected readonly library = inject(LibraryService);
   protected readonly push = inject(PushService);
 
@@ -64,9 +57,7 @@ export class GamePage {
   /** Your copy, if the game is in your library. Works offline. */
   protected readonly tracked = computed(() => this.library.byId().get(this.gameId()));
 
-  protected readonly name = computed(
-    () => this.details.data()?.name ?? this.tracked()?.name ?? '',
-  );
+  protected readonly name = computed(() => this.details.data()?.name ?? this.tracked()?.name ?? '');
   protected readonly coverId = computed(
     () => this.tracked()?.coverId ?? this.details.data()?.cover?.image_id ?? null,
   );
@@ -89,7 +80,9 @@ export class GamePage {
     if (t) return { date: t.releaseDate, precision: t.releasePrecision, label: t.releaseLabel };
     const d = this.details.data();
     const platform = platformIgdbId(this.library.settings().defaultPlatform);
-    return d ? pickRelease(releaseDatesOf(d), platform) : { date: null, precision: 'tbd', label: '' };
+    return d
+      ? pickRelease(releaseDatesOf(d), platform)
+      : { date: null, precision: 'tbd', label: '' };
   });
   protected readonly countdown = computed(() =>
     countdown({ releaseDate: this.release().date, releasePrecision: this.release().precision }),
@@ -131,6 +124,22 @@ export class GamePage {
     () => this.details.data()?.genres?.map((g) => g.name) ?? this.tracked()?.genres ?? [],
   );
 
+  /** "1 day before, at 13:00". */
+  protected readonly alertWhen = computed(() => {
+    const { notifyDaysBefore: days, notifyTime } = this.library.settings();
+    const when = days === 0 ? 'On the day' : `${days} ${days === 1 ? 'day' : 'days'} before`;
+    return `${when}, at ${notifyTime}`;
+  });
+
+  /** Stores you've bought from before, then common ones, as suggestions. */
+  protected readonly stores = computed(() => {
+    const used = this.library
+      .games()
+      .map((g) => g.boughtFrom)
+      .filter((s): s is string => !!s);
+    return [...new Set([...used, ...COMMON_STORES])];
+  });
+
   protected readonly playingVideo = signal(false);
   protected readonly summaryOpen = signal(false);
 
@@ -141,6 +150,11 @@ export class GamePage {
   protected readonly coverUrl = coverUrl;
 
   constructor() {
+    // The top bar shows the game's name once you scroll past the artwork.
+    const pageTitle = inject(PageTitle);
+    effect(() => pageTitle.override.set(this.name() || null));
+    inject(DestroyRef).onDestroy(() => pageTitle.override.set(null));
+
     // Keep your copy of the IGDB data current (e.g. a release date that moved).
     effect(() => {
       const t = this.tracked();
@@ -149,26 +163,36 @@ export class GamePage {
     });
   }
 
-  protected back(): void {
-    if (history.length > 1) history.back();
-    else void this.router.navigateByUrl('/library');
-  }
-
   protected async add(): Promise<void> {
     const d = this.details.data();
     if (!d) return;
-    const status = await this.picker.pick(d.name, this.released() ? 'backlog' : 'wishlist');
-    if (status) this.library.add(d, status);
+    const choice = await this.sheet.addTo(d.name, this.released() ? 'backlog' : 'wishlist');
+    if (choice) this.library.add(d, choice.status, choice.completion);
   }
 
-  protected setStatus(status: Status): void {
+  protected async setStatus(status: Status): Promise<void> {
     const t = this.tracked();
-    if (t) this.library.setStatus(t, status);
+    if (!t || t.status === status) return;
+    if (status === 'completed') {
+      // Completing a game always asks how far you got. Cancel leaves the status as it was.
+      const completion = await this.sheet.completion(t.name);
+      const now = this.tracked();
+      if (!completion || !now) return;
+      this.library.setStatus(now, status, completion);
+    } else {
+      this.library.setStatus(t, status);
+    }
+    // Moving a released game out of Wishlist means you bought it: ask what you paid (optional).
+    if (t.status === 'wishlist' && status !== 'shelved' && this.released()) {
+      const details = await this.preorderSheet.ask('purchase', t.name, today(), this.stores());
+      const now = this.tracked();
+      if (details && now) this.library.edit(now, details);
+    }
   }
 
   protected setCompletion(completion: Completion): void {
     const t = this.tracked();
-    if (t) this.library.edit(t, { completion: t.completion === completion ? null : completion });
+    if (t && t.completion !== completion) this.library.edit(t, { completion });
   }
 
   protected setRating(rating: number): void {
@@ -188,6 +212,44 @@ export class GamePage {
       return;
     }
     if (hours !== t.hoursPlayed) this.library.edit(t, { hoursPlayed: hours });
+  }
+
+  protected async togglePreorder(): Promise<void> {
+    const t = this.tracked();
+    if (!t) return;
+    const on = !t.preordered;
+    this.library.setPreordered(t, on, today());
+    if (!on) return;
+    const details = await this.preorderSheet.ask('preorder', t.name, today(), this.stores());
+    const now = this.tracked();
+    if (details && now) this.library.edit(now, details);
+  }
+
+  protected setPrice(event: Event): void {
+    const t = this.tracked();
+    const input = event.target as HTMLInputElement;
+    if (!t) return;
+    const price = parsePrice(input.value);
+    if (price === undefined) {
+      input.value = t.pricePaid != null ? t.pricePaid.toFixed(2) : '';
+      this.toast.error('Price should be a number, like 69.99.');
+      return;
+    }
+    input.value = price != null ? price.toFixed(2) : '';
+    if (price !== (t.pricePaid ?? null)) this.library.edit(t, { pricePaid: price });
+  }
+
+  protected setStore(event: Event): void {
+    const t = this.tracked();
+    const store = (event.target as HTMLInputElement).value.trim().slice(0, 60) || null;
+    if (t && store !== (t.boughtFrom ?? null)) this.library.edit(t, { boughtFrom: store });
+  }
+
+  protected setOrderedOn(event: Event): void {
+    const t = this.tracked();
+    const value = (event.target as HTMLInputElement).value;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+    if (t && date !== (t.orderedOn ?? null)) this.library.edit(t, { orderedOn: date });
   }
 
   protected setNotes(event: Event): void {

@@ -1,8 +1,19 @@
 import type { TrackedGame } from '../../../../api/_lib/models.js';
 import { calendarGroups } from './calendar-groups';
 
-function game(id: number, releaseDate: string | null, precision: TrackedGame['releasePrecision'], status: TrackedGame['status'] = 'wishlist'): TrackedGame {
-  return { igdbId: id, name: `Game ${id}`, releaseDate, releasePrecision: precision, status } as TrackedGame;
+function game(
+  id: number,
+  releaseDate: string | null,
+  precision: TrackedGame['releasePrecision'],
+  status: TrackedGame['status'] = 'wishlist',
+): TrackedGame {
+  return {
+    igdbId: id,
+    name: `Game ${id}`,
+    releaseDate,
+    releasePrecision: precision,
+    status,
+  } as TrackedGame;
 }
 
 describe('calendarGroups', () => {
@@ -29,6 +40,8 @@ describe('calendarGroups', () => {
   });
 
   it('shows a game released today as upcoming', () => {
-    expect(calendarGroups([game(1, '2026-11-07', 'day')], '2026-11-07')[0].title).toBe('November 2026');
+    expect(calendarGroups([game(1, '2026-11-07', 'day')], '2026-11-07')[0].title).toBe(
+      'November 2026',
+    );
   });
 });

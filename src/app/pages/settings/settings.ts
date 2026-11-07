@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { LucideBell, LucideCalendarPlus, LucideCopy, LucideLogOut, LucideRotateCcw } from '@lucide/angular';
+import { LucideCalendarPlus, LucideChevronsUpDown, LucideCopy, LucideRotateCcw } from '@lucide/angular';
 import { PLATFORMS, type PlatformKey } from '../../../../api/_lib/platforms.js';
 import { AuthService } from '../../core/auth.service';
 import { LibraryService } from '../../core/library.service';
@@ -9,7 +9,7 @@ import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [LucideLogOut, LucideBell, LucideCopy, LucideCalendarPlus, LucideRotateCcw],
+  imports: [LucideCalendarPlus, LucideChevronsUpDown, LucideCopy, LucideRotateCcw],
   templateUrl: './settings.html',
 })
 export class SettingsPage {

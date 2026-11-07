@@ -7,61 +7,38 @@ What Claude built while you were away, what it needs from you, and the choices i
 1. ~~Publish the Firestore rules~~ Done.
 2. ~~Untick "Enable create (sign-up)"~~ Done.
 3. ~~Commit and push~~ Done on 2026-11-07.
-4. **After the deploy:** deploy the hourly alert worker ([worker/README.md](worker/README.md), three commands).
-5. **On the phone:** delete and re-add the home-screen icon (it has a proper icon now). Then add a few games, open Settings → turn on notifications → "Send a test notification", and tap **Subscribe** on the Calendar tab.
+4. ~~Deploy the hourly alert worker~~ Done.
+5. ~~On the phone: add games, notifications, test, Subscribe~~ Done, all working.
 
-## 2. Questions for you
+## 2. Questions for you (answered 2026-11-07)
 
-- **Target completion.** Should a game you're playing also get a *target* ("going for Platinum")? I didn't add it.
-- **What the Calendar shows.** I included every upcoming game you track, not just Wishlist, so a pre-order in Backlog still shows its date. Completed and Shelved are left out. OK?
-- **Wishlist in Library.** Wishlist is also a Library tab, so released games you still want to buy have a home (the Calendar only shows upcoming ones). Keep it?
-- **"New date" alerts.** When IGDB moves a release date, I send "New date for X" only for games with the bell on. Want it for every wishlist game?
-- **Rating.** You're asked for a 1–10 rating only on Completed games. Want it on Shelved games too?
-- **Accent colour** for the design pass: the app is all greys right now. Any colour you like (e.g. PlayStation blue)?
-- **App icon.** A simple white gamepad on dark grey, as a placeholder. Keep it, or do you want something else?
+- **Target completion.** No target. Instead, marking a game Completed now always asks how far you got (Main story, Main + sides, Platinum); Cancel leaves the status as it was. Same when adding a game straight to Completed.
+- **What the Calendar shows.** Kept: every upcoming game you track, except Completed and Shelved.
+- **Wishlist in Library.** No answer yet; kept as a tab.
+- **"New date" alerts.** Now sent for every game whose date moves, bell on or not.
+- **Rating.** Kept on Completed games only.
+- **Accent colour.** PlayStation blue, applied in the design pass with the `impeccable` skill (now copied into this repo).
+- **App icon.** It still showed a default "G" on the phone; fixed and redrawn in the design pass.
 
-## 3. Choices I made (easy to change)
+**Your other requests (done):**
+- Search shows the newest games first (upcoming ones on top), so "god of war" starts with God of War Laufey and ends with the 2005 original. Well-known games come before fan games and look-alikes, and other names count too ("gta" finds Grand Theft Auto VI).
+- Countdowns always show the days: "in 5 weeks (36 days)", "in 6 months (194 days)".
+- Search bar has a clear (ⓧ) button. Calendar rows show "Tue 8" without the month, since the month is the section heading ("Just released" keeps "Thu 29 Oct").
+- **Pre-orders.** On an upcoming game's page, under **Pre-order**, turn on **Pre-ordered**. It moves the game from Wishlist to Backlog (you've bought it) and asks for price (€), store and order date, all optional, date pre-filled with today. They stay editable on the page. The Calendar says "Pre-ordered" and the Library cover gets a "Pre-ordered" badge. Turning it off moves the game back to Wishlist and clears the details.
 
-**Data**
-- Release dates are stored as `"2026-11-19"` text, not timestamps. That avoids time-zone shifts (a midnight UTC timestamp can show as the day before). For vague dates I store the last day of the period ("Q3 2027" → 30 Sep 2027) so sorting still works.
-- When a game has several dates for your platform: an exact day beats a vague one, then **Europe** beats worldwide beats other regions, then the earliest wins.
-- If a game isn't on your default platform (PS5), it's added on the first of Xbox, PC or Switch 2 it is on.
-- Library order everywhere: Playing, Backlog, Wishlist, Shelved, Completed. Library opens on Playing the first time, then remembers your last tab and sort on the device.
-- When adding a game, the sheet suggests **Wishlist** for unreleased games and **Backlog** for released ones. You still pick.
-- Status changes stamp dates you don't see yet but can use for stats: bought (Backlog/Playing/Completed), started (Playing), shelved, completed.
-- Changes save straight away (no Save button). The screen updates instantly, even offline, and syncs when back online. If a save fails you get a red message above the tab bar.
+**Answered**
+- Calendar shows only upcoming releases (no Playing section).
+- Pre-orders are marked on the game's page only; adding stays simple.
+- Price and store for games bought after release: an owned game that's out has a **Purchase** section (Price, Bought from, Bought on). Moving a released game from Wishlist to Backlog, Playing or Completed on its page asks for them (optional). Adding from Search asks nothing extra. Moving a game back to Wishlist keeps what you entered, in case it was a mis-tap.
 
-**Alerts**
-- An alert is sent once per release date. If the date moves, the bell game gets a "New date" alert and then a fresh release alert for the new date.
-- If you have no device with notifications on, the alert isn't marked as sent. Turn them on later and you still get it, as long as the release hasn't passed.
-- Days-before options: on the day, 1, 2, 3, 5 or 7 days before. Time in 15-minute steps. Your time zone is saved when you turn notifications on.
-- Hourly trigger: a **Cloudflare Worker** (precise, free, same as the expenses tracker). GitHub Actions would also work without a new account, but its schedule often runs 10–30 minutes late.
-- The daily Vercel job runs at 11:00 UTC: 13:00 Athens in winter, 14:00 in summer. That way the default 13:00 alert is never early (on time in winter, an hour late in summer). Without the worker, that's when alerts arrive.
+## 5. Design pass (Step 5)
 
-**Calendar feed**
-- Only exact release days become events (all-day). Vague dates join once IGDB has a day. Titles start with 🎮 so they stand out in the iPhone Calendar.
-- "Just released" on the Calendar tab keeps games for 14 days after release.
+- Done with the `impeccable` skill. You picked the standard iOS look, with Letterboxd and Things 3 as the bar. Brief: [PRODUCT.md](PRODUCT.md); design system: DESIGN.md.
+- Blue is used sparingly: links, the active tab, switches, buttons, and the next release's countdown. Selected segments stay iOS grey (the native control), which keeps blue rare and the app clear of a PS5 look.
+- Settings is now a tab. Subscribe sits in the Calendar's top bar.
+- New blue app icon. After the deploy, delete and re-add the home-screen icon.
 
-**Game screen**
-- The top image is the first screenshot. IGDB "artworks" are often logos (Elden Ring's is giant text).
-- The trailer is the first IGDB video. It plays inline on tap from youtube-nocookie.com, so YouTube doesn't set tracking cookies until you press play.
-
-**Code and libraries**
-- Code shared by the app and the server (release dates, data model, calendar feed) lives in `api/_lib/`. Vercel doesn't turn files starting with `_` into endpoints. The local dev server now runs through `tsx`.
-- Dropped from the plan because they weren't needed: `date-fns`, `ics`, `@angular/aria`, Signal Forms, `fast-average-color`, `idb-keyval`. Added: `firebase-admin`, `web-push`, `tsx`.
-- The service worker only handles notifications. It doesn't cache the app for offline start (suggestion below).
-
-## 4. Tested, and not tested
-
-**Tested here:** 21 automated tests (release-date picking, alert timing across summer/winter time, calendar grouping, the feed format, the game screen's controls). The server functions ran locally against your real Firestore with temporary test data: the feed returned the right event, and the daily job corrected a stale GTA VI date to 19 Nov 2026 and filled in its cover. Every screen was opened in a phone-sized Chrome with a temporary account: no errors, no sideways scrolling. The test account and data were deleted afterwards.
-
-**Not tested yet:**
-- Saving games from the app (blocked by the rules). There's no Firestore emulator here (it needs Java).
-- Anything on the deployed Vercel site. The first deploy will show whether the server functions load correctly there. If search or the feed fails after deploying, tell me and I'll check the Vercel logs.
-- Push notifications on the iPhone, and the Calendar **Subscribe** link opening from the home-screen app.
-- The iOS 27 top-blur workaround.
-
-## 5. Suggestions
+## 6. Suggestions
 
 - **Rotate the secrets** that were pasted into chat earlier (Twitch client secret and the Firebase service-account key), then update `.env` and Vercel. Also delete the service-account JSON from Downloads.
 - **Turn off Google** under Authentication → Sign-in method, and delete the leftover Google account (hatzidakis.slg@…) under Users if it was only a test.

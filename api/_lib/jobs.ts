@@ -116,8 +116,8 @@ function needsRefresh(game: TrackedGame, today: string): boolean {
 }
 
 /**
- * Re-reads release dates (and name/cover) from IGDB for upcoming games. When a date moves on a
- * game with the bell on, sends a "new date" alert.
+ * Re-reads release dates (and name/cover) from IGDB for upcoming games. When a date moves, sends
+ * a "new date" alert, whether or not the game has the release-alert bell on.
  */
 export async function runDailyRefresh(db: Firestore, now = Date.now()) {
   let checked = 0;
@@ -158,14 +158,13 @@ export async function runDailyRefresh(db: Firestore, now = Date.now()) {
         writes++;
         if (dateMoved) {
           changes.push(`${game.name}: ${game.releaseLabel} → ${synced.releaseLabel}`);
-          if (game.notify) {
-            await sendToUser(userRef, {
-              title: `New date for ${synced.name}`,
-              body: `${game.releaseLabel} → ${synced.releaseLabel}`,
-              url: `/game/${game.igdbId}`,
-              tag: `date-${game.igdbId}`,
-            });
-          }
+          // Every game, not only those with the release-alert bell on.
+          await sendToUser(userRef, {
+            title: `New date for ${synced.name}`,
+            body: `${game.releaseLabel} → ${synced.releaseLabel}`,
+            url: `/game/${game.igdbId}`,
+            tag: `date-${game.igdbId}`,
+          });
         }
       }
       if (writes) await batch.commit();

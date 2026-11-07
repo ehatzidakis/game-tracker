@@ -72,6 +72,15 @@ export interface TrackedGame {
   notes: string;
   notify: boolean;
 
+  // Pre-order or purchase (optional details). Pre-ordering an upcoming game moves it from
+  // Wishlist to Backlog.
+  preordered?: boolean;
+  /** In euros. */
+  pricePaid?: number | null;
+  boughtFrom?: string | null;
+  /** "YYYY-MM-DD": when you pre-ordered or bought it. */
+  orderedOn?: string | null;
+
   // Milliseconds since 1970, or null.
   addedAt: number;
   purchasedAt: number | null;

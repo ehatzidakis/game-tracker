@@ -1,24 +1,25 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
-import { LucideLoaderCircle, LucidePlus, LucideSearch } from '@lucide/angular';
+import { LucideCirclePlus, LucideCircleX, LucideLoaderCircle, LucideSearch } from '@lucide/angular';
+import { Cover } from '../../shared/cover';
 import { statusLabel } from '../../../../api/_lib/models.js';
 import { debounced } from '../../core/debounced';
 import { coverUrl, IgdbService, type GameSearchResult } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { ToastService } from '../../core/toast.service';
-import { StatusPicker } from '../../shared/status-picker';
+import { ChoiceSheet } from '../../shared/choice-sheet';
 
 const MIN_LENGTH = 2;
 
 @Component({
   selector: 'app-search',
-  imports: [RouterLink, LucideSearch, LucidePlus, LucideLoaderCircle],
+  imports: [RouterLink, Cover, LucideSearch, LucideCirclePlus, LucideCircleX, LucideLoaderCircle],
   templateUrl: './search.html',
 })
 export class SearchPage {
   private readonly igdb = inject(IgdbService);
-  private readonly picker = inject(StatusPicker);
+  private readonly sheet = inject(ChoiceSheet);
   private readonly toast = inject(ToastService);
   protected readonly library = inject(LibraryService);
 
@@ -49,14 +50,14 @@ export class SearchPage {
   }
 
   protected async add(game: GameSearchResult): Promise<void> {
-    const status = await this.picker.pick(game.name, game.upcoming ? 'wishlist' : 'backlog');
-    if (!status) return;
+    const choice = await this.sheet.addTo(game.name, game.upcoming ? 'wishlist' : 'backlog');
+    if (!choice) return;
 
     this.adding.update((ids) => new Set(ids).add(game.id));
     try {
       const details = await this.igdb.game(game.id);
       if (!details) throw new Error(`IGDB has no game ${game.id}`);
-      this.library.add(details, status);
+      this.library.add(details, choice.status, choice.completion);
     } catch (error) {
       this.toast.error(`Couldn't add ${game.name}. Check your connection and try again.`, error);
     } finally {

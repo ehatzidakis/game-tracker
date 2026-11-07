@@ -1,55 +1,49 @@
 <article>
-  <!-- Artwork, full width, fading into the page. -->
-  <div class="relative -mx-4 -mt-4 h-52 overflow-hidden bg-white/[0.03]">
+  <!-- Artwork, full width under the see-through top bar, fading into the page. -->
+  <div class="relative -mx-4 h-[300px] overflow-hidden bg-group">
     @if (heroUrl(); as url) {
       <img [src]="url" alt="" class="size-full object-cover" />
     }
     <div
-      class="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-transparent"
+      class="absolute inset-0 bg-[linear-gradient(to_top,#000_0%,rgb(0_0_0/0.55)_35%,rgb(0_0_0/0)_70%)]"
     ></div>
-    <button
-      type="button"
-      class="absolute left-3 top-3 grid size-9 place-items-center rounded-full bg-black/55 text-zinc-100"
-      aria-label="Back"
-      (click)="back()"
-    >
-      <svg lucideChevronLeft [size]="22"></svg>
-    </button>
+    <div class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/50 to-transparent"></div>
   </div>
 
-  <div class="relative -mt-20 flex items-end gap-4">
+  <header class="relative -mt-28 flex items-end gap-4">
     <app-cover
-      class="w-24 shrink-0 shadow-xl ring-1 ring-white/10"
+      class="w-28 shrink-0 shadow-[0_10px_30px_rgb(0_0_0/0.6)]"
       [coverId]="coverId()"
       [name]="name()"
       [eager]="true"
     />
-    <div class="min-w-0 pb-1">
+    <div class="min-w-0 pb-0.5">
       @if (name()) {
-        <h1 class="text-xl font-semibold leading-tight">{{ name() }}</h1>
+        <h1 class="text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance">
+          {{ name() }}
+        </h1>
       } @else {
-        <div class="h-6 w-40 rounded bg-white/10 animate-pulse"></div>
+        <div class="h-7 w-40 animate-pulse rounded-md bg-raised"></div>
       }
       @if (developer(); as dev) {
-        <p class="mt-1 truncate text-sm text-zinc-400">{{ dev }}</p>
+        <p class="mt-1 truncate text-[15px] leading-5 text-muted">{{ dev }}</p>
       }
     </div>
-  </div>
+  </header>
 
   @if (release().label) {
-    <p class="mt-4 flex items-center gap-2 text-sm">
-      <svg lucideCalendar [size]="16" class="text-zinc-500 shrink-0"></svg>
+    <p class="num mt-4 text-[15px] leading-5">
       <span>{{ release().label }}</span>
       @if (countdown(); as c) {
-        <span class="rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-200">{{ c }}</span>
+        <span class="text-accent"> · {{ c }}</span>
       }
       @if (tracked(); as t) {
-        <span class="text-zinc-500">· {{ platformLabel(t.myPlatform) }}</span>
+        <span class="text-muted"> · {{ platformLabel(t.myPlatform) }}</span>
       }
     </p>
   }
   @if (ourPlatforms().length || otherPlatforms().length) {
-    <p class="mt-1 text-xs text-zinc-500">
+    <p class="mt-0.5 text-[13px] leading-[18px] text-muted">
       On
       @for (p of ourPlatforms(); track p.key; let last = $last) {
         {{ p.label }}{{ last && !otherPlatforms().length ? '' : ', ' }}
@@ -59,162 +53,189 @@
   }
 
   @if (details.isError() && !tracked()) {
-    <p class="mt-6 text-sm text-red-400" role="alert">
+    <p class="grouped mt-6 px-4 py-3 text-[15px] leading-5 text-danger" role="alert">
       Couldn’t load this game. Check your connection and try again.
     </p>
   }
 
   @if (tracked(); as t) {
-    <!-- Your controls -->
-    <section class="mt-6 space-y-5" aria-label="Your progress">
-      <div>
-        <h2 class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Status</h2>
-        <div class="grid grid-cols-5 gap-1 rounded-xl bg-white/5 p-1" role="radiogroup">
-          @for (s of statuses; track s.key) {
-            <button
-              type="button"
-              role="radio"
-              [attr.aria-checked]="t.status === s.key"
-              class="rounded-lg py-2 text-[11px] font-medium"
-              [class]="t.status === s.key ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'"
-              (click)="setStatus(s.key)"
-            >
-              {{ s.label }}
-            </button>
-          }
-        </div>
+    <section aria-label="Your progress">
+      <h2 class="group-header">Status</h2>
+      <div class="segmented" role="radiogroup" aria-label="Status">
+        @for (s of statuses; track s.key) {
+          <button
+            type="button"
+            role="radio"
+            class="text-[12.5px]!"
+            [attr.aria-checked]="t.status === s.key"
+            (click)="setStatus(s.key)"
+          >
+            {{ s.label }}
+          </button>
+        }
       </div>
 
       @if (t.status === 'completed') {
-        <div>
-          <h2 class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Completion
-          </h2>
-          <div class="grid grid-cols-3 gap-1 rounded-xl bg-white/5 p-1" role="radiogroup">
-            @for (c of completions; track c.key) {
-              <button
-                type="button"
-                role="radio"
-                [attr.aria-checked]="t.completion === c.key"
-                class="rounded-lg py-2 text-sm font-medium"
-                [class]="t.completion === c.key ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'"
-                (click)="setCompletion(c.key)"
-              >
-                {{ c.label }}
-              </button>
-            }
-          </div>
+        <h2 class="group-header">Completion</h2>
+        <div class="segmented" role="radiogroup" aria-label="Completion">
+          @for (c of completions; track c.key) {
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="t.completion === c.key"
+              (click)="setCompletion(c.key)"
+            >
+              {{ c.label }}
+            </button>
+          }
         </div>
 
-        <div>
-          <h2 class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Rating
-            @if (t.rating) {
-              <span class="normal-case tracking-normal text-zinc-300">· {{ t.rating }}/10</span>
-            }
-          </h2>
-          <div class="grid grid-cols-10 gap-1" role="radiogroup" aria-label="Rating out of 10">
-            @for (r of ratings; track r) {
-              <button
-                type="button"
-                role="radio"
-                [attr.aria-checked]="t.rating === r"
-                [attr.aria-label]="r + ' out of 10'"
-                class="aspect-square rounded-md text-sm tabular-nums"
-                [class]="
-                  t.rating !== null && r <= t.rating
-                    ? 'bg-zinc-100 text-zinc-900 font-semibold'
-                    : 'bg-white/5 text-zinc-400'
-                "
-                (click)="setRating(r)"
-              >
-                {{ r }}
-              </button>
-            }
-          </div>
+        <h2 class="group-header flex">
+          Rating
+          @if (t.rating) {
+            <span class="num ml-auto normal-case text-label">{{ t.rating }}/10</span>
+          }
+        </h2>
+        <div class="segmented num" role="radiogroup" aria-label="Rating out of 10">
+          @for (r of ratings; track r) {
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="t.rating === r"
+              [attr.aria-label]="r + ' out of 10'"
+              (click)="setRating(r)"
+            >
+              {{ r }}
+            </button>
+          }
         </div>
       }
 
-      @if (!released()) {
-        <button
-          type="button"
-          role="switch"
-          [attr.aria-checked]="t.notify"
-          class="flex w-full items-center gap-3 rounded-xl bg-white/5 p-3 text-left"
-          (click)="toggleNotify()"
-        >
-          <svg
-            lucideBell
-            [size]="20"
-            class="shrink-0"
-            [class]="t.notify ? 'text-zinc-50 fill-current' : 'text-zinc-500'"
-          ></svg>
-          <span class="min-w-0 flex-1">
-            <span class="block font-medium">Release alert</span>
-            <span class="block text-xs text-zinc-500">
-              @if (t.releasePrecision !== 'day') {
-                Sent once there’s an exact date.
-              } @else {
-                {{ library.settings().notifyDaysBefore === 0 ? 'On the day' : library.settings().notifyDaysBefore + (library.settings().notifyDaysBefore === 1 ? ' day' : ' days') + ' before' }},
-                at {{ library.settings().notifyTime }}
-              }
-            </span>
-          </span>
-          <span
-            class="relative h-7 w-12 shrink-0 rounded-full transition-colors"
-            [class]="t.notify ? 'bg-zinc-100' : 'bg-white/15'"
-            aria-hidden="true"
-          >
-            <span
-              class="absolute top-0.5 size-6 rounded-full transition-[left]"
-              [class]="t.notify ? 'left-[22px] bg-zinc-900' : 'left-0.5 bg-zinc-300'"
-            ></span>
-          </span>
-        </button>
+      <!-- Before release: a pre-order switch, then its details. Once out and owned: what you paid. -->
+      @if (!released() || t.status !== 'wishlist') {
+        <h2 class="group-header">{{ released() ? 'Purchase' : 'Pre-order' }}</h2>
+        <div class="grouped">
+          @if (!released()) {
+            <div class="row">
+              <p id="preorder-label" class="flex-1">Pre-ordered</p>
+              <button
+                type="button"
+                role="switch"
+                class="switch"
+                aria-labelledby="preorder-label"
+                [attr.aria-checked]="!!t.preordered"
+                (click)="togglePreorder()"
+              >
+                <span></span>
+              </button>
+            </div>
+          }
+          @if (t.preordered || released()) {
+            <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
+            <label class="row">
+              <span class="flex-1">Price</span>
+              <span class="text-muted">€</span>
+              <input
+                type="text"
+                inputmode="decimal"
+                placeholder="0.00"
+                autocomplete="off"
+                class="num w-24 bg-transparent text-right text-[17px] text-muted outline-none"
+                [value]="t.pricePaid != null ? t.pricePaid.toFixed(2) : ''"
+                (change)="setPrice($event)"
+              />
+            </label>
+            <label class="row">
+              <span class="shrink-0">Bought from</span>
+              <input
+                type="text"
+                placeholder="Store"
+                autocomplete="off"
+                list="game-stores"
+                class="min-w-0 flex-1 bg-transparent text-right text-[17px] text-muted outline-none"
+                [value]="t.boughtFrom ?? ''"
+                (change)="setStore($event)"
+              />
+              <datalist id="game-stores">
+                @for (s of stores(); track s) {
+                  <option [value]="s"></option>
+                }
+              </datalist>
+            </label>
+            <label class="row">
+              <span class="flex-1">{{ t.preordered ? 'Ordered on' : 'Bought on' }}</span>
+              <input
+                type="date"
+                class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none scheme-dark"
+                [value]="t.orderedOn ?? ''"
+                (change)="setOrderedOn($event)"
+              />
+            </label>
+          }
+        </div>
       }
 
-      @if (t.status !== 'wishlist') {
-        <label class="flex items-center gap-3 rounded-xl bg-white/5 p-3">
-          <span class="flex-1 font-medium">Hours played</span>
-          <input
-            type="text"
-            inputmode="decimal"
-            placeholder="–"
-            class="w-20 bg-transparent text-right text-base tabular-nums outline-none placeholder:text-zinc-600"
-            [value]="t.hoursPlayed ?? ''"
-            (change)="setHours($event)"
-          />
-        </label>
-      }
+      <div class="grouped mt-6">
+        @if (!released()) {
+          <div class="row">
+            <div class="min-w-0 flex-1">
+              <p id="alert-label">Release alert</p>
+              <p class="text-[13px] leading-[18px] text-muted">
+                @if (t.releasePrecision !== 'day') {
+                  Sent once there’s an exact date.
+                } @else {
+                  {{ alertWhen() }}
+                }
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              class="switch"
+              aria-labelledby="alert-label"
+              [attr.aria-checked]="t.notify"
+              (click)="toggleNotify()"
+            >
+              <span></span>
+            </button>
+          </div>
+        }
+        @if (t.status !== 'wishlist' && released()) {
+          <label class="row">
+            <span class="flex-1">Hours played</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              placeholder="0"
+              class="num w-24 bg-transparent text-right text-[17px] text-muted outline-none"
+              [value]="t.hoursPlayed ?? ''"
+              (change)="setHours($event)"
+            />
+          </label>
+        }
+      </div>
 
-      <label class="block">
-        <span class="mb-2 block text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Notes
-        </span>
-        <textarea
-          rows="3"
-          placeholder="Anything to remember"
-          class="w-full resize-none rounded-xl bg-white/5 p-3 text-base outline-none placeholder:text-zinc-600 focus:bg-white/[0.07]"
-          [value]="t.notes"
-          (change)="setNotes($event)"
-        ></textarea>
-      </label>
+      <h2 class="group-header">Notes</h2>
+      <textarea
+        rows="3"
+        placeholder="Anything to remember"
+        aria-label="Notes"
+        class="grouped block w-full resize-none px-4 py-3 text-[17px] leading-[22px] outline-none"
+        [value]="t.notes"
+        (change)="setNotes($event)"
+      ></textarea>
     </section>
   } @else if (details.data()) {
-    <button
-      type="button"
-      class="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-100 py-3 font-semibold text-zinc-900"
-      (click)="add()"
-    >
-      <svg lucidePlus [size]="20"></svg>
-      Add to library
+    <button type="button" class="button-primary mt-6" (click)="add()">
+      <svg lucidePlus [size]="20" [strokeWidth]="2.5"></svg>
+      Add to Library
     </button>
   }
 
   @if (video(); as v) {
-    <section class="mt-8" aria-label="Trailer">
-      <h2 class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Trailer</h2>
-      <div class="relative aspect-video overflow-hidden rounded-xl bg-white/5">
+    <section aria-label="Trailer">
+      <h2 class="group-header">Trailer</h2>
+      <div class="relative aspect-video overflow-hidden rounded-[10px] bg-group">
         @if (playingVideo()) {
           <iframe
             class="size-full"
@@ -237,8 +258,10 @@
               class="size-full object-cover"
             />
             <span class="absolute inset-0 grid place-items-center">
-              <span class="grid size-14 place-items-center rounded-full bg-black/60 text-white">
-                <svg lucidePlay [size]="26" class="fill-current ml-0.5"></svg>
+              <span
+                class="grid size-14 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md"
+              >
+                <svg lucidePlay [size]="24" class="ml-0.5 fill-current"></svg>
               </span>
             </span>
           </button>
@@ -248,17 +271,17 @@
   }
 
   @if (screenshots().length) {
-    <section class="mt-8" aria-label="Screenshots">
-      <h2 class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Screenshots</h2>
+    <section aria-label="Screenshots">
+      <h2 class="group-header">Screenshots</h2>
       <!-- Scrolls sideways inside its own strip; the page itself never does. -->
-      <ul class="shots -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1">
+      <ul class="shots -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4">
         @for (s of screenshots(); track s.image_id) {
-          <li class="w-[80%] shrink-0 snap-center">
+          <li class="w-[85%] shrink-0 snap-start">
             <img
               [src]="coverUrl(s.image_id, 'screenshot_med')"
               alt=""
               loading="lazy"
-              class="aspect-video w-full rounded-lg bg-white/5 object-cover"
+              class="aspect-video w-full rounded-[10px] bg-group object-cover"
             />
           </li>
         }
@@ -267,54 +290,48 @@
   }
 
   @if (details.data()?.summary; as summary) {
-    <section class="mt-8" aria-label="About">
-      <h2 class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">About</h2>
-      <p class="text-sm leading-relaxed text-zinc-300" [class.line-clamp-4]="!summaryOpen()">
-        {{ summary }}
-      </p>
-      @if (!summaryOpen() && summary.length > 220) {
-        <button type="button" class="mt-1 text-sm text-zinc-400" (click)="summaryOpen.set(true)">
-          More
-        </button>
-      }
-      @if (genres().length) {
-        <p class="mt-3 text-xs text-zinc-500">{{ genres().join(' · ') }}</p>
-      }
+    <section aria-label="About">
+      <h2 class="group-header">About</h2>
+      <div class="px-4">
+        <p class="text-[15px] leading-[21px] text-label/85" [class.line-clamp-4]="!summaryOpen()">
+          {{ summary }}
+        </p>
+        @if (!summaryOpen() && summary.length > 220) {
+          <button
+            type="button"
+            class="mt-1 text-[15px] text-accent active:opacity-60"
+            (click)="summaryOpen.set(true)"
+          >
+            More
+          </button>
+        }
+        @if (genres().length) {
+          <p class="mt-3 text-[13px] leading-[18px] text-muted">{{ genres().join(' · ') }}</p>
+        }
+      </div>
     </section>
   }
 
   @if (tracked(); as t) {
-    <details class="mt-8 rounded-xl bg-white/[0.03] px-3">
-      <summary class="cursor-pointer py-3 text-sm text-zinc-400">More</summary>
-      <div class="space-y-4 pb-4">
-        <div>
-          <h2 class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-            My platform
-          </h2>
-          <div class="flex flex-wrap gap-1.5" role="radiogroup">
-            @for (p of ourPlatforms(); track p.key) {
-              <button
-                type="button"
-                role="radio"
-                [attr.aria-checked]="t.myPlatform === p.key"
-                class="rounded-full px-3 py-1.5 text-sm"
-                [class]="t.myPlatform === p.key ? 'bg-zinc-100 text-zinc-900' : 'bg-white/5 text-zinc-400'"
-                (click)="setPlatform(p.key)"
-              >
-                {{ p.label }}
-              </button>
-            }
-          </div>
-        </div>
+    <h2 class="group-header">My platform</h2>
+    <div class="segmented" role="radiogroup" aria-label="My platform">
+      @for (p of ourPlatforms(); track p.key) {
         <button
           type="button"
-          class="flex items-center gap-2 text-sm text-red-400"
-          (click)="remove()"
+          role="radio"
+          [attr.aria-checked]="t.myPlatform === p.key"
+          (click)="setPlatform(p.key)"
         >
-          <svg lucideTrash2 [size]="16"></svg>
-          Remove from library
+          {{ p.label }}
         </button>
-      </div>
-    </details>
+      }
+    </div>
+    <p class="group-footer">Release dates follow this platform.</p>
+
+    <div class="grouped mt-8">
+      <button type="button" class="row justify-center text-danger" (click)="remove()">
+        Remove from Library
+      </button>
+    </div>
   }
 </article>

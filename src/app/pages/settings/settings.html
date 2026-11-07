@@ -1,18 +1,15 @@
-<h1 class="mb-4 text-xl font-semibold">Settings</h1>
+<h1 class="large-title">Settings</h1>
 
 @let s = library.settings();
 
 <!-- Release alerts -->
-<section class="mb-6" aria-labelledby="alerts-title">
-  <h2 id="alerts-title" class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-    Release alerts
-  </h2>
-  <div class="divide-y divide-white/5 rounded-xl bg-white/5">
-    <div class="flex items-center gap-3 p-3">
-      <svg lucideBell [size]="20" class="shrink-0 text-zinc-400"></svg>
+<section aria-labelledby="alerts-title">
+  <h2 id="alerts-title" class="group-header">Release alerts</h2>
+  <div class="grouped">
+    <div class="row">
       <div class="min-w-0 flex-1">
-        <p class="font-medium">Notifications on this phone</p>
-        <p class="text-xs text-zinc-500">
+        <p id="push-label">Notifications on this phone</p>
+        <p class="text-[13px] leading-[18px] text-muted">
           @switch (push.state()) {
             @case ('unsupported') {
               Open the app from its home-screen icon to turn these on.
@@ -24,7 +21,7 @@
               On. Games with the bell on alert you here.
             }
             @default {
-              Off. Turn on to get alerts for games with the bell on.
+              Off. Turn on to get alerts on this phone.
             }
           }
         </p>
@@ -33,133 +30,123 @@
         <button
           type="button"
           role="switch"
+          class="switch"
+          aria-labelledby="push-label"
           [attr.aria-checked]="push.state() === 'on'"
-          aria-label="Notifications on this phone"
-          class="relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50"
-          [class]="push.state() === 'on' ? 'bg-zinc-100' : 'bg-white/15'"
           [disabled]="push.busy()"
           (click)="togglePush()"
         >
-          <span
-            class="absolute top-0.5 size-6 rounded-full transition-[left]"
-            [class]="push.state() === 'on' ? 'left-[22px] bg-zinc-900' : 'left-0.5 bg-zinc-300'"
-          ></span>
+          <span></span>
         </button>
       }
     </div>
 
-    <label class="flex items-center gap-3 p-3">
+    <label class="row">
       <span class="flex-1">When</span>
-      <select class="bg-transparent text-base text-zinc-200 outline-none" (change)="setDays($event)">
-        @for (d of dayOptions; track d) {
-          <option [value]="d" [selected]="d === s.notifyDaysBefore">{{ dayLabel(d) }}</option>
-        }
-      </select>
+      <span class="relative flex items-center text-muted">
+        <!-- 16px or more so iOS doesn't zoom in when it opens. -->
+        <select
+          class="appearance-none bg-transparent pr-5 text-right text-[17px] outline-none"
+          (change)="setDays($event)"
+        >
+          @for (d of dayOptions; track d) {
+            <option [value]="d" [selected]="d === s.notifyDaysBefore">{{ dayLabel(d) }}</option>
+          }
+        </select>
+        <svg lucideChevronsUpDown [size]="15" class="pointer-events-none absolute right-0"></svg>
+      </span>
     </label>
 
-    <label class="flex items-center gap-3 p-3">
-      <span class="flex-1">At</span>
+    <label class="row">
+      <span class="flex-1">Time</span>
       <input
         type="time"
         step="900"
-        class="bg-transparent text-base text-zinc-200 outline-none [color-scheme:dark]"
+        class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none [color-scheme:dark]"
         [value]="s.notifyTime"
         (change)="setTime($event)"
       />
     </label>
 
     @if (push.state() === 'on') {
-      <button type="button" class="w-full p-3 text-left text-sm text-zinc-300" (click)="sendTest()">
+      <button type="button" class="row text-accent" (click)="sendTest()">
         Send a test notification
       </button>
     }
   </div>
-  <p class="mt-2 px-1 text-xs text-zinc-500">
-    Alerts are off by default. Turn them on per game with the bell on its page. Games without an
-    exact release day get their alert once one is announced.
+  <p class="group-footer">
+    Alerts are off by default; turn them on per game with its Release alert switch. Games without an
+    exact day get theirs once one is announced. Date changes are always sent.
   </p>
 </section>
 
 <!-- Default platform -->
-<section class="mb-6" aria-labelledby="platform-title">
-  <h2 id="platform-title" class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-    Default platform
-  </h2>
-  <div class="grid grid-cols-4 gap-1 rounded-xl bg-white/5 p-1" role="radiogroup">
+<section aria-labelledby="platform-title">
+  <h2 id="platform-title" class="group-header">Default platform</h2>
+  <div class="segmented" role="radiogroup" aria-labelledby="platform-title">
     @for (p of platforms; track p.key) {
       <button
         type="button"
         role="radio"
         [attr.aria-checked]="s.defaultPlatform === p.key"
-        class="rounded-lg py-2 text-xs font-medium"
-        [class]="s.defaultPlatform === p.key ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'"
         (click)="setPlatform(p.key)"
       >
         {{ p.label }}
       </button>
     }
   </div>
-  <p class="mt-2 px-1 text-xs text-zinc-500">
-    Used for new games and their release dates. You can change it per game under More.
+  <p class="group-footer">
+    Used for new games and their release dates. You can change it per game at the bottom of its
+    page.
   </p>
 </section>
 
 <!-- Calendar subscription -->
-<section class="mb-6" aria-labelledby="calendar-title">
-  <h2 id="calendar-title" class="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-    Calendar subscription
-  </h2>
+<section aria-labelledby="calendar-title">
+  <h2 id="calendar-title" class="group-header">Calendar subscription</h2>
   @if (calendarUrl(); as url) {
-    <div class="divide-y divide-white/5 rounded-xl bg-white/5">
-      <p class="break-all p-3 text-xs text-zinc-400 select-all">{{ url }}</p>
-      <a [href]="webcalUrl()" class="flex items-center gap-3 p-3">
-        <svg lucideCalendarPlus [size]="18" class="text-zinc-400"></svg>
+    <div class="grouped" style="--sep-inset: 52px">
+      <p class="row text-[13px] leading-[18px] break-all text-muted select-all">{{ url }}</p>
+      <a [href]="webcalUrl()" class="row text-accent">
+        <svg lucideCalendarPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
         Add to Calendar app
       </a>
-      <button type="button" class="flex w-full items-center gap-3 p-3" (click)="copyCalendarLink()">
-        <svg lucideCopy [size]="18" class="text-zinc-400"></svg>
+      <button type="button" class="row text-accent" (click)="copyCalendarLink()">
+        <svg lucideCopy [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
         Copy link
       </button>
-      <button
-        type="button"
-        class="flex w-full items-center gap-3 p-3 text-zinc-400"
-        (click)="resetCalendarLink()"
-      >
-        <svg lucideRotateCcw [size]="18"></svg>
+      <button type="button" class="row text-danger" (click)="resetCalendarLink()">
+        <svg lucideRotateCcw [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
         Make a new link
       </button>
     </div>
-    <p class="mt-2 px-1 text-xs text-zinc-500">
+    <p class="group-footer">
       Your calendar app checks this link for changes, so delays show up on their own. Anyone with
       the link can see your upcoming games, so make a new one if it leaks.
     </p>
   } @else {
-    <button
-      type="button"
-      class="flex w-full items-center gap-3 rounded-xl bg-white/5 p-3"
-      (click)="createCalendarLink()"
-    >
-      <svg lucideCalendarPlus [size]="18" class="text-zinc-400"></svg>
-      Create calendar link
-    </button>
-    <p class="mt-2 px-1 text-xs text-zinc-500">
+    <div class="grouped">
+      <button type="button" class="row text-accent" (click)="createCalendarLink()">
+        <svg lucideCalendarPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
+        Create calendar link
+      </button>
+    </div>
+    <p class="group-footer">
       Puts your upcoming games in the iPhone Calendar (or Google Calendar) and keeps it updated.
     </p>
   }
 </section>
 
 <!-- Account -->
-<section class="flex items-center gap-4 rounded-xl bg-white/5 p-3" aria-label="Account">
-  <div class="min-w-0">
-    <p class="text-xs text-zinc-500">Signed in as</p>
-    <p class="truncate">{{ auth.user()?.email }}</p>
+<section aria-labelledby="account-title">
+  <h2 id="account-title" class="group-header">Account</h2>
+  <div class="grouped">
+    <div class="row">
+      <span>Signed in as</span>
+      <span class="row-value min-w-0 truncate">{{ auth.user()?.email }}</span>
+    </div>
+    <button type="button" class="row justify-center text-danger" (click)="signOut()">
+      Sign Out
+    </button>
   </div>
-  <button
-    type="button"
-    class="ml-auto flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm"
-    (click)="signOut()"
-  >
-    <svg lucideLogOut [size]="16"></svg>
-    Sign out
-  </button>
 </section>

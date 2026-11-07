@@ -18,26 +18,31 @@ export const routes: Routes = [
       {
         path: 'calendar',
         title: 'Calendar · Game Tracker',
+        data: { title: 'Calendar' },
         loadComponent: () => import('./pages/calendar/calendar').then((m) => m.CalendarPage),
       },
       {
         path: 'library',
         title: 'Library · Game Tracker',
+        data: { title: 'Library' },
         loadComponent: () => import('./pages/library/library').then((m) => m.LibraryPage),
       },
       {
         path: 'search',
         title: 'Search · Game Tracker',
+        data: { title: 'Search' },
         loadComponent: () => import('./pages/search/search').then((m) => m.SearchPage),
       },
       {
         path: 'game/:id',
         title: 'Game · Game Tracker',
+        data: { back: true, hero: true },
         loadComponent: () => import('./pages/game/game').then((m) => m.GamePage),
       },
       {
         path: 'settings',
         title: 'Settings · Game Tracker',
+        data: { title: 'Settings' },
         loadComponent: () => import('./pages/settings/settings').then((m) => m.SettingsPage),
       },
     ],

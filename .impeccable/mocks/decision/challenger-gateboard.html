@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&display=swap" rel="stylesheet">
+<style>
+  :root { --ground:#07090D; --raise:#11151C; --ink:#F2F4F8; --mute:#7D8798; --rule:rgba(242,244,248,.08); --blue:#3A78FF; --amber:#F2B33D; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:390px; height:844px; overflow:hidden; background:var(--ground); color:var(--ink); font-family:Archivo, system-ui, sans-serif; font-variant-numeric:tabular-nums; position:relative; }
+  .safe { height:47px; }
+  header { padding:6px 16px 12px; display:flex; justify-content:space-between; align-items:flex-end; }
+  h1 { font-stretch:75%; font-weight:800; font-size:30px; letter-spacing:.06em; text-transform:uppercase; }
+  .upd { font-size:11px; color:var(--mute); letter-spacing:.08em; text-transform:uppercase; text-align:right; line-height:1.4; }
+  .board { margin:0 8px; background:var(--raise); border-radius:10px; overflow:hidden; }
+  .cols, .r { display:grid; grid-template-columns:58px 36px 1fr 74px; gap:10px; align-items:center; padding:0 12px; }
+  .cols { height:30px; font-size:10px; letter-spacing:.14em; color:var(--mute); text-transform:uppercase; font-weight:700; border-bottom:1px solid var(--rule); }
+  .r { height:66px; border-bottom:1px solid var(--rule); }
+  .date { font-stretch:75%; font-weight:800; font-size:20px; line-height:1; text-transform:uppercase; }
+  .date small { display:block; font-size:10px; color:var(--mute); font-weight:600; letter-spacing:.1em; margin-top:3px; }
+  .cover { width:36px; height:48px; border-radius:3px; }
+  .name { font-size:15px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; line-height:1.15; }
+  .plat { font-size:11px; color:var(--mute); letter-spacing:.1em; margin-top:2px; }
+  .st { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; text-align:right; }
+  .st.next { color:var(--blue); }
+  .st.moved { color:var(--amber); }
+  .r.moved { background:rgba(242,179,61,.07); box-shadow:inset 3px 0 0 var(--amber); }
+  .was { font-size:10px; color:var(--mute); text-decoration:line-through; display:block; }
+  .gap { padding:14px 16px 6px; font-size:10px; letter-spacing:.16em; color:var(--mute); text-transform:uppercase; font-weight:700; }
+  nav { position:absolute; left:0; right:0; bottom:0; height:84px; padding-top:10px; display:grid; grid-template-columns:repeat(4,1fr); background:var(--ground); border-top:1px solid var(--rule); }
+  nav a { text-align:center; font-size:11px; color:var(--mute); font-weight:600; }
+  nav a::before { content:""; display:block; width:22px; height:22px; margin:0 auto 4px; border:2px solid currentColor; border-radius:6px; }
+  nav a.on { color:var(--blue); }
+</style>
+</head>
+<body>
+<div class="safe"></div>
+<header><h1>Releases</h1><p class="upd">Checked<br>today 13:00</p></header>
+<div class="board">
+  <div class="cols"><span>Date</span><span></span><span>Game</span><span style="text-align:right">Status</span></div>
+  <div class="r">
+    <div class="date">19 Nov<small>THU</small></div>
+    <div class="cover" style="background:linear-gradient(160deg,#d0567a,#3a1f52)"></div>
+    <div><p class="name">Grand Theft Auto VI</p><p class="plat">PS5</p></div>
+    <div class="st next">12 days</div>
+  </div>
+  <div class="r">
+    <div class="date">12 Feb<small>FRI</small></div>
+    <div class="cover" style="background:linear-gradient(160deg,#2b6a6e,#0f2326)"></div>
+    <div><p class="name">Tomb Raider: Legacy of Atlantis</p><p class="plat">PS5</p></div>
+    <div class="st">97 days</div>
+  </div>
+  <div class="r">
+    <div class="date">23 Feb<small>TUE</small></div>
+    <div class="cover" style="background:linear-gradient(160deg,#4f7d3a,#1a2a14)"></div>
+    <div><p class="name">Fable</p><p class="plat">PS5</p></div>
+    <div class="st">108 days</div>
+  </div>
+  <div class="r moved">
+    <div class="date">07 Apr<small>WED</small></div>
+    <div class="cover" style="background:linear-gradient(160deg,#6b5a3a,#1d170e)"></div>
+    <div><p class="name">Exodus</p><p class="plat">PS5</p></div>
+    <div class="st moved">New date<span class="was">Q1 2027</span></div>
+  </div>
+  <div class="r">
+    <div class="date">20 May<small>THU</small></div>
+    <div class="cover" style="background:linear-gradient(160deg,#8a8f9c,#1e2430)"></div>
+    <div><p class="name">God of War Laufey</p><p class="plat">PS5</p></div>
+    <div class="st">194 days</div>
+  </div>
+  <p class="gap">No exact date</p>
+  <div class="r">
+    <div class="date">2028</div>
+    <div class="cover" style="background:linear-gradient(160deg,#7a6a4a,#221c12)"></div>
+    <div><p class="name">The Witcher IV</p><p class="plat">PS5</p></div>
+    <div class="st">TBA</div>
+  </div>
+</div>
+<nav><a>Library</a><a class="on">Calendar</a><a>Search</a><a>Settings</a></nav>
+</body>
+</html>

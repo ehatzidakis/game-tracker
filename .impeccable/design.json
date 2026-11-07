@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-07T23:30:00Z",
+  "title": "Design System: Game Tracker",
+  "extensions": {
+    "colorMeta": {
+      "ground": { "role": "neutral", "displayName": "True Black", "canonical": "#000000", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
+      "group": { "role": "neutral", "displayName": "Group Grey", "canonical": "#1c1c1e", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
+      "raised": { "role": "neutral", "displayName": "Raised Grey", "canonical": "#2c2c2e", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
+      "pressed": { "role": "neutral", "displayName": "Pressed Grey", "canonical": "#3a3a3c", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
+      "segment-thumb": { "role": "neutral", "displayName": "Thumb Grey", "canonical": "#636366", "tonalRamp": ["#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#7c7c80", "#98989f", "#c7c7cc"] },
+      "tab-bar": { "role": "neutral", "displayName": "Bar Black", "canonical": "#121214", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
+      "separator": { "role": "neutral", "displayName": "Hairline", "canonical": "rgb(84 84 88 / 0.65)", "tonalRamp": ["#1c1c1e", "#2c2c2e", "#38383a", "#48484a", "#545458", "#636366", "#7c7c80", "#98989f"] },
+      "fill": { "role": "neutral", "displayName": "Control Fill", "canonical": "rgb(118 118 128 / 0.24)", "tonalRamp": ["#1c1c1e", "#242426", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#767680", "#98989f"] },
+      "label": { "role": "neutral", "displayName": "Label White", "canonical": "#ffffff", "tonalRamp": ["#3a3a3c", "#636366", "#8e8e93", "#aeaeb2", "#c7c7cc", "#d1d1d6", "#e5e5ea", "#ffffff"] },
+      "muted": { "role": "neutral", "displayName": "Secondary Grey", "canonical": "#98989f", "tonalRamp": ["#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#7c7c80", "#98989f", "#c7c7cc", "#e5e5ea"] },
+      "faint": { "role": "neutral", "displayName": "Decoration Grey", "canonical": "#48484a", "tonalRamp": ["#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#7c7c80", "#98989f", "#c7c7cc"] },
+      "accent": { "role": "primary", "displayName": "Tint Blue", "canonical": "#4c86ff", "tonalRamp": ["#0b1f4d", "#12307a", "#1a45a8", "#2462e8", "#4c86ff", "#6a9bff", "#a3c1ff", "#dbe7ff"] },
+      "accent-raised": { "role": "primary", "displayName": "Sheet Blue", "canonical": "#6a9bff", "tonalRamp": ["#0b1f4d", "#12307a", "#1a45a8", "#2462e8", "#4c86ff", "#6a9bff", "#a3c1ff", "#dbe7ff"] },
+      "accent-fill": { "role": "primary", "displayName": "Fill Blue", "canonical": "#2462e8", "tonalRamp": ["#0b1f4d", "#12307a", "#1a45a8", "#2462e8", "#4c86ff", "#6a9bff", "#a3c1ff", "#dbe7ff"] },
+      "danger": { "role": "error", "displayName": "System Red", "canonical": "#ff453a", "tonalRamp": ["#4a0d09", "#7a1610", "#b0221a", "#e0352b", "#ff453a", "#ff6f66", "#ffa39d", "#ffdcd9"] }
+    },
+    "typographyMeta": {
+      "large-title": { "displayName": "Large Title", "purpose": "First line of every tab screen; hands off to the top bar's small title on scroll." },
+      "title": { "displayName": "Title", "purpose": "The game's name on the Game screen, balanced wrapping." },
+      "headline": { "displayName": "Headline", "purpose": "Empty-state headings." },
+      "nav-title": { "displayName": "Nav Title", "purpose": "Small centred title in the solid top bar; weight of primary buttons and Cancel." },
+      "body": { "displayName": "Body", "purpose": "Row labels, inputs (17px so iOS never zooms), text actions." },
+      "subhead": { "displayName": "Subhead", "purpose": "Row subtitles, counts, toasts, inline errors." },
+      "footnote": { "displayName": "Footnote", "purpose": "Uppercase group headers, group footers, sheet headings, hints." },
+      "segment": { "displayName": "Segment", "purpose": "Segmented-control labels; 600 when selected; 12.5px for five segments." },
+      "caption": { "displayName": "Caption", "purpose": "Names and meta under Library grid covers; 11px semibold cover badge." },
+      "tab-label": { "displayName": "Tab Label", "purpose": "Labels under tab bar icons." }
+    },
+    "shadows": [
+      { "name": "segment-thumb", "value": "0 3px 8px rgb(0 0 0 / 0.12), 0 3px 1px rgb(0 0 0 / 0.04)", "purpose": "The selected segment only." },
+      { "name": "switch-knob", "value": "0 3px 8px rgb(0 0 0 / 0.15), 0 3px 1px rgb(0 0 0 / 0.06)", "purpose": "The white switch knob." },
+      { "name": "floating-toast", "value": "0 8px 28px rgb(0 0 0 / 0.5)", "purpose": "Toasts floating above the tab bar." },
+      { "name": "hero-cover", "value": "0 10px 30px rgb(0 0 0 / 0.6)", "purpose": "Game screen cover lifting off its screenshot backdrop." }
+    ],
+    "materials": [
+      { "name": "top-bar-solid", "value": "background: rgb(22 22 24 / 0.9); backdrop-filter: blur(24px) saturate(1.5); border-bottom: 0.5px solid rgb(84 84 88 / 0.65)", "purpose": "Top bar once its small title shows." },
+      { "name": "sheet", "value": "background: rgb(44 44 46 / 0.94); backdrop-filter: blur(24px)", "purpose": "Action-sheet and pre-order-sheet groups." },
+      { "name": "sheet-backdrop", "value": "rgb(0 0 0 / 0.5)", "purpose": "Dimmed page behind a sheet." },
+      { "name": "hero-fade", "value": "linear-gradient(to top, #000 0%, rgb(0 0 0 / 0.55) 35%, rgb(0 0 0 / 0) 70%)", "purpose": "Game screen screenshot fading into the black page." },
+      { "name": "cover-edge", "value": "inset 0 0 0 0.5px rgb(255 255 255 / 0.15)", "purpose": "Hairline edge on every cover." }
+    ],
+    "motion": [
+      { "name": "ease-spring", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Sheets (280ms), toasts (220ms), switch knob (200ms)." },
+      { "name": "bar-fade", "value": "200ms", "purpose": "Top bar material and small title fade in together." },
+      { "name": "segment-change", "value": "160ms ease-out", "purpose": "Segmented thumb background change." }
+    ],
+    "breakpoints": [
+      { "name": "frame-max", "value": "28rem", "purpose": "Phone-width frame; centred on desktop. No other breakpoints." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Full-width filled blue button at the end of a form or screen (Sign In, Add to Library).",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>Add to Library</button>",
+      "css": ".ds-btn-primary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 50px; border: none; border-radius: 12px; background: var(--color-accent-fill, #2462e8); color: #fff; font: 600 17px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; letter-spacing: -0.02em; cursor: pointer; } .ds-btn-primary:active { filter: brightness(0.9); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-accent, #4c86ff); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.6; }"
+    },
+    {
+      "name": "Grouped List",
+      "kind": "card",
+      "refersTo": "grouped-list",
+      "description": "Inset grouped list with uppercase header, cover-led rows, inset hairlines and a footer note.",
+      "html": "<div class=\"ds-wrap\"><h2 class=\"ds-group-header\">November 2026</h2><ul class=\"ds-grouped\"><li><a class=\"ds-row\" href=\"#\"><span class=\"ds-thumb\"></span><span class=\"ds-text\"><span class=\"ds-name\">Grand Theft Auto VI</span><span class=\"ds-sub\">Thu 19 · <span class=\"ds-next\">in 12 days</span></span></span><svg class=\"ds-chev\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></a></li><li><a class=\"ds-row\" href=\"#\"><span class=\"ds-thumb\"></span><span class=\"ds-text\"><span class=\"ds-name\">Fable</span><span class=\"ds-sub\">Thu 18 · in 3 months (103 days)</span></span><svg class=\"ds-chev\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 18 6-6-6-6\"/></svg></a></li></ul><p class=\"ds-group-footer\">Release dates follow your platform.</p></div>",
+      "css": ".ds-wrap { background: #000; padding: 0 16px 16px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; color: #fff; letter-spacing: -0.02em; } .ds-group-header { margin: 0; padding: 22px 16px 7px; font-size: 13px; line-height: 18px; font-weight: 400; letter-spacing: -0.005em; text-transform: uppercase; color: var(--color-muted, #98989f); } .ds-group-footer { margin: 0; padding: 7px 16px 0; font-size: 13px; line-height: 18px; color: var(--color-muted, #98989f); } .ds-grouped { list-style: none; margin: 0; padding: 0; background: var(--color-group, #1c1c1e); border-radius: 10px; overflow: hidden; } .ds-grouped li { position: relative; } .ds-grouped li + li::before { content: ''; position: absolute; top: 0; right: 0; left: 68px; height: 0.5px; background: rgb(84 84 88 / 0.65); } .ds-row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 8px 16px; color: inherit; text-decoration: none; font-size: 17px; line-height: 22px; } .ds-row:active { background: var(--color-pressed, #3a3a3c); } .ds-row:focus-visible { outline: 2px solid #4c86ff; outline-offset: -2px; } .ds-thumb { width: 40px; aspect-ratio: 3/4; border-radius: 5px; background: #2c2c2e; box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.15); flex: none; } .ds-text { display: flex; flex-direction: column; flex: 1; min-width: 0; } .ds-sub { font-size: 15px; line-height: 20px; color: #98989f; font-variant-numeric: tabular-nums; } .ds-next { color: var(--color-accent, #4c86ff); white-space: nowrap; } .ds-chev { color: var(--color-faint, #48484a); flex: none; margin-right: -4px; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "iOS segmented control with a grey thumb for one-of-few choices.",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button role=\"radio\" aria-checked=\"false\">Main story</button><button role=\"radio\" aria-checked=\"true\">Main + sides</button><button role=\"radio\" aria-checked=\"false\">Platinum</button></div>",
+      "css": ".ds-seg { display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; gap: 2px; padding: 2px; border-radius: 9px; background: rgb(118 118 128 / 0.24); font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } .ds-seg > button { min-height: 28px; padding: 4px 2px; border: none; border-radius: 7px; background: transparent; color: #fff; font-size: 13px; line-height: 18px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; cursor: pointer; transition: background-color 160ms ease-out; } .ds-seg > button[aria-checked='true'] { background: #636366; font-weight: 600; box-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 3px 1px rgb(0 0 0 / 0.04); } .ds-seg > button:focus-visible { outline: 2px solid #4c86ff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Switch Row",
+      "kind": "input",
+      "refersTo": "switch",
+      "description": "Grouped row with a label, hint and iOS switch (Release alert).",
+      "html": "<div class=\"ds-switch-row\"><span class=\"ds-sw-text\"><span>Release alert</span><span class=\"ds-sw-hint\">The day before, at 09:00</span></span><button class=\"ds-switch\" role=\"switch\" aria-checked=\"true\"><span></span></button></div>",
+      "css": ".ds-switch-row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 11px 16px; background: #1c1c1e; border-radius: 10px; color: #fff; font: 400 17px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; letter-spacing: -0.02em; } .ds-sw-text { display: flex; flex-direction: column; flex: 1; } .ds-sw-hint { font-size: 13px; line-height: 18px; color: #98989f; } .ds-switch { position: relative; flex: none; width: 51px; height: 31px; padding: 0; border: none; border-radius: 999px; background: rgb(120 120 128 / 0.32); cursor: pointer; transition: background-color 200ms ease-out; } .ds-switch[aria-checked='true'] { background: var(--color-accent-fill, #2462e8); } .ds-switch > span { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 999px; background: #fff; box-shadow: 0 3px 8px rgb(0 0 0 / 0.15), 0 3px 1px rgb(0 0 0 / 0.06); transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1); } .ds-switch[aria-checked='true'] > span { transform: translateX(20px); } .ds-switch:focus-visible { outline: 2px solid #4c86ff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "iOS search field with leading glyph, 17px text.",
+      "html": "<label class=\"ds-search\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input type=\"search\" placeholder=\"Games\"></label>",
+      "css": ".ds-search { position: relative; display: block; } .ds-search svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #98989f; pointer-events: none; } .ds-search input { width: 100%; height: 36px; padding: 0 36px 0 32px; border: none; border-radius: 10px; background: rgb(118 118 128 / 0.24); color: #fff; font: 400 17px/22px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; letter-spacing: -0.02em; caret-color: #4c86ff; outline: none; } .ds-search input::placeholder { color: #98989f; } .ds-search input:focus-visible { outline: 2px solid #4c86ff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab-bar",
+      "description": "Opaque four-tab bar; active tab in Tint Blue.",
+      "html": "<nav class=\"ds-tabs\"><a href=\"#\" aria-current=\"page\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M8 2v4\"/><path d=\"M16 2v4\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M3 10h18\"/></svg><span>Calendar</span></a><a href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m16 6 4 14\"/><path d=\"M12 6v14\"/><path d=\"M8 8v12\"/><path d=\"M4 4v16\"/></svg><span>Library</span></a><a href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><span>Search</span></a><a href=\"#\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><circle cx=\"12\" cy=\"12\" r=\"9\"/></svg><span>Settings</span></a></nav>",
+      "css": ".ds-tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: #121214; border-top: 0.5px solid rgb(84 84 88 / 0.65); padding-bottom: 6px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; } .ds-tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 50px; font-size: 10px; line-height: 1; font-weight: 500; color: #98989f; text-decoration: none; } .ds-tabs a[aria-current='page'] { color: var(--color-accent, #4c86ff); } .ds-tabs a:focus-visible { outline: 2px solid #4c86ff; outline-offset: -2px; border-radius: 6px; }"
+    },
+    {
+      "name": "Action Sheet",
+      "kind": "custom",
+      "refersTo": "action-sheet",
+      "description": "Bottom action sheet: choices in one raised group, Cancel in its own; Sheet Blue on raised grey.",
+      "html": "<div class=\"ds-sheet\"><div class=\"ds-sheet-group\"><p class=\"ds-sheet-h\">Add <b>Fable</b> to…</p><button>Playing</button><button>Backlog <span class=\"ds-sugg\">Suggested</span></button><button>Wishlist</button></div><div class=\"ds-sheet-group\"><button class=\"ds-cancel\">Cancel</button></div></div>",
+      "css": ".ds-sheet { padding: 8px; background: rgb(0 0 0 / 0.5); font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; letter-spacing: -0.02em; } .ds-sheet-group { background: rgb(44 44 46 / 0.94); backdrop-filter: blur(24px); border-radius: 14px; overflow: hidden; } .ds-sheet-group + .ds-sheet-group { margin-top: 8px; } .ds-sheet-h { margin: 0; padding: 14px 16px; text-align: center; font-size: 13px; line-height: 18px; color: #98989f; } .ds-sheet-h b { font-weight: 600; } .ds-sheet-group button { display: flex; align-items: center; width: 100%; min-height: 57px; padding: 11px 16px; border: none; border-top: 0.5px solid rgb(84 84 88 / 0.65); background: transparent; color: #fff; font-size: 17px; text-align: left; cursor: pointer; } .ds-sheet-group button:active { background: #3a3a3c; } .ds-sheet-group button:focus-visible { outline: 2px solid #6a9bff; outline-offset: -2px; } .ds-sugg { margin-left: auto; font-size: 15px; color: var(--color-accent-raised, #6a9bff); } .ds-sheet-group .ds-cancel { justify-content: center; border-top: none; font-weight: 600; color: var(--color-accent-raised, #6a9bff); }"
+    },
+    {
+      "name": "Cover",
+      "kind": "custom",
+      "refersTo": "cover",
+      "description": "3:4 box art with hairline edge and optional bottom-left badge; Library grid tile.",
+      "html": "<div class=\"ds-tile\"><div class=\"ds-cover\"><span class=\"ds-cover-name\">Exodus</span><span class=\"ds-badge\">Platinum</span></div><p class=\"ds-tile-name\">Exodus</p><p class=\"ds-tile-meta\">8/10</p></div>",
+      "css": ".ds-tile { width: 110px; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; color: #fff; } .ds-cover { position: relative; aspect-ratio: 3/4; overflow: hidden; border-radius: 6px; background: var(--color-raised, #2c2c2e); box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.15); display: grid; place-items: center; } .ds-cover-name { padding: 8px; font-size: 12px; line-height: 16px; color: #98989f; text-align: center; } .ds-badge { position: absolute; left: 6px; bottom: 6px; padding: 3px 6px; border-radius: 5px; background: rgb(0 0 0 / 0.7); backdrop-filter: blur(4px); font-size: 11px; line-height: 1; font-weight: 600; } .ds-tile-name { margin: 6px 0 0; font-size: 13px; line-height: 16px; } .ds-tile-meta { margin: 2px 0 0; font-size: 12px; line-height: 16px; color: #98989f; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "Floating confirmation pill above the tab bar.",
+      "html": "<button class=\"ds-toast\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><span>Added to Backlog</span></button>",
+      "css": ".ds-toast { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px 10px 12px; border: none; border-radius: 999px; background: rgb(44 44 46 / 0.95); backdrop-filter: blur(24px); box-shadow: 0 8px 28px rgb(0 0 0 / 0.5); color: #fff; font: 400 15px/20px -apple-system, BlinkMacSystemFont, system-ui, sans-serif; cursor: pointer; } .ds-toast svg { color: var(--color-accent, #4c86ff); flex: none; } .ds-toast:focus-visible { outline: 2px solid #4c86ff; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Native Shelf",
+    "overview": "Game Tracker is the category standard on purpose: it behaves and looks like a well-made iOS app in dark mode, so the owner's hands already know it. Large titles that hand off to a small centred title, inset grouped lists, segmented controls, switches, action sheets and a four-tab bar are used as iOS uses them, finished to the polish of Letterboxd and Things 3. Nothing is invented for its own sake.\n\nThe interface is quiet and the game art is loud. Covers lead every list row and fill the Library grid; the Game screen opens on a full-bleed screenshot that fades into the black page under a see-through top bar. Everything else is true black, iOS dark greys, white labels and one blue accent, used sparingly enough that the next release's countdown is the thing your eye lands on.\n\nDensity is phone-native: 17px body, 44px minimum rows, a 16px page gutter, and a single scrolling column that never scrolls sideways. It refuses gamer styling, neon or RGB glow, and anything that imitates the PS5 interface or Sony's branding.",
+    "keyCharacteristics": [
+      "True black ground with stepped iOS grey surfaces; depth by tone, not shadow.",
+      "One blue accent, with three values chosen by contrast against what sits behind it.",
+      "System font (SF Pro via -apple-system) and tabular figures for every date, count and hour.",
+      "Covers 3:4 with a small radius and a hairline edge; game art is the only imagery.",
+      "Native controls (segmented, switch, action sheet, tab bar) rather than custom ones."
+    ],
+    "rules": [
+      { "name": "The Contrast-Picks-the-Blue Rule", "body": "The accent has three values and the surface decides which one: Tint Blue on black and group grey, Sheet Blue on raised sheets, Fill Blue whenever white sits on top. Never put Tint Blue text on a raised surface.", "section": "colors" },
+      { "name": "The Rare Blue Rule", "body": "Blue marks what you can act on and the one thing that is next. Selection states inside controls (segmented thumb) stay grey; only switches turn blue, as in iOS. If a screen looks blue, something is wrong.", "section": "colors" },
+      { "name": "The Faint-Is-Not-Text Rule", "body": "Decoration Grey fails as text and is reserved for chevrons and empty marks.", "section": "colors" },
+      { "name": "The Tabular Figures Rule", "body": "Every date, countdown, count, rating and hour uses tabular numerals so columns of figures don't shimmer.", "section": "typography" },
+      { "name": "The Countdown Holds Together Rule", "body": "Countdowns always show days (\"in 6 months (194 days)\"), and each countdown never breaks across lines.", "section": "typography" },
+      { "name": "The Tone-Not-Shadow Rule", "body": "A new surface steps up the grey ladder (group, raised, pressed); it does not get a shadow. Shadows are for things that float over other content.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do start every tab screen with a 34px bold large title and let the top bar pick up the small title once it scrolls away.",
+      "Do put lists in inset grouped sections (10px radius, Group Grey, 0.5px inset separators, 44px minimum rows).",
+      "Do lead list rows with the game's cover, and keep covers 3:4 with their hairline edge.",
+      "Do choose the blue by its background: Tint Blue on black and group, Sheet Blue on raised sheets, Fill Blue under white.",
+      "Do use the native control for the job: segmented control for one-of-few, switch for on/off, action sheet for a choice.",
+      "Do set text inputs at 17px and every figure in tabular numerals.",
+      "Do use Lucide icons for every icon."
+    ],
+    "donts": [
+      "Don't colour the selected segment blue; the thumb is Thumb Grey.",
+      "Don't add glow, neon, RGB effects, or anything that echoes the PS5 interface or Sony's branding.",
+      "Don't add imagery other than game art (covers, screenshots, trailers).",
+      "Don't use Decoration Grey for text.",
+      "Don't float the tab bar over content with a fixed position or make it translucent; it is an opaque row.",
+      "Don't add shadows to static surfaces; step up the grey ladder instead.",
+      "Don't let anything scroll sideways except the screenshot strip."
+    ]
+  }
+}

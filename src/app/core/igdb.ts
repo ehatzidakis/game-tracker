@@ -23,24 +23,100 @@ interface IgdbGame {
   cover?: { image_id: string };
   first_release_date?: number;
   platforms?: { id: number; abbreviation?: string; name: string }[];
+  /** How many people follow it on IGDB before release. */
+  hypes?: number;
+  total_rating_count?: number;
+  /** "GTA 6" for Grand Theft Auto VI. */
+  alternative_names?: { name: string }[];
+  /** 6 = cancelled. */
+  game_status?: number;
 }
+
+const CANCELLED = 6;
+/** Ratings plus followers on IGDB. Sons of Sparta has 15, Astro Bot 218, most fan games under 5. */
+const WELL_KNOWN = 10;
 
 // Main games, standalone expansions, remakes, remasters, expanded games and ports.
 // Leaves out DLC, bundles, mods, episodes and updates.
 const SEARCHABLE_GAME_TYPES = '(0,4,8,9,10,11)';
+const SEARCH_FIELDS =
+  'fields name, alternative_names.name, cover.image_id, first_release_date, platforms.abbreviation, platforms.name, hypes, total_rating_count, game_status;';
+const SEARCH_FILTER = `version_parent = null & game_type = ${SEARCHABLE_GAME_TYPES}`;
+const MAX_RESULTS = 30;
+// Fetch more than we show: the ranking below pulls well-known games up from further down.
+const FETCH_LIMIT = 50;
 
+function escapeTerm(term: string): string {
+  return term.trim().slice(0, 100).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/** IGDB's text search: forgiving (typos, accents), but often misses brand-new games. */
 export function buildSearchQuery(term: string): string {
-  const safe = term
-    .trim()
-    .slice(0, 100)
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"');
   return [
-    `search "${safe}";`,
-    'fields name, cover.image_id, first_release_date, platforms.abbreviation, platforms.name;',
-    `where version_parent = null & game_type = ${SEARCHABLE_GAME_TYPES};`,
-    'limit 20;',
+    `search "${escapeTerm(term)}";`,
+    SEARCH_FIELDS,
+    `where ${SEARCH_FILTER};`,
+    `limit ${FETCH_LIMIT};`,
   ].join(' ');
+}
+
+/** Names containing the term, newest first. Catches new and upcoming games the text search ranks low. */
+export function buildNameQuery(term: string): string {
+  return [
+    SEARCH_FIELDS,
+    `where name ~ *"${escapeTerm(term)}"* & ${SEARCH_FILTER};`,
+    'sort first_release_date desc;',
+    `limit ${FETCH_LIMIT};`,
+  ].join(' ');
+}
+
+/** Lowercase, no accents or punctuation: "Ragnarök: Valhalla" → "ragnarok valhalla". */
+function normalize(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+/**
+ * Merges both searches, in this order:
+ * 0. The name (or another name, like "GTA 6") contains what you typed from the start of a word,
+ *    and the game is well known on IGDB. Newest first, so upcoming games lead.
+ * 1. Other name matches: fan games, obscure releases. Newest first.
+ * 2. IGDB's looser matches, in its own order.
+ * 3. Cancelled games.
+ * Within 0 and 1, games without a date go last: they're often rumours.
+ */
+export function rankSearchResults(
+  term: string,
+  searchHits: IgdbGame[],
+  nameHits: IgdbGame[],
+): IgdbGame[] {
+  const phrase = ' ' + normalize(term);
+  const seen = new Set<number>();
+  const games = [...searchHits, ...nameHits].filter((g) => !seen.has(g.id) && !!seen.add(g.id));
+
+  const matches = (g: IgdbGame) =>
+    [g.name, ...(g.alternative_names ?? []).map((a) => a.name)].some((name) =>
+      ` ${normalize(name)} `.includes(phrase),
+    );
+  const tier = (g: IgdbGame) => {
+    if (g.game_status === CANCELLED) return 3;
+    if (!matches(g)) return 2;
+    return (g.total_rating_count ?? 0) + (g.hypes ?? 0) >= WELL_KNOWN ? 0 : 1;
+  };
+  const date = (g: IgdbGame) => g.first_release_date ?? 0;
+
+  return games
+    .map((game, index) => ({ game, index, tier: tier(game) }))
+    .sort(
+      (a, b) =>
+        a.tier - b.tier || (a.tier < 2 ? date(b.game) - date(a.game) : 0) || a.index - b.index,
+    )
+    .slice(0, MAX_RESULTS)
+    .map((r) => r.game);
 }
 
 export function toSearchResult(game: IgdbGame): GameSearchResult {
@@ -65,7 +141,8 @@ export function toSearchResult(game: IgdbGame): GameSearchResult {
   };
 }
 
-export type ImageSize = 'cover_small' | 'cover_big' | 'screenshot_med' | 'screenshot_big' | '720p' | '1080p';
+export type ImageSize =
+  'cover_small' | 'cover_big' | 'screenshot_med' | 'screenshot_big' | '720p' | '1080p';
 
 export function coverUrl(imageId: string, size: ImageSize = 'cover_big'): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
@@ -96,8 +173,14 @@ export class IgdbService {
   private readonly auth = inject(AuthService);
 
   async search(term: string): Promise<GameSearchResult[]> {
-    const games = await this.query<IgdbGame[]>('games', buildSearchQuery(term));
-    return games.map(toSearchResult);
+    const [searchHits, nameHits] = await Promise.allSettled([
+      this.query<IgdbGame[]>('games', buildSearchQuery(term)),
+      this.query<IgdbGame[]>('games', buildNameQuery(term)),
+    ]);
+    // The text search must work; the name search only adds to it.
+    if (searchHits.status === 'rejected') throw searchHits.reason;
+    const extra = nameHits.status === 'fulfilled' ? nameHits.value : [];
+    return rankSearchResults(term, searchHits.value, extra).map(toSearchResult);
   }
 
   async game(id: number): Promise<GameDetails | null> {

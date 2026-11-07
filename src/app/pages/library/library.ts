@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LucideStar } from '@lucide/angular';
+import { LucideChevronDown, LucideLibraryBig, LucideStar } from '@lucide/angular';
 import {
   completionLabel,
   STATUSES,
@@ -20,17 +20,20 @@ const SORTS: { key: Sort; label: string }[] = [
   { key: 'release', label: 'Release date' },
 ];
 
-const EMPTY_TEXT: Record<Status, string> = {
-  playing: 'Nothing in progress. Open a game and set it to Playing.',
-  backlog: 'No backlog. Games you own but haven’t started go here.',
-  wishlist: 'Your wishlist is empty. Upcoming games you add show up here and in the Calendar.',
-  shelved: 'Nothing shelved.',
-  completed: 'No completed games yet.',
+const EMPTY: Record<Status, { title: string; text: string }> = {
+  playing: { title: 'Nothing in progress', text: 'Open a game and set it to Playing.' },
+  backlog: { title: 'No backlog', text: 'Games you own but haven’t started go here.' },
+  wishlist: {
+    title: 'Wishlist is empty',
+    text: 'Upcoming games you add show up here and in the Calendar.',
+  },
+  shelved: { title: 'Nothing shelved', text: 'Games you’ve put aside for now go here.' },
+  completed: { title: 'No completed games yet', text: 'Finished games and your ratings go here.' },
 };
 
 @Component({
   selector: 'app-library',
-  imports: [RouterLink, Cover, LucideStar],
+  imports: [RouterLink, Cover, LucideChevronDown, LucideLibraryBig, LucideStar],
   templateUrl: './library.html',
 })
 export class LibraryPage {
@@ -66,13 +69,16 @@ export class LibraryPage {
       .sort(compareBy(this.sort())),
   );
 
-  protected readonly emptyText = computed(() => EMPTY_TEXT[this.filter()]);
+  protected readonly emptyTitle = computed(() => EMPTY[this.filter()].title);
+  protected readonly emptyText = computed(() => EMPTY[this.filter()].text);
 
   /** "4 this year · 212 h", shown on the Completed tab. */
   protected readonly completedStats = computed(() => {
     const year = new Date().getFullYear();
     const done = this.library.games().filter((g) => g.status === 'completed');
-    const thisYear = done.filter((g) => g.completedAt && new Date(g.completedAt).getFullYear() === year);
+    const thisYear = done.filter(
+      (g) => g.completedAt && new Date(g.completedAt).getFullYear() === year,
+    );
     const hours = done.reduce((sum, g) => sum + (g.hoursPlayed ?? 0), 0);
     return { year, thisYear: thisYear.length, hours: Math.round(hours) };
   });

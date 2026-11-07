@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=390">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&display=swap" rel="stylesheet">
+<style>
+  :root { --ground:#0C1018; --raise:#161D2A; --ink:#EDEFF4; --mute:#97A0B2; --rule:rgba(237,239,244,.10); --blue:#3A78FF; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:390px; height:844px; overflow:hidden; background:var(--ground); color:var(--ink); font-family:Archivo, system-ui, sans-serif; position:relative; }
+  .safe { height:47px; }
+  .tabs { position:absolute; right:0; top:120px; display:flex; flex-direction:column; gap:4px; }
+  .tabs span { writing-mode:vertical-rl; font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:10px 5px; background:var(--raise); color:var(--mute); border-radius:6px 0 0 6px; font-weight:700; }
+  .tabs span.on { background:var(--blue); color:#fff; padding:18px 6px; }
+  main { padding:8px 40px 0 20px; }
+  .chap { font-size:12px; letter-spacing:.16em; color:var(--blue); font-weight:700; text-transform:uppercase; }
+  h1 { font-stretch:75%; font-weight:800; font-size:40px; line-height:1; margin-top:4px; }
+  .intro { font-size:14px; color:var(--mute); margin-top:6px; line-height:1.4; }
+  h2 { display:flex; gap:10px; align-items:baseline; font-size:15px; font-weight:700; margin-top:22px; padding-bottom:6px; border-bottom:1px solid var(--rule); }
+  h2 em { font-style:normal; color:var(--blue); font-stretch:75%; font-size:18px; }
+  .item { display:grid; grid-template-columns:22px 40px 1fr; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--rule); }
+  .box { width:20px; height:20px; border:2px solid var(--mute); border-radius:4px; }
+  .box.on { background:var(--blue); border-color:var(--blue); }
+  .cover { width:40px; height:53px; border-radius:4px; }
+  .name { font-size:16px; font-weight:600; }
+  .meta { font-size:13px; color:var(--mute); margin-top:2px; }
+  .meta b { color:var(--ink); font-weight:600; }
+  .tip { margin-top:18px; padding:12px 14px; border-left:3px solid var(--blue); background:var(--raise); font-size:13px; color:var(--mute); line-height:1.45; }
+  .tip b { color:var(--ink); }
+  nav { position:absolute; left:0; right:0; bottom:0; height:84px; padding-top:10px; display:grid; grid-template-columns:repeat(4,1fr); background:var(--ground); border-top:1px solid var(--rule); }
+  nav a { text-align:center; font-size:11px; color:var(--mute); font-weight:600; }
+  nav a::before { content:""; display:block; width:22px; height:22px; margin:0 auto 4px; border:2px solid currentColor; border-radius:6px; }
+  nav a.on { color:var(--blue); }
+</style>
+</head>
+<body>
+<div class="safe"></div>
+<div class="tabs"><span>Library</span><span class="on">Calendar</span><span>Search</span></div>
+<main>
+  <p class="chap">Chapter 02</p>
+  <h1>Release calendar</h1>
+  <p class="intro">5 upcoming games · 2 with alerts</p>
+
+  <h2><em>2.1</em> November 2026</h2>
+  <div class="item">
+    <div class="box on"></div>
+    <div class="cover" style="background:linear-gradient(160deg,#d0567a,#3a1f52)"></div>
+    <div><p class="name">Grand Theft Auto VI</p><p class="meta"><b>Thu 19 Nov</b> · in 12 days</p></div>
+  </div>
+
+  <h2><em>2.2</em> February 2027</h2>
+  <div class="item">
+    <div class="box"></div>
+    <div class="cover" style="background:linear-gradient(160deg,#2b6a6e,#0f2326)"></div>
+    <div><p class="name">Tomb Raider: Legacy of Atlantis</p><p class="meta"><b>Fri 12 Feb</b> · in 3 months (97 days)</p></div>
+  </div>
+  <div class="item">
+    <div class="box on"></div>
+    <div class="cover" style="background:linear-gradient(160deg,#4f7d3a,#1a2a14)"></div>
+    <div><p class="name">Fable</p><p class="meta"><b>Tue 23 Feb</b> · in 4 months (108 days)</p></div>
+  </div>
+
+  <h2><em>2.3</em> May 2027</h2>
+  <div class="item">
+    <div class="box"></div>
+    <div class="cover" style="background:linear-gradient(160deg,#8a8f9c,#1e2430)"></div>
+    <div><p class="name">God of War Laufey</p><p class="meta"><b>Thu 20 May</b> · in 6 months (194 days)</p></div>
+  </div>
+
+  <p class="tip"><b>Tick a game</b> to get a release alert the day before at 13:00.</p>
+</main>
+<nav><a>Library</a><a class="on">Calendar</a><a>Search</a><a>Settings</a></nav>
+</body>
+</html>
