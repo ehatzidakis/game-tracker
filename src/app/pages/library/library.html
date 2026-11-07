@@ -1,0 +1,100 @@
+<h1 class="sr-only">Library</h1>
+
+<!-- Status filter: five equal segments, each with its count. -->
+<div class="grid grid-cols-5 gap-1 rounded-xl bg-white/5 p-1" role="tablist" aria-label="Status">
+  @for (s of statuses; track s.key) {
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="filter() === s.key"
+      class="flex flex-col items-center rounded-lg py-1.5 text-[11px] leading-tight"
+      [class]="filter() === s.key ? 'bg-zinc-700/70 text-zinc-50' : 'text-zinc-400'"
+      (click)="setFilter(s.key)"
+    >
+      <span class="text-sm font-semibold tabular-nums">{{ counts().get(s.key) ?? 0 }}</span>
+      <span>{{ s.label }}</span>
+    </button>
+  }
+</div>
+
+@if (library.loadError(); as error) {
+  <p
+    class="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-200"
+    role="alert"
+  >
+    {{ error }}
+  </p>
+}
+
+<div class="mt-3 flex items-center text-sm text-zinc-500">
+  <span>
+    {{ shown().length }} {{ shown().length === 1 ? 'game' : 'games' }}
+    @if (filter() === 'completed' && shown().length) {
+      @let stats = completedStats();
+      · {{ stats.thisYear }} in {{ stats.year }}
+      @if (stats.hours) {
+        · {{ stats.hours }} h
+      }
+    }
+  </span>
+  <label class="ml-auto flex items-center gap-1">
+    <span>Sort</span>
+    <!-- 16px text so iOS doesn't zoom in when it opens. -->
+    <select
+      class="bg-transparent text-base text-zinc-200 outline-none"
+      (change)="setSort($event)"
+    >
+      @for (s of sorts; track s.key) {
+        <option [value]="s.key" [selected]="s.key === sort()">{{ s.label }}</option>
+      }
+    </select>
+  </label>
+</div>
+
+@if (library.loading()) {
+  <p class="mt-6 text-sm text-zinc-500">Loading…</p>
+} @else if (shown().length === 0) {
+  <div class="mt-10 text-center">
+    <p class="text-zinc-400 text-sm">{{ emptyText() }}</p>
+    <a routerLink="/search" class="mt-4 inline-block rounded-full bg-white/10 px-4 py-2 text-sm">
+      Search games
+    </a>
+  </div>
+} @else {
+  <ul class="mt-3 grid grid-cols-3 gap-x-3 gap-y-4">
+    @for (game of shown(); track game.igdbId) {
+      <li>
+        <a [routerLink]="['/game', game.igdbId]" class="block">
+          <app-cover [coverId]="game.coverId" [name]="game.name">
+            @if (game.status === 'completed' && completionLabel(game.completion); as label) {
+              <span
+                class="absolute left-1 bottom-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-zinc-100"
+              >
+                {{ label }}
+              </span>
+            }
+          </app-cover>
+          <p class="mt-1.5 line-clamp-2 text-xs leading-snug text-zinc-200">{{ game.name }}</p>
+          <p class="flex items-center gap-1 text-[11px] text-zinc-500">
+            @switch (game.status) {
+              @case ('completed') {
+                @if (game.rating) {
+                  <svg lucideStar [size]="11" class="fill-current"></svg>
+                  {{ game.rating }}/10
+                }
+              }
+              @case ('wishlist') {
+                {{ countdown(game) ?? game.releaseLabel }}
+              }
+              @case ('playing') {
+                @if (game.hoursPlayed) {
+                  {{ game.hoursPlayed }} h
+                }
+              }
+            }
+          </p>
+        </a>
+      </li>
+    }
+  </ul>
+}

@@ -1,0 +1,14 @@
+/* Type-checks the Vercel functions and local scripts: npx tsc -p tsconfig.api.json */
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"]
+  },
+  "include": ["api/**/*.ts", "scripts/**/*.ts"]
+}

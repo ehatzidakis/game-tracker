@@ -1,12 +1,37 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationCancel, NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
+import { filter, map, take } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.css',
+  template: `
+    <!-- iOS 27 home-screen apps blur the top of the page unless a fixed, coloured element taller
+         than 10px touches the top edge. This strip matches the page colour, so it's invisible. -->
+    <div class="fixed inset-x-0 top-0 z-50 h-3 bg-zinc-950 pointer-events-none" aria-hidden="true"></div>
+    @if (!ready()) {
+      <!-- Shown while Firebase checks whether you're already signed in. -->
+      <div class="fixed inset-0 grid place-items-center" role="status" aria-label="Loading">
+        <div
+          class="size-8 rounded-full border-2 border-zinc-700 border-t-zinc-200 animate-spin"
+        ></div>
+      </div>
+    }
+    <router-outlet />
+  `,
 })
 export class App {
-  protected readonly title = signal('Game Tracker');
+  // True once the first page has been decided (signed in → app, signed out → login).
+  protected readonly ready = toSignal(
+    inject(Router).events.pipe(
+      filter(
+        (e) =>
+          e instanceof NavigationEnd || e instanceof NavigationCancel || e instanceof NavigationError,
+      ),
+      take(1),
+      map(() => true),
+    ),
+    { initialValue: false },
+  );
 }

@@ -4,84 +4,115 @@ A calendar for upcoming game releases plus a library of the games I own, with ho
 
 This file is the source of truth for the plan. Claude ticks steps off and updates it as we go.
 
-**Status:** Step 0 done (project initialized). Waiting on the [prerequisites](#before-we-start-what-you-need-ready) before Step 1.
+**Status:** Steps 1–4 built and tested locally (Library, Calendar, alerts), plus a first Step 6 stat. Firestore rules published and sign-up turned off. Committed and pushed on 2026-11-07, so Vercel is deploying it. **Next for you:** deploy the hourly alert worker, then try it on the phone. Open questions and the choices Claude made while you were away are in [REVIEW.md](REVIEW.md).
+
+**Run it locally:** `npm start`, then open http://localhost:4200. This runs the app and the `/api` functions together (through `tsx`), reading secrets from `.env`. Checks: `npm test` (app and shared logic) and `npm run typecheck` (server functions).
 
 ---
 
 ## Before we start: what you need ready
 
-Tick these off as you go. Values marked 🔒 are secrets: keep them out of git and paste them into Vercel's environment variables (and a local `.env`, which is git-ignored).
+Values marked 🔒 are secrets. They live in the local `.env` file (git-ignored) and in Vercel's environment variables, never in git or in this file.
 
-### 1. Firebase (new project, free Spark plan)
+### 1. Firebase (project `game-tracker-hatzidakis`, free Spark plan)
 
-- [ ] Create a new Firebase project, e.g. `game-tracker` (separate from the expenses tracker, so it gets its own free quota).
-- [ ] **Add a Web app** to it and copy the `firebaseConfig` object (apiKey, authDomain, projectId, …). Not secret; it goes in the app's code.
-- [ ] **Authentication → Sign-in method:** enable **Google**.
-- [ ] **Firestore Database:** create it in production mode. Pick a European location (e.g. `eur3` or `europe-west`). The location can't be changed later.
-- [ ] **Project settings → Service accounts → Generate new private key.** Download the JSON. 🔒 The calendar feed and the daily job use it to read your games from the server.
-- [ ] Later, once Vercel gives us a domain: add it under **Authentication → Settings → Authorized domains**.
+- [x] Create a new Firebase project.
+- [x] **Add a Web app** and copy its config. Saved in [src/environments/environment.ts](src/environments/environment.ts). Analytics left out.
+- [x] ~~**Authentication → Sign-in method:** Google enabled.~~ Replaced by email and password (see Decisions). You can turn Google off again.
+- [x] **Authentication → Sign-in method:** enable **Email/Password**.
+- [x] **Authentication → Users → Add user:** your email and a password. There's no sign-up screen in the app.
+- [x] **Authentication → Settings → User actions:** untick **Enable create (sign-up)**, so nobody else can create an account through Firebase's public API.
+- [x] **Firestore Database:** created in production mode, in Warsaw (`europe-central2`).
+- [x] **Publish the security rules:** Firestore → Rules, replace everything with the contents of [firestore.rules](firestore.rules), then Publish. Done 2026-11-07.
+- [x] **Service account private key** downloaded. 🔒 Saved in `.env` as `FIREBASE_SERVICE_ACCOUNT`.
+- [x] Vercel domain `game-tracker-teal-sigma.vercel.app` added under **Authentication → Settings → Authorized domains**.
 
 ### 2. Twitch developer app (for IGDB)
 
-- [ ] Turn on **two-factor authentication** on your Twitch account (Twitch requires it before you can register apps).
-- [ ] Go to [dev.twitch.tv/console/apps](https://dev.twitch.tv/console/apps) → **Register Your Application**:
-  - Name: anything unique, e.g. `eftihis-game-tracker`
-  - OAuth Redirect URL: `http://localhost`
-  - Category: Website Integration
-  - Client type: **Confidential**
-- [ ] Copy the **Client ID** and generate a **Client Secret**. 🔒
+- [x] Twitch app registered.
+- [x] Client ID and Client Secret 🔒 saved in `.env`. Tested: IGDB search works with them.
 
 ### 3. GitHub and Vercel
 
-- [ ] Create an empty GitHub repo (e.g. `game-tracker`). I'll push this folder to it when you say so.
-- [ ] Create a new Vercel project linked to that repo (framework: Angular, detected automatically).
-- [ ] Note the domain Vercel assigns (e.g. `game-tracker-xyz.vercel.app`) and add it to Firebase authorized domains (see 1).
+- [x] GitHub repo: `ehatzidakis/game-tracker`, initial commit pushed.
+- [x] Vercel project live at `game-tracker-teal-sigma.vercel.app`.
+- [x] **Environment variables added to Vercel**, all as type Secret. `FIREBASE_SERVICE_ACCOUNT` holds the whole JSON object as its value.
 
-### 4. Decisions only you can make
+### 4. Your decisions
 
-- [ ] **Your platforms**, so the platform picker offers them first (e.g. PS5, Switch 2, PC/Steam, Xbox).
-- [ ] **Notification time** for release alerts (default 09:00 Europe/Athens).
-- [ ] **Steam import?** Optional. If yes: a Steam Web API key 🔒 ([steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)) and your SteamID64, with your game library set to public.
+- [x] **Platforms:** PS5 is the default. Xbox, PC and Switch 2 are available. The platform picker exists but sits in a secondary spot (collapsed, defaults to PS5).
+- [x] **Notifications:** off by default and turned on per game. The alert arrives **1 day before release at 13:00** (Europe/Athens). You can change the time and the number of days before in Settings.
+- [x] **Steam import:** not needed. Dropped.
 
-### Things I'll generate myself (no action needed)
+### Generated by Claude (done)
 
-- VAPID keys for push notifications (`npx web-push generate-vapid-keys`).
-- `CRON_SECRET`, the random string that stops anyone else from triggering the daily job.
-- The per-user calendar link key.
+- [x] VAPID keys for push notifications, in `.env`.
+- [x] `CRON_SECRET`, in `.env`.
+- [x] The calendar link key: the app creates it the first time you tap Subscribe (or Settings → Create calendar link) and stores it in Firestore.
 
-### Environment variables we'll end up with
+### 5. Hourly alert trigger (after the first deploy)
 
-| Name | Where it comes from | Used by |
-|---|---|---|
-| `TWITCH_CLIENT_ID` | Twitch app (2) | `/api/igdb`, daily job |
-| `TWITCH_CLIENT_SECRET` 🔒 | Twitch app (2) | `/api/igdb`, daily job |
-| `FIREBASE_SERVICE_ACCOUNT` 🔒 | Service account JSON (1), pasted as one line | `/api/calendar.ics`, daily job |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` 🔒 | I generate | daily job (push) |
-| `CRON_SECRET` 🔒 | I generate | daily job |
-| `STEAM_API_KEY` 🔒 | Optional (4) | Steam import |
+- [ ] Deploy the Cloudflare Worker in [worker/](worker/README.md) (three commands). It calls the alert job every hour so alerts arrive at your chosen time. Without it, alerts go out once a day, around 13:00–14:00 Athens time.
+
+### Environment variables
+
+| Name | Used by |
+|---|---|
+| `TWITCH_CLIENT_ID` | `/api/igdb`, daily job |
+| `TWITCH_CLIENT_SECRET` 🔒 | `/api/igdb`, daily job |
+| `FIREBASE_SERVICE_ACCOUNT` 🔒 | `/api/calendar.ics`, daily job |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` 🔒 | push notifications |
+| `CRON_SECRET` 🔒 | daily job and notification trigger |
 
 ---
 
 ## Build steps
 
 - [x] **0. Initialize the project.** Angular 22 (zoneless, standalone, routing), Tailwind 4, Vitest, TanStack Query, Firebase SDK. Router has view transitions and component input binding turned on.
-- [ ] **1. Foundations.** Firebase config, Google sign-in, Firestore security rules (only you can read and write your data), app shell with bottom tab bar, the `/api/igdb` proxy, and search working end to end.
-- [ ] **2. Library.** Add games from search, pick status and completion, Library screen with filters, Game detail screen with your controls.
-- [ ] **3. Calendar.** Calendar screen (month grid on desktop, list on phone, vague-date group), plus the `/api/calendar.ics` subscription link.
-- [ ] **4. Daily job.** Vercel cron: refresh release dates from IGDB, then send push alerts for games out today or tomorrow. PWA setup so push works on iPhone.
-- [ ] **5. Design pass** with the `impeccable` skill: dark, cool, one accent colour, glow only on hover and focus.
-- [ ] **6. Optional extras.** Steam import, stats ("completed in 2026").
+- [ ] **1. Foundations.** Firebase setup, Google sign-in, Firestore security rules (only you can read and write your data), app shell with bottom tab bar, the `/api/igdb` proxy, and search working end to end.
+  - [x] Email and password sign-in with "Forgot password?", login page, route guards (signed out → login).
+  - [x] App shell: header with Settings icon, bottom tab bar, header kept below the iPhone status bar. Mobile only: on PC it stays phone-width. Calendar and Library are placeholders.
+  - [x] `/api/igdb` proxy: only accepts signed-in users (checks the Firebase ID token), only allows game-related IGDB endpoints, caches the Twitch token.
+  - [x] Search: results as you type (waits 300 ms), cover, year, platforms with PS5 / Xbox / PC / Switch 2 first. Leaves out DLC and bundles.
+  - [x] Settings: shows who's signed in, sign out.
+  - [x] Local dev: `npm start` runs the app and the API together. Tested: signed-out calls are refused, signed-in search works.
+  - [x] `firestore.rules` written.
+  - [x] Sign in on PC and on the phone (works).
+  - [x] You: untick "Enable create (sign-up)" and publish the Firestore rules.
+  - [ ] Commit, push, check search works on the Vercel URL.
+- [x] **2. Library.** Built. Waiting on the Firestore rules to try it on the phone.
+  - [x] Firestore with an on-device cache: the library shows instantly on reopen and works offline.
+  - [x] Search: tap a game to open it, or **+** to add it in one tap. A sheet asks for the status (Wishlist suggested for upcoming games, Backlog for released ones). Platform defaults to PS5.
+  - [x] Library: five status tabs with counts (Playing, Backlog, Wishlist, Shelved, Completed), sort by recent, name or release date (remembered on the device), cover grid with completion badge and rating.
+  - [x] Game screen: artwork, release date with countdown, your platform, status, completion and rating (when Completed), hours, release-alert bell, notes. Trailer (plays inline), screenshots strip, summary. Platform and "Remove from library" under **More**. Your copy refreshes itself when IGDB has newer data.
+- [x] **3. Calendar.** Built.
+  - [x] Calendar screen: "Just released" (last 14 days), then exact dates grouped by month with day, weekday and countdown, then "Later in 2027" for vague dates, then TBA. Bell icon on games with alerts on.
+  - [x] `/api/calendar.ics?key=…` feed with one all-day event per exact release. **Subscribe** opens the iPhone's "Subscribe to calendar" prompt. Settings can copy the link or make a new one. Tested locally with test data.
+- [x] **4. Daily job and alerts.** Built. Needs the deploy, then the worker.
+  - [x] Daily job (Vercel Cron, 11:00 UTC): re-reads release dates from IGDB for upcoming games, and sends a "New date for …" alert when a date moves on a game with the bell on. Tested: it corrected a stale date.
+  - [x] Alert job: sends "X is out tomorrow" at your time and days before, once per release date, only for exact dates. Runs hourly through the worker, and also at the end of the daily job.
+  - [x] Settings: notifications on this phone (on/off), when (on the day, 1–7 days before), at what time, test notification, default platform, calendar link, sign out.
+  - [x] PWA: service worker for notifications, app icons, manifest.
+  - [ ] You: deploy the hourly worker (section 5 above), turn on notifications in Settings from the home-screen app, send a test.
+- [ ] **5. Design pass.** The `impeccable` skill isn't available in this setup, so the screens got a consistent dark design while being built (see REVIEW.md). A proper pass with an accent colour is still to do.
+- [ ] **6. Optional extras.**
+  - [x] Completed tab shows "N in 2026" and total hours.
+  - [ ] More stats if you want them.
 
 ---
 
 ## Decisions so far
 
-- **Hosting:** Vercel, for the app and three serverless functions.
-- **Data:** a new Firebase project (Firestore + Google Auth) on the free plan. Quota is per project, so the expenses tracker is unaffected.
+- **Hosting:** Vercel, for the app and its serverless functions.
+- **Sign-in:** email and password, like the expenses tracker. Google sign-in failed on the phone from the home screen ("The requested action is invalid"): phones need a redirect flow that iPhone home-screen apps handle unreliably, and push alerts on iPhone need the home-screen app.
+- **Data:** a new Firebase project (Firestore + Firebase Auth) on the free plan. Quota is per project, so the expenses tracker is unaffected.
 - **Game data:** IGDB, only through our own proxy (IGDB blocks browser calls and the secret must stay on the server).
 - **Calendar:** a live subscription link (`.ics` feed), not a one-time download, so delays show up on their own.
-- **Push:** Vercel cron + `web-push`, not Firebase Cloud Functions (those need the paid plan).
+- **Push:** `web-push` from our own server code, not Firebase Cloud Functions (those need the paid plan).
 - **Completion instead of progress:** no progress percentage. Each game records which level you finished: Main story, Main + sides, or Platinum.
+- **Platforms:** PS5 first. Xbox, PC and Switch 2 available but secondary.
+- **Notifications:** opt-in per game. Default 1 day before at 13:00, changeable in Settings.
+- **No Steam import.**
 
 ---
 
@@ -91,79 +122,86 @@ Tick these off as you go. Values marked 🔒 are secrets: keep them out of git a
 users/{uid}
   calendarKey        secret string for the calendar link
   timezone           "Europe/Athens"
-  notifyTime         "09:00"
-  platforms[]        your platforms, shown first in pickers
+  notifyTime         "13:00"             changeable in Settings
+  notifyDaysBefore   1                   changeable in Settings
+  defaultPlatform    "ps5"
 
 users/{uid}/games/{igdbId}        one record per game you track
   // copied from IGDB, refreshed daily
   name, slug, coverId, genres[], developer
   platforms[]                     every platform it's on
-  releaseDate        timestamp | null
+  releaseDate        "2027-03-14" | null   for vague dates, the last day of the period
   releasePrecision   "day" | "month" | "quarter" | "year" | "tbd"
-  releaseLabel       "Mar 14 2027" / "Q3 2027" / "TBA"
+  releaseLabel       "14 Mar 2027" / "Q3 2027" / "TBA"
   igdbSyncedAt
 
   // yours
   status             "wishlist" | "backlog" | "playing" | "shelved" | "completed"
   completion         "main" | "main_sides" | "platinum" | null
-  myPlatform         the one you own or will buy it on
+  myPlatform         "ps5" | "xbox" | "pc" | "switch2"   defaults to PS5
   hoursPlayed        optional
   rating             1–10, optional, asked for on completion
   notes
-  notify             true = release alerts on
-  addedAt, purchasedAt, startedAt, shelvedAt, completedAt, updatedAt
+  notify             false by default; true = release alert on
+  addedAt, purchasedAt, startedAt, shelvedAt, completedAt, updatedAt   (milliseconds)
+  notifiedFor        set by the alert job: the release date it already alerted for
 
 users/{uid}/pushSubscriptions/{id}
-  endpoint, keys, device label
+  endpoint, keys, device label    one per device with alerts on
 ```
 
 - **Completion:** shown as **Main story**, **Main + sides** or **Platinum**. You pick it when you mark a game Completed, and you can raise it later (e.g. Main story → Platinum). Library cards show it as a badge.
-- **Release date per platform:** store the date for `myPlatform`, falling back to the earliest one.
+- **Release date per platform:** store the date for `myPlatform`, falling back to the earliest one on any platform. Prefers an exact date, then Europe or worldwide.
 - **Statuses:** `wishlist` means upcoming or not bought yet. The other four are for games you own. Changing status stamps the matching date.
+- **Alerts** only go out for games with an exact release day. Vague dates ("Q3 2027") get no alert until IGDB has a real date.
 
 ## Screens
 
 | Screen | What it shows |
 |---|---|
-| **Calendar** (home) | Upcoming releases from your wishlist. Month grid on desktop, scrolling list on phone. Countdowns ("in 12 days"). A group for vague dates ("Later in 2027", "TBA"). A "Subscribe in calendar" button that copies the link. |
+| **Calendar** (home) | Upcoming releases from your wishlist as a scrolling list. Countdowns ("in 12 days"). A group for vague dates ("Later in 2027", "TBA"). A "Subscribe in calendar" button that copies the link. |
 | **Library** | Cover grid with filters for Playing / Backlog / Shelved / Completed, a completion badge on finished games, sorting by recent, name or release date. |
-| **Search** | IGDB search as you type: cover, year, platforms. Add in one tap and pick a status. |
-| **Game detail** | Large artwork, release info per platform, and your controls: status, completion, platform, hours, rating, notes, notify toggle. Trailer and screenshots. |
-| **Settings** | Notifications on or off for this device, your platforms, copy or reset the calendar link, sign out. |
+| **Search** | IGDB search as you type: cover, year, platforms. Add in one tap and pick a status. Platform defaults to PS5 without asking. |
+| **Game detail** | Large artwork, release info, and your controls: status, completion, hours, rating, notes, a bell toggle for the release alert. Platform sits in a secondary "More" area. Trailer and screenshots. |
+| **Settings** | Notifications on or off for this device, alert time and days before, default platform, copy or reset the calendar link, sign out. |
 
-Navigation: bottom tab bar on mobile (Calendar, Library, Search), Settings behind an icon.
+**Mobile only.** No desktop layouts; on a PC browser the app stays phone-width. No pinch zoom and no sideways scrolling anywhere. Navigation: bottom tab bar (Calendar, Library, Search), Settings behind an icon in the header.
 
-## Vercel functions
+## Server functions
 
-- **`/api/igdb`:** holds the Twitch secret, caches the access token, passes queries to IGDB.
-- **`/api/calendar.ics?key=…`:** reads your games with the Firebase Admin SDK and returns the calendar feed.
-- **`/api/cron/daily`:** refreshes release dates from IGDB in one batch, then sends pushes for releases today or tomorrow.
+- **`/api/igdb`:** holds the Twitch secret, caches the access token, passes queries to IGDB. Signed-in users only.
+- **`/api/calendar.ics?key=…`:** reads your games with the Firebase Admin SDK and returns the calendar feed. The key in the link is the only protection (calendar apps can't sign in).
+- **`/api/cron/daily`:** refreshes release dates from IGDB, then sends due alerts. Vercel Cron at 11:00 UTC. Needs `CRON_SECRET`.
+- **`/api/cron/notify`:** sends alerts whose time has come. Called hourly by the Cloudflare Worker in [worker/](worker/). Needs `CRON_SECRET`.
+- **`/api/push-test`:** sends a test notification to your devices (Settings). Signed-in users only.
+
+Shared server code lives in `api/_lib/` (Vercel doesn't turn `_` files into endpoints). The app imports the same release-date logic from there.
 
 ## Libraries
 
-**Installed (Step 0):** Angular 22, Tailwind 4, TanStack Query, Firebase 12, Vitest.
+**Installed:** Angular 22, Tailwind 4, TanStack Query, Firebase 12, Vitest (Step 0). `@lucide/angular` icons, `zod` v4 (checks requests to the proxy) and `jose` (checks Firebase sign-in tokens on the server) (Step 1). `firebase-admin` (server reads Firestore), `web-push` (sends alerts), `tsx` (runs the local dev server) (Steps 2–4).
 
-**Added when the step needs them:**
+**Dropped as not needed (see REVIEW.md):** `idb-keyval` and `date-fns` (Firestore's cache and a few small date helpers cover them), `ics` (the feed is about 60 lines of our own code), `@angular/aria`, Signal Forms and `fast-average-color` (simple controls that save on change were enough; the cover tint waits for the design pass).
 
-| Library | Step | Why |
-|---|---|---|
-| `@angular/aria` | 1–2 | Accessible, unstyled combobox, listbox, tabs and menu. For search and the status picker. |
-| Angular Signal Forms | 2 | Signal-based forms for the game detail editor. |
-| `lucide-angular` | 1 | Icons. |
-| `date-fns` v4 | 3 | Calendar grid, countdowns, vague dates. |
-| `fast-average-color` | 2 | Tints the detail page with the cover's main colour. |
-| `idb-keyval` | 1 | Small local cache, as in the expenses tracker. |
-| `zod` v4 (server) | 1 | Checks IGDB responses in the proxy. |
-| `ics` (server) | 3 | Builds the calendar feed. |
-| `web-push` (server) | 4 | Sends notifications. |
-| `firebase-admin` (server) | 3 | Reads Firestore from the functions. |
 
 Already built in: router view transitions (on) and Angular's `animate.enter` / `animate.leave`.
 
 ## Open questions
 
+- ~~**Alert timing.**~~ Went with the recommended hourly Cloudflare Worker ([worker/](worker/README.md)), with the daily job as a fallback. Needs you to deploy it.
 - Should a game you're still playing also have a **target** completion level ("going for Platinum")? Easy to add as a second field if you want it.
 
 ## Log
 
-- **2026-11-07:** Step 0 done. Angular 22 project created in this folder, TanStack Query and Firebase installed, build and tests pass. Git repo initialized, nothing committed yet. Replaced the progress percentage with a completion level.
+- **2026-11-07:** Step 0 done. Angular 22 project created in this folder, TanStack Query and Firebase installed, build and tests pass. Replaced the progress percentage with a completion level.
+- **2026-11-07:** Prerequisites mostly done. Firebase web config added to the app. Twitch, service account, VAPID and cron secrets saved to the git-ignored `.env`. IGDB tested and working. Decisions recorded: PS5 first, alerts opt-in per game (1 day before at 13:00, changeable), no Steam import.
+- **2026-11-07:** All prerequisites done (Firestore in Warsaw, Vercel env vars added). Step 1 built: Google sign-in, app shell, IGDB proxy, search, settings with sign out. Build and tests pass, and the proxy was tested end to end locally. The project is now an ES module package (`"type": "module"`) pinned to Node 24, so the `/api` functions and the local dev script run the same way. Not yet deployed.
+- **2026-11-07:** Google sign-in worked on PC but failed on the phone from the home screen. Switched to email and password, with a "Forgot password?" link.
+- **2026-11-07:** Mobile only from now on: removed the desktop layout, the app stays phone-width on PC. Fixed the header sitting under the iPhone status bar in the home-screen app.
+- **2026-11-07:** Added a web app manifest (so iOS runs it as a proper home-screen app), trimmed the bottom bar padding like the expenses tracker, and locked zoom and sideways scrolling everywhere.
+- **2026-11-07:** The bottom bar still sat ~46pt too high on iPhone until scrolling (an iOS 26 home-screen app bug with bars fixed to the bottom). Rebuilt the shell as a full-screen frame where only the middle area scrolls and the tab bar is a normal row at the bottom. Added a loading spinner for startup.
+- **2026-11-07:** The full-height frame pushed the tab bar off the bottom: with the translucent status bar, iOS 26 sizes the home-screen app 47pt (the status bar height) shorter than the screen. Switched to a solid black status bar so the app starts below it and its size matches.
+- **2026-11-07:** Bottom bar confirmed fixed on iPhone. Fixed the slow startup (up to 30s before the login screen): Firebase's default setup loads a hidden Google sign-in page on iPhone before it checks whether you're signed in. Since we only use email and password, the app now sets up Firebase without the Google sign-in part.
+- **2026-11-07:** The top blur only shows on iOS 27 (a new system effect for home-screen apps, not on iOS 26). Added the reported workaround: an invisible 12px strip fixed to the top edge in the page colour.
+- **2026-11-07:** Built Steps 2–4 while you were away. Library (Firestore with an offline cache), add from Search with a status sheet, Library tabs and grid, Game screen with all your controls, trailer and screenshots. Calendar screen and the `.ics` subscription feed. Daily refresh, release alerts (push), test notification, Settings, service worker, app icons, and a Cloudflare Worker for hourly alerts. Release-date logic shared between app and server in `api/_lib/`. 21 tests pass; the server functions were tested locally against the real Firestore with temporary test data, deleted afterwards. Not tried on the phone yet: the Firestore rules aren't published, so saving is refused. Questions and choices are in REVIEW.md.
+- **2026-11-07:** You published the Firestore rules and turned off sign-up. Steps 1–4 committed and pushed to deploy on Vercel.

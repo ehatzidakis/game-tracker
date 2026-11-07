@@ -2,12 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>GameTracker</title>
+    <title>Game Tracker</title>
     <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="color-scheme" content="dark" />
+    <!-- Home-screen app on iPhone: a solid black status bar, with the app starting below it.
+         black-translucent (drawing under the status bar) made iOS 26 size the app 47pt short. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Game Tracker" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   </head>
   <body>
-    <app-root></app-root>
+    <app-root>
+      <!-- Shown while the app downloads; Angular replaces it when it starts. -->
+      <div class="fixed inset-0 grid place-items-center" role="status" aria-label="Loading">
+        <div class="size-8 rounded-full border-2 border-zinc-700 border-t-zinc-200 animate-spin"></div>
+      </div>
+    </app-root>
   </body>
 </html>

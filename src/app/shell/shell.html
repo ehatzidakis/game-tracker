@@ -1,0 +1,57 @@
+<!--
+  Mobile-only app frame. The frame fills the screen and never scrolls; only <main> scrolls.
+  iOS 26 home-screen apps misplace `position: fixed; bottom: 0` bars until the page is scrolled,
+  so the tab bar is a normal row at the bottom of the frame instead of floating over the page.
+  On a PC browser it stays phone-width, centred.
+-->
+<div class="fixed inset-0 max-w-md mx-auto flex flex-col">
+  <!-- The status bar is solid, so the top inset is normally 0; kept in case that changes. -->
+  <header class="shrink-0 border-b border-white/5 pt-[env(safe-area-inset-top)]">
+    <div class="flex items-center h-12 px-4">
+      <a routerLink="/" class="font-semibold tracking-tight">Game Tracker</a>
+      <a
+        routerLink="/settings"
+        routerLinkActive="text-zinc-50"
+        class="ml-auto p-2 -mr-2 text-zinc-400"
+        aria-label="Settings"
+      >
+        <svg lucideSettings [size]="20"></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- overflow-x-hidden: overflow-y:auto would otherwise let wide content scroll sideways. -->
+  <main #scroller class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4">
+    <router-outlet />
+  </main>
+
+  <!-- Uses only part of the home-indicator inset, so the labels clear the indicator without
+       dead space under them. -->
+  <nav
+    class="relative shrink-0 grid grid-cols-3 border-t border-white/5 pb-[max(calc(env(safe-area-inset-bottom)-16px),8px)]"
+    aria-label="Main"
+  >
+    @for (tab of tabs; track tab.path) {
+      <a
+        [routerLink]="tab.path"
+        routerLinkActive="text-zinc-50"
+        class="flex h-[52px] flex-col items-center justify-center gap-1 text-[11px] leading-none font-medium text-zinc-500"
+      >
+        @switch (tab.path) {
+          @case ('/calendar') {
+            <svg lucideCalendar [size]="22" class="block"></svg>
+          }
+          @case ('/library') {
+            <svg lucideLibrary [size]="22" class="block"></svg>
+          }
+          @case ('/search') {
+            <svg lucideSearch [size]="22" class="block"></svg>
+          }
+        }
+        <span>{{ tab.label }}</span>
+      </a>
+    }
+    <app-toast />
+  </nav>
+  <app-status-picker />
+</div>

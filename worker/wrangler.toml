@@ -1,0 +1,12 @@
+name = "game-tracker-notify"
+main = "notify-trigger.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+APP_URL = "https://game-tracker-teal-sigma.vercel.app"
+
+# Every hour at minute 2 (UTC).
+[triggers]
+crons = ["2 * * * *"]
+
+# CRON_SECRET is a secret, set with: npx wrangler secret put CRON_SECRET

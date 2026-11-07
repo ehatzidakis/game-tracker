@@ -1,0 +1,80 @@
+<h1 class="sr-only">Search</h1>
+
+<label class="relative block">
+  <span class="sr-only">Search games</span>
+  <svg
+    lucideSearch
+    [size]="18"
+    class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+  ></svg>
+  <input
+    type="search"
+    placeholder="Search games"
+    autocomplete="off"
+    enterkeyhint="search"
+    class="w-full rounded-xl bg-white/5 border border-white/10 pl-10 pr-4 py-3 text-base outline-none focus:border-zinc-400"
+    [value]="term()"
+    (input)="onInput($event)"
+  />
+</label>
+
+<div class="mt-4" aria-live="polite">
+  @if (tooShort()) {
+    <p class="text-zinc-500 text-sm">Type at least two letters.</p>
+  } @else if (results.isError()) {
+    <p class="text-red-400 text-sm" role="alert">
+      Search failed. Check your connection and try again.
+    </p>
+  } @else if (results.isPending()) {
+    <p class="text-zinc-500 text-sm">Searching…</p>
+  } @else if (results.data()?.length === 0) {
+    <p class="text-zinc-500 text-sm">No games found.</p>
+  } @else {
+    <ul class="divide-y divide-white/5" [class.opacity-60]="results.isPlaceholderData()">
+      @for (game of results.data(); track game.id) {
+        @let tracked = library.byId().get(game.id);
+        <li class="flex items-center gap-3 py-2">
+          <a [routerLink]="['/game', game.id]" class="flex items-center gap-3 min-w-0 flex-1">
+            @if (game.coverId) {
+              <img
+                [src]="coverUrl(game.coverId)"
+                alt=""
+                loading="lazy"
+                class="w-12 aspect-[3/4] rounded object-cover bg-white/5 shrink-0"
+              />
+            } @else {
+              <div class="w-12 aspect-[3/4] rounded bg-white/5 shrink-0"></div>
+            }
+            <div class="min-w-0">
+              <p class="truncate font-medium">{{ game.name }}</p>
+              <p class="text-sm text-zinc-500 truncate">
+                {{ game.year ?? 'TBA' }}
+                @if (game.platforms.length) {
+                  · {{ game.platforms.join(', ') }}
+                }
+              </p>
+            </div>
+          </a>
+          @if (tracked) {
+            <span class="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-xs text-zinc-300">
+              {{ statusLabel(tracked.status) }}
+            </span>
+          } @else if (adding().has(game.id)) {
+            <span class="shrink-0 grid size-10 place-items-center text-zinc-400" aria-label="Adding">
+              <svg lucideLoaderCircle [size]="20" class="animate-spin"></svg>
+            </span>
+          } @else {
+            <button
+              type="button"
+              class="shrink-0 grid size-10 place-items-center rounded-full bg-white/5 text-zinc-200 active:bg-white/10"
+              [attr.aria-label]="'Add ' + game.name"
+              (click)="add(game)"
+            >
+              <svg lucidePlus [size]="20"></svg>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

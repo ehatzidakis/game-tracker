@@ -1,3 +1,33 @@
-/* You can add global styles to this file, and also import other style files */
-
 @import 'tailwindcss';
+
+/* Placeholder look until the Step 5 design pass. */
+@layer base {
+  html {
+    /* An app, not a page: no zoom and no sideways drag, the page only scrolls up and down. */
+    touch-action: pan-y;
+    /* The app frame never scrolls (only its middle area does), so stop the page bouncing. */
+    overscroll-behavior: none;
+    /* Nothing may make the page wider than the screen, or iOS zooms out to fit it. */
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
+    @apply bg-zinc-950;
+  }
+
+  body {
+    overflow-x: clip;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    @apply bg-zinc-950 text-zinc-100 antialiased;
+  }
+}
+
+/* Sideways strips (screenshots) scroll inside themselves; the page never scrolls sideways. */
+.shots {
+  touch-action: pan-x pan-y;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.shots::-webkit-scrollbar {
+  display: none;
+}

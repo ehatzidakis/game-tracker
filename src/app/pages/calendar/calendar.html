@@ -1,0 +1,88 @@
+<div class="mb-2 flex items-center">
+  <h1 class="text-xl font-semibold">Upcoming</h1>
+  <button
+    type="button"
+    class="ml-auto flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-sm text-zinc-300"
+    (click)="subscribe()"
+  >
+    <svg lucideCalendarPlus [size]="16"></svg>
+    Subscribe
+  </button>
+</div>
+
+@if (library.loadError(); as error) {
+  <p
+    class="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-200"
+    role="alert"
+  >
+    {{ error }}
+  </p>
+}
+
+@if (library.loading()) {
+  <p class="mt-6 text-sm text-zinc-500">Loading…</p>
+} @else if (groups().length === 0) {
+  <div class="mt-12 text-center">
+    <p class="text-zinc-400 text-sm">
+      No upcoming games yet. Add some to your wishlist and their release dates show up here.
+    </p>
+    <a routerLink="/search" class="mt-4 inline-block rounded-full bg-white/10 px-4 py-2 text-sm">
+      Search games
+    </a>
+  </div>
+} @else {
+  @for (group of groups(); track group.key) {
+    <section class="mt-5" [attr.aria-label]="group.title">
+      <h2
+        class="sticky top-0 z-10 -mx-4 bg-zinc-950/95 px-4 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500"
+      >
+        {{ group.title }}
+      </h2>
+      <ul class="divide-y divide-white/5">
+        @for (game of group.games; track game.igdbId) {
+          <li>
+            <a [routerLink]="['/game', game.igdbId]" class="flex items-center gap-3 py-2.5">
+              <!-- Day column: the date for exact releases, the vague label otherwise. -->
+              <div class="w-11 shrink-0 text-center">
+                @if (game.releasePrecision === 'day' && game.releaseDate) {
+                  <p class="text-lg font-semibold leading-none tabular-nums">
+                    {{ day(game.releaseDate) }}
+                  </p>
+                  <p class="mt-1 text-[11px] uppercase text-zinc-500">
+                    {{ weekday(game.releaseDate) }}
+                  </p>
+                } @else {
+                  <p class="text-[11px] leading-tight text-zinc-400">{{ game.releaseLabel }}</p>
+                }
+              </div>
+              <app-cover class="w-11 shrink-0 rounded-md" [coverId]="game.coverId" [name]="''" />
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium">{{ game.name }}</p>
+                <p class="truncate text-xs text-zinc-500">
+                  @if (countdown(game); as c) {
+                    <span class="text-zinc-300">{{ c }}</span>
+                  } @else if (group.key === 'recent') {
+                    Out {{ game.releaseLabel }}
+                  } @else if (game.releasePrecision !== 'day') {
+                    Date not announced yet
+                  }
+                  @if (game.status !== 'wishlist') {
+                    · {{ game.status === 'backlog' ? 'Owned' : 'Playing' }}
+                  }
+                </p>
+              </div>
+              @if (game.notify) {
+                <svg
+                  lucideBell
+                  [size]="16"
+                  class="shrink-0 fill-current text-zinc-300"
+                  aria-label="Alert on"
+                ></svg>
+              }
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}
