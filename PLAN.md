@@ -4,7 +4,7 @@ A calendar for upcoming game releases plus a library of the games I own, with ho
 
 This file is the source of truth for the plan. Claude ticks steps off and updates it as we go.
 
-**Status:** Steps 1–5 built. Steps 1–4 are live on Vercel and working on the phone (alerts, calendar subscription, hourly worker). Step 5, the design pass, plus your follow-up requests (completion question, newest-first search, days in countdowns, date-change alerts for every game) are built and tested locally, **not committed yet**. Notes and answers are in [REVIEW.md](REVIEW.md).
+**Status:** Steps 1–5 built and live on Vercel (pushed 2026-11-07): library, calendar, alerts, the iOS-style design, pre-orders and purchases. **Next for you:** delete and re-add the home-screen icon to get the new blue one. Notes and answers are in [REVIEW.md](REVIEW.md).
 
 **Run it locally:** `npm start`, then open http://localhost:4200. This runs the app and the `/api` functions together (through `tsx`), reading secrets from `.env`. Checks: `npm test` (app and shared logic) and `npm run typecheck` (server functions).
 
@@ -211,3 +211,4 @@ Already built in: router view transitions (on) and Angular's `animate.enter` / `
 - **2026-11-07:** You published the Firestore rules and turned off sign-up. Steps 1–4 committed and pushed to deploy on Vercel.
 - **2026-11-07:** Your answers to the review questions, done: marking a game Completed asks how far you got; "New date" alerts for every game; search shows the newest games first (and finds new ones IGDB's own search misses, like God of War Laufey); countdowns always show days. Design pass (Step 5) with the `impeccable` skill: you chose the standard iOS look, with Letterboxd and Things 3 as the bar. Every screen redone, new blue icon. 28 tests pass, all screens checked at phone size with real data. Not committed yet.
 - **2026-11-07:** Clear button on the search bar, calendar dates without the month, and pre-orders (switch on the game page, optional price, store and date; moves the game to Backlog). The design reviewer's fixes applied (top bar, Subscribe in the bar, contrast on sheets). 31 tests pass. Not committed yet.
+- **2026-11-07:** Committed and pushed the design pass, pre-orders and purchases, and the search changes; Vercel deployed them. Left out on purpose: `wrangler.jsonc` and the Wrangler scripts/dependency that Wrangler added to package.json when run from the project root (this app is on Vercel; the worker lives in `worker/`).
