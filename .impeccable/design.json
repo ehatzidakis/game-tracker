@@ -143,7 +143,7 @@
       { "name": "The Rare Blue Rule", "body": "Blue marks what you can act on and the one thing that is next. Selection states inside controls (segmented thumb) stay grey; only switches turn blue, as in iOS. If a screen looks blue, something is wrong.", "section": "colors" },
       { "name": "The Faint-Is-Not-Text Rule", "body": "Decoration Grey fails as text and is reserved for chevrons and empty marks.", "section": "colors" },
       { "name": "The Tabular Figures Rule", "body": "Every date, countdown, count, rating and hour uses tabular numerals so columns of figures don't shimmer.", "section": "typography" },
-      { "name": "The Countdown Holds Together Rule", "body": "Countdowns always show days (\"in 6 months (194 days)\"), and each countdown never breaks across lines.", "section": "typography" },
+      { "name": "The Countdown Holds Together Rule", "body": "Countdowns are only ever in days (\"in 194 days\", never weeks or months), and each countdown never breaks across lines.", "section": "typography" },
       { "name": "The Tone-Not-Shadow Rule", "body": "A new surface steps up the grey ladder (group, raised, pressed); it does not get a shadow. Shadows are for things that float over other content.", "section": "elevation" }
     ],
     "dos": [

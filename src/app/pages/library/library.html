@@ -1,115 +1,143 @@
 <h1 class="large-title">Library</h1>
 
-<!-- Status filter, as an iOS segmented control. -->
-<div class="segmented mt-3" role="tablist" aria-label="Status">
-  @for (s of tabs; track s.key) {
-    <button
-      type="button"
-      role="tab"
-      [attr.aria-selected]="filter() === s.key"
-      class="text-[12.5px]!"
-      (click)="setFilter(s.key)"
-    >
-      {{ s.label }}
-    </button>
-  }
-</div>
+<app-search-field
+  class="mt-2"
+  label="Search your library"
+  [query]="query()"
+  (queryChange)="setQuery($event)"
+/>
 
 @if (library.loadError(); as error) {
   <p class="grouped mt-4 px-4 py-3 text-[15px] leading-5 text-danger" role="alert">{{ error }}</p>
 }
 
-<div class="mt-3 flex items-center gap-3 text-[15px] leading-5 text-muted">
-  <p class="num min-w-0 truncate">
-    {{ shown().length }} {{ shown().length === 1 ? 'game' : 'games' }}
-    @if (filter() === 'completed' && shown().length) {
-      @if (!yearGroups()) {
-        · {{ thisYear().count }} in {{ thisYear().year }}
-      }
-    }
-  </p>
-  <label class="relative ml-auto flex shrink-0 items-center text-accent">
-    <span class="sr-only">Sort by</span>
-    <!-- 16px or more so iOS doesn't zoom in when it opens. -->
-    <select
-      class="appearance-none bg-transparent pr-5 text-right text-base outline-none"
-      (change)="setSort($event)"
-    >
-      @for (s of sorts(); track s.key) {
-        <option [value]="s.key" [selected]="s.key === sort()">{{ s.label }}</option>
-      }
-    </select>
-    <svg
-      lucideChevronDown
-      [size]="16"
-      [strokeWidth]="2.5"
-      class="pointer-events-none absolute right-0"
-    ></svg>
-  </label>
-  <!-- Flips the order: oldest first, lowest rating first, Z–A, … -->
-  <button
-    type="button"
-    class="-my-1 grid size-8 shrink-0 place-items-center rounded-full active:opacity-60"
-    [class]="reversed() ? 'bg-accent-fill text-white' : 'text-accent'"
-    aria-label="Reverse order"
-    [attr.aria-pressed]="reversed()"
-    (click)="toggleReversed()"
-  >
-    <svg lucideArrowUpDown [size]="17" [strokeWidth]="2.25"></svg>
-  </button>
-</div>
-
-@if (library.loading()) {
-  <p class="mt-16 text-center text-[15px] text-muted">Loading…</p>
-} @else if (shown().length === 0) {
-  <div class="mx-auto mt-16 max-w-72 text-center">
-    <svg lucideLibraryBig [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
-    <p class="mt-4 text-[20px] leading-6 font-semibold">{{ emptyTitle() }}</p>
-    <p class="mt-1.5 text-[15px] leading-5 text-muted">{{ emptyText() }}</p>
-    <a routerLink="/search" class="mt-4 inline-block text-[17px] text-accent active:opacity-60">
-      Search games
-    </a>
-  </div>
-} @else if (yearGroups(); as groups) {
-  <!-- Split by year: "4 in 2026", that year's games, then the next year. Tap a year to fold it. -->
-  @for (group of groups; track group.key) {
-    @let open = !isCollapsed(group.key);
-    <section [attr.aria-label]="group.title">
-      <h2 class="mt-6 mb-3">
-        <button
-          type="button"
-          class="num flex w-full items-center justify-between gap-3 text-left text-[20px] leading-6 font-semibold active:opacity-60"
-          [attr.aria-expanded]="open"
-          (click)="toggleGroup(group.key)"
-        >
-          <span class="min-w-0">
-            {{ group.title }}
-            @if (groupHours(group.games); as hours) {
-              <span class="font-normal text-muted">· {{ hours }} h</span>
-            }
-          </span>
-          <!-- Rotates the wrapper: the icon component manages its own classes. -->
-          <span
-            class="shrink-0 text-muted transition-transform duration-200"
-            [class.rotate-90]="open"
-            aria-hidden="true"
-          >
-            <svg lucideChevronRight [size]="20" [strokeWidth]="2.5" class="block"></svg>
-          </span>
-        </button>
-      </h2>
-      @if (open) {
+@if (searching()) {
+  <!-- Every tab at once: each result says where it is. -->
+  <div aria-live="polite">
+    @if (matches().length) {
+      <p class="num mt-3 text-[15px] leading-5 text-muted">
+        {{ matches().length }} {{ matches().length === 1 ? 'game' : 'games' }}
+      </p>
+      <div class="mt-3">
         <ng-container
           [ngTemplateOutlet]="grid"
-          [ngTemplateOutletContext]="{ $implicit: group.games }"
+          [ngTemplateOutletContext]="{ $implicit: matches() }"
         />
-      }
-    </section>
-  }
-} @else {
-  <div class="mt-3">
-    <ng-container [ngTemplateOutlet]="grid" [ngTemplateOutletContext]="{ $implicit: shown() }" />
+      </div>
+    } @else if (!library.loading()) {
+      <p class="mt-16 text-center text-[15px] leading-5 text-muted">
+        Nothing in your library matches “{{ query().trim() }}”.
+      </p>
+    }
   </div>
+} @else {
+  <!-- Status filter, as an iOS segmented control. -->
+  <div class="segmented mt-3" role="tablist" aria-label="Status">
+    @for (s of tabs; track s.key) {
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="filter() === s.key"
+        class="text-[12.5px]!"
+        (click)="setFilter(s.key)"
+      >
+        {{ s.label }}
+      </button>
+    }
+  </div>
+
+  <div class="mt-3 flex items-center gap-3 text-[15px] leading-5 text-muted">
+    <p class="num min-w-0 truncate">
+      {{ shown().length }} {{ shown().length === 1 ? 'game' : 'games' }}
+      @if (filter() === 'completed' && shown().length) {
+        @if (!yearGroups()) {
+          · {{ thisYear().count }} in {{ thisYear().year }}
+        }
+      }
+    </p>
+    <label class="relative ml-auto flex shrink-0 items-center text-accent">
+      <span class="sr-only">Sort by</span>
+      <!-- 16px or more so iOS doesn't zoom in when it opens. -->
+      <select
+        class="appearance-none bg-transparent pr-5 text-right text-base outline-none"
+        (change)="setSort($event)"
+      >
+        @for (s of sorts(); track s.key) {
+          <option [value]="s.key" [selected]="s.key === sort()">{{ s.label }}</option>
+        }
+      </select>
+      <svg
+        lucideChevronDown
+        [size]="16"
+        [strokeWidth]="2.5"
+        class="pointer-events-none absolute right-0"
+      ></svg>
+    </label>
+    <!-- Flips the order: oldest first, lowest rating first, Z–A, … -->
+    <button
+      type="button"
+      class="-my-1 grid size-8 shrink-0 place-items-center rounded-full active:opacity-60"
+      [class]="reversed() ? 'bg-accent-fill text-white' : 'text-accent'"
+      aria-label="Reverse order"
+      [attr.aria-pressed]="reversed()"
+      (click)="toggleReversed()"
+    >
+      <svg lucideArrowUpDown [size]="17" [strokeWidth]="2.25"></svg>
+    </button>
+  </div>
+
+  @if (library.loading()) {
+    <p class="mt-16 text-center text-[15px] text-muted">Loading…</p>
+  } @else if (shown().length === 0) {
+    <div class="mx-auto mt-16 max-w-72 text-center">
+      <svg lucideLibraryBig [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
+      <p class="mt-4 text-[20px] leading-6 font-semibold">{{ emptyTitle() }}</p>
+      <p class="mt-1.5 text-[15px] leading-5 text-muted">{{ emptyText() }}</p>
+      <a routerLink="/search" class="mt-4 inline-block text-[17px] text-accent active:opacity-60">
+        Search games
+      </a>
+    </div>
+  } @else if (yearGroups(); as groups) {
+    <!-- Split by year: "4 in 2026", that year's games, then the next year. Tap a year to fold it. -->
+    @for (group of groups; track group.key) {
+      @let open = !isCollapsed(group.key);
+      <section [attr.aria-label]="group.title">
+        <h2 class="mt-6 mb-3">
+          <button
+            type="button"
+            class="num flex w-full items-center justify-between gap-3 text-left text-[20px] leading-6 font-semibold active:opacity-60"
+            [attr.aria-expanded]="open"
+            (click)="toggleGroup(group.key)"
+          >
+            <span class="min-w-0">
+              {{ group.title }}
+              @if (groupHours(group.games); as hours) {
+                <span class="font-normal text-muted">· {{ hours }} h</span>
+              }
+            </span>
+            <!-- Rotates the wrapper: the icon component manages its own classes. -->
+            <span
+              class="shrink-0 text-muted transition-transform duration-200"
+              [class.rotate-90]="open"
+              aria-hidden="true"
+            >
+              <svg lucideChevronRight [size]="20" [strokeWidth]="2.5" class="block"></svg>
+            </span>
+          </button>
+        </h2>
+        @if (open) {
+          <ng-container
+            [ngTemplateOutlet]="grid"
+            [ngTemplateOutletContext]="{ $implicit: group.games }"
+          />
+        }
+      </section>
+    }
+  } @else {
+    <div class="mt-3">
+      <ng-container [ngTemplateOutlet]="grid" [ngTemplateOutletContext]="{ $implicit: shown() }" />
+    </div>
+  }
 }
 
 <ng-template #grid let-games>
@@ -163,21 +191,25 @@
           <p
             class="num mt-0.5 flex items-center gap-1 text-[12px] leading-4 tracking-normal text-muted"
           >
-            @switch (game.status) {
-              @case ('completed') {
-                @if (game.rating) {
-                  <svg lucideStar [size]="11" class="fill-current"></svg>
-                  {{ game.rating }}/10
+            @if (searching()) {
+              {{ statusLabel(game.status) }}
+            } @else {
+              @switch (game.status) {
+                @case ('completed') {
+                  @if (game.rating) {
+                    <svg lucideStar [size]="11" class="fill-current"></svg>
+                    {{ game.rating }}/10
+                  }
                 }
-              }
-              @case ('wishlist') {
-                {{ countdown(game) ?? game.releaseLabel }}
-              }
-              @case ('backlog') {
-                {{ countdown(game) }}
-              }
-              @case ('playing') {
-                {{ formatPlaytime(game.hoursPlayed) }}
+                @case ('wishlist') {
+                  {{ countdown(game) ?? game.releaseLabel }}
+                }
+                @case ('backlog') {
+                  {{ countdown(game) }}
+                }
+                @case ('playing') {
+                  {{ formatPlaytime(game.hoursPlayed) }}
+                }
               }
             }
           </p>

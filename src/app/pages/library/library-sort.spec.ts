@@ -1,5 +1,5 @@
 import type { TrackedGame } from '../../../../api/_lib/models.js';
-import { compareBy, DEFAULT_SORT, groupByYear, LIBRARY_TABS } from './library-sort';
+import { compareBy, DEFAULT_SORT, groupByYear, LIBRARY_TABS, searchLibrary } from './library-sort';
 
 const game = (name: string, extra: Partial<TrackedGame>) => ({ name, ...extra }) as TrackedGame;
 const names = (games: TrackedGame[]) => games.map((g) => g.name);
@@ -148,5 +148,37 @@ describe('library sorting', () => {
       '1 in 2027',
       '1 in 2026',
     ]);
+  });
+});
+
+describe('library search', () => {
+  const library = [
+    game('God of War', {}),
+    game('God of War Ragnarök', {}),
+    game("Marvel's Spider-Man 2", {}),
+    game('Doom Eternal', {}),
+    game('Astro Bot', {}),
+  ];
+  const find = (q: string) => names(searchLibrary(library, q));
+
+  it('matches titles ignoring case, accents and punctuation', () => {
+    expect(find('ragnarok')).toEqual(['God of War Ragnarök']);
+    expect(find('marvels')).toEqual(["Marvel's Spider-Man 2"]);
+    expect(find('spider man')).toEqual(["Marvel's Spider-Man 2"]);
+    expect(find('god ragnarok')).toEqual(['God of War Ragnarök']);
+  });
+
+  it('puts titles starting with what you typed first, then word starts, then the rest', () => {
+    expect(find('god')).toEqual(['God of War', 'God of War Ragnarök']);
+    // 'r': Ragnarök has a word starting with it, the rest just contain it.
+    expect(find('r')).toEqual([
+      'God of War Ragnarök',
+      'Astro Bot',
+      'Doom Eternal',
+      'God of War',
+      "Marvel's Spider-Man 2",
+    ]);
+    expect(find('')).toEqual([]);
+    expect(find('zelda')).toEqual([]);
   });
 });

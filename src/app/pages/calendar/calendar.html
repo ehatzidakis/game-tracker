@@ -7,7 +7,7 @@
 
 @if (library.loading()) {
   <p class="mt-16 text-center text-[15px] text-muted">Loading…</p>
-} @else if (groups().length === 0) {
+} @else if (empty()) {
   <div class="mx-auto mt-20 max-w-72 text-center">
     <svg lucideCalendarDays [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
     <p class="mt-4 text-[20px] leading-6 font-semibold">No upcoming games</p>
@@ -19,6 +19,12 @@
     </a>
   </div>
 } @else {
+  <app-search-field
+    class="mt-2"
+    label="Search your calendar"
+    [query]="query()"
+    (queryChange)="setQuery($event)"
+  />
   @for (group of groups(); track group.key) {
     <section [attr.aria-label]="group.title">
       <h2 class="group-header">{{ group.title }}</h2>
@@ -82,5 +88,9 @@
         }
       </ul>
     </section>
+  } @empty {
+    <p class="mt-16 text-center text-[15px] leading-5 text-muted" aria-live="polite">
+      Nothing coming up matches “{{ query().trim() }}”.
+    </p>
   }
 }

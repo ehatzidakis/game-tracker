@@ -1,4 +1,5 @@
 import type { Status, TrackedGame } from '../../../../api/_lib/models.js';
+import { searchable, titleMatcher } from '../../core/title-search';
 
 export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating' | 'playtime';
 
@@ -135,4 +136,21 @@ function consecutive(
           : `${n} in ${group.key}`;
   }
   return groups;
+}
+
+/**
+ * Your games whose title has every word you typed, ignoring case, accents and punctuation.
+ * Titles that start with what you typed come first, then ones with a word starting with it,
+ * then the rest, each A–Z.
+ */
+export function searchLibrary(games: readonly TrackedGame[], query: string): TrackedGame[] {
+  const matches = titleMatcher(query);
+  if (!matches) return [];
+  const q = searchable(query);
+  const rank = (name: string) => (name.startsWith(q) ? 0 : ` ${name}`.includes(` ${q}`) ? 1 : 2);
+  return games
+    .filter((game) => matches(game.name))
+    .map((game) => ({ game, rank: rank(searchable(game.name)) }))
+    .sort((x, y) => x.rank - y.rank || byName(x.game, y.game))
+    .map(({ game }) => game);
 }

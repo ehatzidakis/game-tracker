@@ -22,7 +22,15 @@ import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
 import { LibraryService } from '../../core/library.service';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
-import { compareBy, DEFAULT_SORT, groupByYear, LIBRARY_TABS, type Sort } from './library-sort';
+import { SearchField } from '../../shared/search-field';
+import {
+  compareBy,
+  DEFAULT_SORT,
+  groupByYear,
+  LIBRARY_TABS,
+  searchLibrary,
+  type Sort,
+} from './library-sort';
 
 const SORTS: { key: Sort; label: string }[] = [
   { key: 'recent', label: 'Recent' },
@@ -50,6 +58,8 @@ const SORT_KEY = 'library.sort.v2';
  * The app always opens on Completed.
  */
 let currentTab: Status = 'completed';
+/** What's in the search field, kept while the app is open (so coming back from a game keeps it). */
+let currentQuery = '';
 /** Year groups you've folded ("completed:2025"), kept while the app is open. */
 const collapsedGroups = new Set<string>();
 
@@ -70,6 +80,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     RouterLink,
     NgTemplateOutlet,
     Cover,
+    SearchField,
     LucideArrowUpDown,
     LucideChevronDown,
     LucideChevronRight,
@@ -84,6 +95,11 @@ export class LibraryPage {
   protected readonly library = inject(LibraryService);
   protected readonly tabs = LIBRARY_TABS.map((key) => ({ key, label: statusLabel(key) }));
   protected readonly filter = signal<Status>(currentTab);
+  protected readonly statusLabel = statusLabel;
+  /** Searching looks through the whole library, every tab, by title. */
+  protected readonly query = signal(currentQuery);
+  protected readonly searching = computed(() => this.query().trim() !== '');
+  protected readonly matches = computed(() => searchLibrary(this.listed(), this.query()));
   protected readonly sorts = computed(() => sortsFor(this.filter()));
   /** Each tab remembers its own sort on this device. */
   private readonly sortByTab = signal<Record<Status, Sort>>(
@@ -159,6 +175,11 @@ export class LibraryPage {
     if (collapsedGroups.has(id)) collapsedGroups.delete(id);
     else collapsedGroups.add(id);
     this.collapsed.set(new Set(collapsedGroups));
+  }
+
+  protected setQuery(query: string): void {
+    this.query.set(query);
+    currentQuery = query;
   }
 
   protected setFilter(status: Status): void {

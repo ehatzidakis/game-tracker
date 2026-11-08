@@ -243,7 +243,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 ### Named Rules
 **The Tabular Figures Rule.** Every date, countdown, count, rating and hour uses tabular numerals so columns of figures don't shimmer.
 
-**The Countdown Holds Together Rule.** Countdowns always show days ("in 6 months (194 days)"), and each countdown never breaks across lines.
+**The Countdown Holds Together Rule.** Countdowns are only ever in days ("in 194 days", never weeks or months), and each countdown never breaks across lines.
 
 ## Layout
 
