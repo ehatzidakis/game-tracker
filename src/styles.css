@@ -230,6 +230,30 @@
   }
 }
 
+/*
+ * Bottom sheets (<dialog class="sheet">). The page behind is dimmed and heavily blurred, so the
+ * sheet reads as the only thing on screen. iOS focuses the dialog itself when it opens; no focus
+ * ring on the sheet as a whole (its buttons and fields keep theirs).
+ */
+dialog.sheet {
+  outline: none;
+}
+dialog.sheet::backdrop {
+  background: rgb(0 0 0 / 0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+dialog.sheet[open]::backdrop {
+  animation: sheet-backdrop-in 280ms ease-out;
+}
+@keyframes sheet-backdrop-in {
+  from {
+    background: rgb(0 0 0 / 0);
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+}
+
 /* The search field draws its own clear button (iOS shows none, Chrome its own). */
 .search-field::-webkit-search-cancel-button {
   display: none;

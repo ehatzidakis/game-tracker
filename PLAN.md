@@ -4,7 +4,7 @@ A calendar for upcoming game releases plus a library of the games I own, with ho
 
 This file is the source of truth for the plan. Claude ticks steps off and updates it as we go.
 
-**Status:** Steps 1–5 built and live on Vercel (pushed 2026-11-07): library, calendar, alerts, the iOS-style design, pre-orders and purchases. **Next for you:** delete and re-add the home-screen icon to get the new blue one. Notes and answers are in [REVIEW.md](REVIEW.md).
+**Status:** Steps 1–5 built and live on Vercel, plus your follow-ups from using the app (DLC, pre-orders on the Wishlist, completed dates, library sorts, auto-update). Pushed 2026-11-08. Notes and answers are in [REVIEW.md](REVIEW.md).
 
 **Run it locally:** `npm start`, then open http://localhost:4200. This runs the app and the `/api` functions together (through `tsx`), reading secrets from `.env`. Checks: `npm test` (app and shared logic) and `npm run typecheck` (server functions).
 
@@ -212,3 +212,6 @@ Already built in: router view transitions (on) and Angular's `animate.enter` / `
 - **2026-11-07:** Your answers to the review questions, done: marking a game Completed asks how far you got; "New date" alerts for every game; search shows the newest games first (and finds new ones IGDB's own search misses, like God of War Laufey); countdowns always show days. Design pass (Step 5) with the `impeccable` skill: you chose the standard iOS look, with Letterboxd and Things 3 as the bar. Every screen redone, new blue icon. 28 tests pass, all screens checked at phone size with real data. Not committed yet.
 - **2026-11-07:** Clear button on the search bar, calendar dates without the month, and pre-orders (switch on the game page, optional price, store and date; moves the game to Backlog). The design reviewer's fixes applied (top bar, Subscribe in the bar, contrast on sheets). 31 tests pass. Not committed yet.
 - **2026-11-07:** Committed and pushed the design pass, pre-orders and purchases, and the search changes; Vercel deployed them. Left out on purpose: `wrangler.jsonc` and the Wrangler scripts/dependency that Wrangler added to package.json when run from the project root (this app is on Vercel; the worker lives in `worker/`).
+- **2026-11-08:** From using the app: no top bar on tab screens (title and Subscribe scroll away), heavier blur behind sheets and no focus line on them, pre-orders stay on the Wishlist, a Completed-on date with a sort by it (Library opens on Completed), and DLC/expansions (listed on the main game, own page with owned/completed/price, searchable, wishlist entries show in Wishlist and Calendar). 38 tests pass. Committed and pushed.
+- **2026-11-08:** DLC list moved up under Completed on. Library tabs reordered (Completed first) with per-tab default sorts, and the Completed tab split by year ("4 in 2026"). 42 tests pass. Committed and pushed.
+- **2026-11-08:** The app switches to a new deploy as soon as it's reopened (compares the live index.html's main file with the running one, reloads once). Hashed build files cached as immutable on Vercel. 44 tests pass. Committed and pushed.

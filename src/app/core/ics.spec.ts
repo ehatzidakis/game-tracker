@@ -14,7 +14,14 @@ describe('buildCalendar', () => {
       { ...base, igdbId: 2, name: 'Second', releaseDate: '2026-12-03', releasePrecision: 'day' },
       { ...base, igdbId: 1, name: 'First', releaseDate: '2026-11-19', releasePrecision: 'day' },
       { ...base, igdbId: 3, name: 'Vague', releaseDate: '2027-09-30', releasePrecision: 'quarter' },
-      { ...base, igdbId: 4, name: 'Done', releaseDate: '2026-11-20', releasePrecision: 'day', status: 'completed' },
+      {
+        ...base,
+        igdbId: 4,
+        name: 'Done',
+        releaseDate: '2026-11-20',
+        releasePrecision: 'day',
+        status: 'completed',
+      },
     ] as unknown as TrackedGame[],
     'https://example.app',
     Date.UTC(2026, 10, 7, 12),
@@ -37,7 +44,15 @@ describe('buildCalendar', () => {
 
   it('folds long lines at 75 bytes', () => {
     const long = buildCalendar(
-      [{ ...base, igdbId: 9, name: 'A'.repeat(200), releaseDate: '2026-11-19', releasePrecision: 'day' }] as unknown as TrackedGame[],
+      [
+        {
+          ...base,
+          igdbId: 9,
+          name: 'A'.repeat(200),
+          releaseDate: '2026-11-19',
+          releasePrecision: 'day',
+        },
+      ] as unknown as TrackedGame[],
       'https://example.app',
     );
     for (const line of long.split('\r\n')) {

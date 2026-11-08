@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationCancel, NavigationEnd, NavigationError, Router, RouterOutlet } from '@angular/router';
 import { filter, map, take } from 'rxjs';
+import { AppUpdate } from './core/app-update';
 
 @Component({
   selector: 'app-root',
@@ -22,6 +23,11 @@ import { filter, map, take } from 'rxjs';
   `,
 })
 export class App {
+  constructor() {
+    // Pick up a new deploy as soon as you reopen the app.
+    inject(AppUpdate).start();
+  }
+
   // True once the first page has been decided (signed in → app, signed out → login).
   protected readonly ready = toSignal(
     inject(Router).events.pipe(

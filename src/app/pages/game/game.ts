@@ -1,7 +1,9 @@
 import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
+import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
-import { LucidePlay, LucidePlus } from '@lucide/angular';
+import { LucideChevronRight, LucidePlay, LucidePlus } from '@lucide/angular';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
   COMPLETIONS,
@@ -17,8 +19,8 @@ import {
   type PlatformKey,
 } from '../../../../api/_lib/platforms.js';
 import { pickRelease } from '../../../../api/_lib/release.js';
-import { countdown, isReleased, today } from '../../core/dates';
-import { coverUrl, IgdbService } from '../../core/igdb';
+import { countdown, dateFieldValue, fromDateField, isReleased, today } from '../../core/dates';
+import { coverUrl, DLC_GAME_TYPES, dlcsOf, IgdbService, type DlcSummary } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
@@ -27,11 +29,19 @@ import { Cover } from '../../shared/cover';
 import { ChoiceSheet } from '../../shared/choice-sheet';
 import { parsePrice, PreorderSheet } from '../../shared/preorder-sheet';
 
+/** How many DLC a game's page lists before "Show all". */
+const SHOWN_DLCS = 6;
+const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
 const COMMON_STORES = ['PlayStation Store', 'Amazon', 'Xbox Store', 'Steam', 'Nintendo eShop'];
 
 @Component({
   selector: 'app-game',
-  imports: [Cover, LucidePlay, LucidePlus],
+  imports: [Cover, NgTemplateOutlet, RouterLink, LucideChevronRight, LucidePlay, LucidePlus],
   templateUrl: './game.html',
 })
 export class GamePage {
@@ -140,6 +150,34 @@ export class GamePage {
     return [...new Set([...used, ...COMMON_STORES])];
   });
 
+  /** A DLC or expansion: it gets owned / completed switches instead of the full game controls. */
+  protected readonly isDlcPage = computed(
+    () =>
+      this.tracked()?.parentId != null ||
+      DLC_GAME_TYPES.includes(this.details.data()?.game_type ?? -1),
+  );
+  /** For DLC: the main game. */
+  protected readonly parent = computed(() => {
+    const p = this.details.data()?.parent_game;
+    if (p) return { id: p.id, name: p.name };
+    const t = this.tracked();
+    return t?.parentId ? { id: t.parentId, name: t.parentName ?? '' } : null;
+  });
+  protected readonly dlcOwned = computed(() => {
+    const t = this.tracked();
+    return !!t && t.status !== 'wishlist';
+  });
+
+  /** For main games: their DLC and expansions, the first few unless you ask for all. */
+  protected readonly dlcs = computed(() => {
+    const d = this.details.data();
+    return d ? dlcsOf(d) : [];
+  });
+  protected readonly allDlcs = signal(false);
+  protected readonly shownDlcs = computed(() =>
+    this.allDlcs() ? this.dlcs() : this.dlcs().slice(0, SHOWN_DLCS),
+  );
+
   protected readonly playingVideo = signal(false);
   protected readonly summaryOpen = signal(false);
 
@@ -148,12 +186,21 @@ export class GamePage {
   protected readonly ratings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   protected readonly platformLabel = platformLabel;
   protected readonly coverUrl = coverUrl;
+  protected readonly dateFieldValue = dateFieldValue;
 
   constructor() {
     // The top bar shows the game's name once you scroll past the artwork.
     const pageTitle = inject(PageTitle);
     effect(() => pageTitle.override.set(this.name() || null));
     inject(DestroyRef).onDestroy(() => pageTitle.override.set(null));
+
+    // Going from a game to one of its DLC reuses this screen: start it fresh.
+    effect(() => {
+      this.gameId();
+      this.playingVideo.set(false);
+      this.summaryOpen.set(false);
+      this.allDlcs.set(false);
+    });
 
     // Keep your copy of the IGDB data current (e.g. a release date that moved).
     effect(() => {
@@ -182,8 +229,9 @@ export class GamePage {
     } else {
       this.library.setStatus(t, status);
     }
-    // Moving a released game out of Wishlist means you bought it: ask what you paid (optional).
-    if (t.status === 'wishlist' && status !== 'shelved' && this.released()) {
+    // Moving a released game out of Wishlist means you bought it: ask what you paid (optional),
+    // unless you already entered that when you pre-ordered it.
+    if (t.status === 'wishlist' && status !== 'shelved' && this.released() && !t.preordered) {
       const details = await this.preorderSheet.ask('purchase', t.name, today(), this.stores());
       const now = this.tracked();
       if (details && now) this.library.edit(now, details);
@@ -218,7 +266,7 @@ export class GamePage {
     const t = this.tracked();
     if (!t) return;
     const on = !t.preordered;
-    this.library.setPreordered(t, on, today());
+    this.library.setPreordered(t, on);
     if (!on) return;
     const details = await this.preorderSheet.ask('preorder', t.name, today(), this.stores());
     const now = this.tracked();
@@ -250,6 +298,58 @@ export class GamePage {
     const value = (event.target as HTMLInputElement).value;
     const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
     if (t && date !== (t.orderedOn ?? null)) this.library.edit(t, { orderedOn: date });
+  }
+
+  protected setCompletedOn(event: Event): void {
+    const t = this.tracked();
+    const completedAt = fromDateField((event.target as HTMLInputElement).value);
+    if (t && completedAt !== t.completedAt) this.library.edit(t, { completedAt });
+  }
+
+  /** "Completed 3 Mar 2027", "Owned", "On wishlist", or its release date if you don't track it. */
+  protected dlcState(dlc: DlcSummary): string {
+    const t = this.library.byId().get(dlc.id);
+    if (t?.status === 'completed') {
+      return t.completedAt ? `Completed ${SHORT_DATE.format(t.completedAt)}` : 'Completed';
+    }
+    if (t && t.status !== 'wishlist') return 'Owned';
+    if (t) return t.preordered ? 'On wishlist · Pre-ordered' : 'On wishlist';
+    if (!dlc.first_release_date) return 'TBA';
+    const ms = dlc.first_release_date * 1000;
+    return ms > Date.now() ? `Out ${SHORT_DATE.format(ms)}` : String(new Date(ms).getFullYear());
+  }
+
+  protected toggleDlcWishlist(): void {
+    const t = this.tracked();
+    if (t) {
+      this.library.remove(t);
+      return;
+    }
+    const d = this.details.data();
+    if (d) this.library.add(d, 'wishlist', null, this.parent());
+  }
+
+  protected toggleDlcOwned(): void {
+    const t = this.tracked();
+    if (t && t.status !== 'wishlist') {
+      this.remove();
+    } else if (t) {
+      this.library.setStatus(t, 'backlog');
+    } else {
+      const d = this.details.data();
+      if (d) this.library.add(d, 'backlog', null, this.parent());
+    }
+  }
+
+  protected toggleDlcCompleted(): void {
+    const t = this.tracked();
+    if (!t) return;
+    if (t.status === 'completed') {
+      this.library.setStatus(t, 'backlog');
+      this.library.edit(t, { completedAt: null });
+    } else {
+      this.library.setStatus(t, 'completed');
+    }
   }
 
   protected setNotes(event: Event): void {

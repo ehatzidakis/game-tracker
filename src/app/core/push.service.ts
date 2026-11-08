@@ -110,8 +110,13 @@ export class PushService {
     const user = this.auth.user();
     if (!user) throw new Error('Not signed in');
     // One document per device, named after a hash of its push address.
-    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(subscription.endpoint));
-    const id = [...new Uint8Array(hash).slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const hash = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(subscription.endpoint),
+    );
+    const id = [...new Uint8Array(hash).slice(0, 16)]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
     return doc(db, 'users', user.uid, 'pushSubscriptions', id);
   }
 }

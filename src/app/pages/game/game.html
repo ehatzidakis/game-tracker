@@ -1,3 +1,45 @@
+<!-- DLC and expansions of a main game: right under your progress (Completed on), so they're
+     easy to reach. -->
+<ng-template #dlcList>
+  @if (!isDlcPage() && dlcs().length) {
+    <section aria-label="DLC and expansions">
+      <h2 class="group-header">DLC and expansions</h2>
+      <ul class="grouped" style="--sep-inset: 68px">
+        @for (d of shownDlcs(); track d.id) {
+          <li class="row p-0!">
+            <a [routerLink]="['/game', d.id]" class="row py-2!">
+              <app-cover
+                class="w-10 shrink-0 rounded-[5px]!"
+                [coverId]="d.cover?.image_id"
+                [name]="''"
+              />
+              <div class="min-w-0 flex-1">
+                <p class="truncate">{{ d.name }}</p>
+                <p class="num text-[15px] leading-5 text-muted">{{ dlcState(d) }}</p>
+              </div>
+              <svg
+                lucideChevronRight
+                [size]="18"
+                [strokeWidth]="2.25"
+                class="-mr-1 shrink-0 text-faint"
+              ></svg>
+            </a>
+          </li>
+        }
+      </ul>
+      @if (dlcs().length > shownDlcs().length) {
+        <button
+          type="button"
+          class="group-footer text-accent! active:opacity-60"
+          (click)="allDlcs.set(true)"
+        >
+          Show all {{ dlcs().length }}
+        </button>
+      }
+    </section>
+  }
+</ng-template>
+
 <article>
   <!-- Artwork, full width under the see-through top bar, fading into the page. -->
   <div class="relative -mx-4 h-[300px] overflow-hidden bg-group">
@@ -51,6 +93,15 @@
       {{ otherPlatforms().join(', ') }}
     </p>
   }
+  @if (isDlcPage() && parent(); as p) {
+    <a
+      [routerLink]="['/game', p.id]"
+      class="mt-2 flex items-center gap-0.5 text-[15px] leading-5 text-accent active:opacity-60"
+    >
+      DLC for {{ p.name }}
+      <svg lucideChevronRight [size]="16" [strokeWidth]="2.25" class="shrink-0"></svg>
+    </a>
+  }
 
   @if (details.isError() && !tracked()) {
     <p class="grouped mt-6 px-4 py-3 text-[15px] leading-5 text-danger" role="alert">
@@ -58,7 +109,114 @@
     </p>
   }
 
-  @if (tracked(); as t) {
+  @if (isDlcPage()) {
+    <!-- DLC: wishlist it, or mark it owned, then completed. Owned DLC lists only here and on its
+         main game's page, never as its own Library entry. -->
+    @let t = tracked();
+    <section aria-label="Your copy">
+      <h2 class="group-header">Your copy</h2>
+      <div class="grouped">
+        @if (!dlcOwned()) {
+          <div class="row">
+            <p id="dlc-wishlist-label" class="flex-1">On wishlist</p>
+            <button
+              type="button"
+              role="switch"
+              class="switch"
+              aria-labelledby="dlc-wishlist-label"
+              [attr.aria-checked]="t?.status === 'wishlist'"
+              [disabled]="!details.data() && !t"
+              (click)="toggleDlcWishlist()"
+            >
+              <span></span>
+            </button>
+          </div>
+        }
+        <div class="row">
+          <p id="dlc-owned-label" class="flex-1">Owned</p>
+          <button
+            type="button"
+            role="switch"
+            class="switch"
+            aria-labelledby="dlc-owned-label"
+            [attr.aria-checked]="dlcOwned()"
+            [disabled]="!details.data() && !t"
+            (click)="toggleDlcOwned()"
+          >
+            <span></span>
+          </button>
+        </div>
+        @if (t && dlcOwned()) {
+          <div class="row">
+            <p id="dlc-completed-label" class="flex-1">Completed</p>
+            <button
+              type="button"
+              role="switch"
+              class="switch"
+              aria-labelledby="dlc-completed-label"
+              [attr.aria-checked]="t.status === 'completed'"
+              (click)="toggleDlcCompleted()"
+            >
+              <span></span>
+            </button>
+          </div>
+          @if (t.status === 'completed') {
+            <label class="row">
+              <span class="flex-1">Completed on</span>
+              <input
+                type="date"
+                class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none scheme-dark"
+                [value]="dateFieldValue(t.completedAt)"
+                (change)="setCompletedOn($event)"
+              />
+            </label>
+          }
+          <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
+          <label class="row">
+            <span class="flex-1">Price</span>
+            <span class="text-muted">€</span>
+            <input
+              type="text"
+              inputmode="decimal"
+              placeholder="0.00"
+              autocomplete="off"
+              class="num w-24 bg-transparent text-right text-[17px] text-muted outline-none"
+              [value]="t.pricePaid != null ? t.pricePaid.toFixed(2) : ''"
+              (change)="setPrice($event)"
+            />
+          </label>
+        }
+        @if (t && !released()) {
+          <div class="row">
+            <div class="min-w-0 flex-1">
+              <p id="alert-label">Release alert</p>
+              <p class="text-[13px] leading-[18px] text-muted">
+                @if (t.releasePrecision !== 'day') {
+                  Sent once there’s an exact date.
+                } @else {
+                  {{ alertWhen() }}
+                }
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              class="switch"
+              aria-labelledby="alert-label"
+              [attr.aria-checked]="t.notify"
+              (click)="toggleNotify()"
+            >
+              <span></span>
+            </button>
+          </div>
+        }
+      </div>
+      <p class="group-footer">
+        On your wishlist it shows in Wishlist and the Calendar. Once owned, it shows only here and
+        on {{ parent()?.name ?? 'its main game' }}'s page.
+      </p>
+    </section>
+  } @else if (tracked(); as t) {
     <section aria-label="Your progress">
       <h2 class="group-header">Status</h2>
       <div class="segmented" role="radiogroup" aria-label="Status">
@@ -109,10 +267,25 @@
             </button>
           }
         </div>
+
+        <div class="grouped mt-6">
+          <label class="row">
+            <span class="flex-1">Completed on</span>
+            <input
+              type="date"
+              class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none scheme-dark"
+              [value]="dateFieldValue(t.completedAt)"
+              (change)="setCompletedOn($event)"
+            />
+          </label>
+        </div>
       }
 
-      <!-- Before release: a pre-order switch, then its details. Once out and owned: what you paid. -->
-      @if (!released() || t.status !== 'wishlist') {
+      <ng-container [ngTemplateOutlet]="dlcList" />
+
+      <!-- Before release: a pre-order switch (any status, usually Wishlist), then its details.
+           Once out and owned (or pre-ordered): what you paid. -->
+      @if (!released() || t.status !== 'wishlist' || t.preordered) {
         <h2 class="group-header">{{ released() ? 'Purchase' : 'Pre-order' }}</h2>
         <div class="grouped">
           @if (!released()) {
@@ -230,6 +403,7 @@
       <svg lucidePlus [size]="20" [strokeWidth]="2.5"></svg>
       Add to Library
     </button>
+    <ng-container [ngTemplateOutlet]="dlcList" />
   }
 
   @if (video(); as v) {
@@ -313,20 +487,22 @@
   }
 
   @if (tracked(); as t) {
-    <h2 class="group-header">My platform</h2>
-    <div class="segmented" role="radiogroup" aria-label="My platform">
-      @for (p of ourPlatforms(); track p.key) {
-        <button
-          type="button"
-          role="radio"
-          [attr.aria-checked]="t.myPlatform === p.key"
-          (click)="setPlatform(p.key)"
-        >
-          {{ p.label }}
-        </button>
-      }
-    </div>
-    <p class="group-footer">Release dates follow this platform.</p>
+    @if (!isDlcPage()) {
+      <h2 class="group-header">My platform</h2>
+      <div class="segmented" role="radiogroup" aria-label="My platform">
+        @for (p of ourPlatforms(); track p.key) {
+          <button
+            type="button"
+            role="radio"
+            [attr.aria-checked]="t.myPlatform === p.key"
+            (click)="setPlatform(p.key)"
+          >
+            {{ p.label }}
+          </button>
+        }
+      </div>
+      <p class="group-footer">Release dates follow this platform.</p>
+    }
 
     <div class="grouped mt-8">
       <button type="button" class="row justify-center text-danger" (click)="remove()">

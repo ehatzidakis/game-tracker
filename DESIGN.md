@@ -229,10 +229,10 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 **Character:** One family, Apple's own, at Apple's own sizes and tracking. Hierarchy comes from size and weight steps, never from a second face.
 
 ### Hierarchy
-- **Large Title** (700, 34px/41px, +0.011em): the first line of every tab screen; it scrolls away and the top bar takes over with a small copy.
+- **Large Title** (700, 34px/41px, +0.011em): the first line of every tab screen; it scrolls away with the page (tab screens have no top bar; you already know which tab you're on).
 - **Title** (700, 24px/29px, +0.005em, balanced wrapping): the game's name on the Game screen, next to its cover.
 - **Headline** (600, 20px/24px): empty-state headings.
-- **Nav Title** (600, 17px): the small centred title in the solid top bar; also the weight of primary buttons and Cancel.
+- **Nav Title** (600, 17px): the game's name in the Game screen's solid top bar; also the weight of primary buttons and Cancel.
 - **Body** (400, 17px/22px, -0.02em): row labels, inputs, text actions. All text inputs are 17px so iOS never zooms on focus.
 - **Subhead** (400, 15px/20px): row subtitles (date · countdown · status), developer line, counts, toasts, inline errors.
 - **Footnote** (400, 13px/18px, -0.005em): group headers (uppercase), group footers, sheet headings, row hints, platform lists.
@@ -251,7 +251,7 @@ A single phone-width column (max 28rem, centred on a desktop browser) inside a f
 
 The page gutter is 16px. Grouped lists sit inside that gutter; rows are at least 44px tall with 11px by 16px padding and 12px gaps. Separators are inset 16px for text rows, 68px for rows that start with a 40px cover, 52px for rows that start with a 22px icon. Group headers sit 22px above their list; footers follow 7px below. The Library grid is three columns with 12px gutters and 20px between rows.
 
-The top bar is 44px plus the safe-area inset, laid over the content: see-through at the top of a screen (so hero art runs under it), and solid with the small title once the large title has scrolled away. The page action (e.g. Subscribe) sits in its right slot; a back button sits on the left. The tab bar is a normal row at the bottom of the frame, not a floating fixed bar, and uses only part of the home-indicator inset. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
+Only the Game screen has a top bar: 44px plus the safe-area inset, laid over the content, see-through over the hero art and solid with the game's name once the art has scrolled away, with the back button on the left. Tab screens have no bar: the large title sits on the left and the screen's action (Calendar: Subscribe) on the right of the same row, and both scroll away with the page. The tab bar is a normal row at the bottom of the frame, not a floating fixed bar, and uses only part of the home-indicator inset. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
 
 ## Elevation & Depth
 
@@ -303,7 +303,7 @@ The backbone of every screen, as in iOS Settings.
 - **Focus:** the global Tint Blue ring; the caret is Tint Blue.
 
 ### Navigation
-- **Top bar:** see-through at rest; turns into a 90% near-black blurred bar with a hairline at the same moment its small centred 17px semibold title fades in (200ms). Back button: a 36px blurred dark circle over art, plain Tint Blue chevron once solid.
+- **Top bar (Game screen only):** see-through at rest; turns into a 90% near-black blurred bar with a hairline at the same moment its small centred 17px semibold title fades in (200ms). Back button: a 36px blurred dark circle over art, plain Tint Blue chevron once solid.
 - **Tab bar:** four tabs (Calendar, Library, Search, Settings), opaque Bar Black with a hairline top edge, 24px Lucide icons over 10px labels; the active tab is Tint Blue.
 
 ### Action Sheet
@@ -318,7 +318,7 @@ A rounded pill of raised grey with blur and a floating shadow, just above the ta
 ## Do's and Don'ts
 
 ### Do:
-- **Do** start every tab screen with a 34px bold large title and let the top bar pick up the small title once it scrolls away.
+- **Do** start every tab screen with a 34px bold large title, its action on the right of the same row, and let both scroll away. **Don't** add a collapsing bar to tab screens.
 - **Do** put lists in inset grouped sections (10px radius, Group Grey, 0.5px inset separators, 44px minimum rows).
 - **Do** lead list rows with the game's cover, and keep covers 3:4 with their hairline edge.
 - **Do** choose the blue by its background: Tint Blue on black and group, Sheet Blue on raised sheets, Fill Blue under white.

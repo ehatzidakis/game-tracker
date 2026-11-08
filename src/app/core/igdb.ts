@@ -15,6 +15,8 @@ export interface GameSearchResult {
   upcoming: boolean;
   /** Our platforms first (PS5, Xbox, PC, Switch 2), then up to two others. */
   platforms: string[];
+  /** For DLC and expansions: the main game. */
+  dlcOf: { id: number; name: string } | null;
 }
 
 interface IgdbGame {
@@ -30,17 +32,24 @@ interface IgdbGame {
   alternative_names?: { name: string }[];
   /** 6 = cancelled. */
   game_status?: number;
+  /** 1 = DLC, 2 = expansion (see DLC_GAME_TYPES). */
+  game_type?: number;
+  /** The main game, for DLC and expansions. */
+  parent_game?: { id: number; name: string; hypes?: number; total_rating_count?: number };
 }
 
 const CANCELLED = 6;
 /** Ratings plus followers on IGDB. Sons of Sparta has 15, Astro Bot 218, most fan games under 5. */
 const WELL_KNOWN = 10;
 
-// Main games, standalone expansions, remakes, remasters, expanded games and ports.
-// Leaves out DLC, bundles, mods, episodes and updates.
-const SEARCHABLE_GAME_TYPES = '(0,4,8,9,10,11)';
+/** IGDB game types for DLC and expansions, which live inside their main game. */
+export const DLC_GAME_TYPES = [1, 2];
+
+// Main games, DLC, expansions, standalone expansions, remakes, remasters, expanded games and
+// ports. Leaves out bundles, mods, episodes and updates.
+const SEARCHABLE_GAME_TYPES = '(0,1,2,4,8,9,10,11)';
 const SEARCH_FIELDS =
-  'fields name, alternative_names.name, cover.image_id, first_release_date, platforms.abbreviation, platforms.name, hypes, total_rating_count, game_status;';
+  'fields name, alternative_names.name, cover.image_id, first_release_date, platforms.abbreviation, platforms.name, hypes, total_rating_count, game_status, game_type, parent_game.name, parent_game.hypes, parent_game.total_rating_count;';
 const SEARCH_FILTER = `version_parent = null & game_type = ${SEARCHABLE_GAME_TYPES}`;
 const MAX_RESULTS = 30;
 // Fetch more than we show: the ranking below pulls well-known games up from further down.
@@ -88,6 +97,8 @@ function normalize(text: string): string {
  * 2. IGDB's looser matches, in its own order.
  * 3. Cancelled games.
  * Within 0 and 1, games without a date go last: they're often rumours.
+ * DLC counts as well known when its main game is, matches on the main game's name too, and comes
+ * right after the games of its group ("cronos": Cronos: The New Dawn, then Cronos: Lazarus).
  */
 export function rankSearchResults(
   term: string,
@@ -99,13 +110,17 @@ export function rankSearchResults(
   const games = [...searchHits, ...nameHits].filter((g) => !seen.has(g.id) && !!seen.add(g.id));
 
   const matches = (g: IgdbGame) =>
-    [g.name, ...(g.alternative_names ?? []).map((a) => a.name)].some((name) =>
-      ` ${normalize(name)} `.includes(phrase),
-    );
+    [g.name, ...(g.alternative_names ?? []).map((a) => a.name), g.parent_game?.name ?? '']
+      .filter(Boolean)
+      .some((name) => ` ${normalize(name)} `.includes(phrase));
+  const fame = (g: { hypes?: number; total_rating_count?: number } | undefined) =>
+    (g?.total_rating_count ?? 0) + (g?.hypes ?? 0);
   const tier = (g: IgdbGame) => {
     if (g.game_status === CANCELLED) return 3;
     if (!matches(g)) return 2;
-    return (g.total_rating_count ?? 0) + (g.hypes ?? 0) >= WELL_KNOWN ? 0 : 1;
+    const dlc = DLC_GAME_TYPES.includes(g.game_type ?? 0);
+    const known = Math.max(fame(g), dlc ? fame(g.parent_game) : 0) >= WELL_KNOWN;
+    return (known ? 0 : 1) + (dlc ? 0.5 : 0);
   };
   const date = (g: IgdbGame) => g.first_release_date ?? 0;
 
@@ -138,6 +153,10 @@ export function toSearchResult(game: IgdbGame): GameSearchResult {
       : null,
     platforms: [...ours, ...others],
     upcoming: !game.first_release_date || game.first_release_date * 1000 > Date.now(),
+    dlcOf:
+      DLC_GAME_TYPES.includes(game.game_type ?? 0) && game.parent_game
+        ? { id: game.parent_game.id, name: game.parent_game.name }
+        : null,
   };
 }
 
@@ -157,12 +176,34 @@ export interface GameDetails extends IgdbSyncGame {
   screenshots?: { image_id: string }[];
   videos?: { video_id: string; name?: string }[];
   platforms?: { id: number; abbreviation?: string; name: string }[];
+  game_type?: number;
+  parent_game?: { id: number; name: string };
+  dlcs?: DlcSummary[];
+  expansions?: DlcSummary[];
+}
+
+/** A DLC or expansion as listed on its main game's page. */
+export interface DlcSummary {
+  id: number;
+  name: string;
+  cover?: { image_id: string };
+  first_release_date?: number;
+}
+
+/** The main game's DLC and expansions, expansions first, each group newest first. */
+export function dlcsOf(details: Pick<GameDetails, 'dlcs' | 'expansions'>): DlcSummary[] {
+  const newest = (a: DlcSummary, b: DlcSummary) =>
+    (b.first_release_date ?? Number.MAX_SAFE_INTEGER) -
+    (a.first_release_date ?? Number.MAX_SAFE_INTEGER);
+  return [...(details.expansions ?? []).sort(newest), ...(details.dlcs ?? []).sort(newest)];
 }
 
 export function buildDetailsQuery(id: number): string {
   return [
     `fields ${SYNC_FIELDS}, platforms.abbreviation, platforms.name, summary, first_release_date,`,
-    'total_rating, artworks.image_id, screenshots.image_id, videos.video_id, videos.name;',
+    'total_rating, artworks.image_id, screenshots.image_id, videos.video_id, videos.name,',
+    'game_type, parent_game.name, dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,',
+    'expansions.name, expansions.cover.image_id, expansions.first_release_date;',
     `where id = ${Math.trunc(id)};`,
     'limit 1;',
   ].join(' ');

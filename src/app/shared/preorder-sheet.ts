@@ -62,7 +62,7 @@ export function parsePrice(text: string): number | null | undefined {
   template: `
     <dialog
       #dialog
-      class="sheet m-0 mx-auto mt-auto w-full max-w-md bg-transparent p-0 text-label backdrop:bg-black/50"
+      class="sheet m-0 mx-auto mt-auto w-full max-w-md bg-transparent p-0 text-label"
       aria-labelledby="preorder-sheet-title"
       (cancel)="$event.preventDefault(); sheet.finish(null)"
       (click)="onBackdropClick($event)"

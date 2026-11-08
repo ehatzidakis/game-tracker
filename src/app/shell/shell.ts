@@ -79,7 +79,6 @@ export class Shell {
     () => this.scrollTop() > (this.route().hero ? TITLE_AFTER_HERO : TITLE_AFTER),
   );
   protected readonly scrolled = this.titleShown;
-  protected readonly action = this.pageTitle.action;
   protected readonly title = computed(() => this.pageTitle.override() ?? this.route().title ?? '');
 
   constructor() {

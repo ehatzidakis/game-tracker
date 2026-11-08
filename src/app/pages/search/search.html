@@ -58,6 +58,9 @@
             <div class="min-w-0">
               <p class="truncate">{{ game.name }}</p>
               <p class="num truncate text-[15px] leading-5 text-muted">
+                @if (game.dlcOf) {
+                  DLC ·
+                }
                 {{ game.year ?? 'TBA' }}
                 @if (game.platforms.length) {
                   · {{ game.platforms.join(', ') }}
@@ -66,9 +69,7 @@
             </div>
           </a>
           @if (tracked) {
-            <span class="shrink-0 pr-2 text-[15px] text-muted">{{
-              statusLabel(tracked.status)
-            }}</span>
+            <span class="shrink-0 pr-2 text-[15px] text-muted">{{ trackedLabel(tracked) }}</span>
           } @else if (adding().has(game.id)) {
             <span class="grid size-11 shrink-0 place-items-center text-muted" aria-label="Adding">
               <svg lucideLoaderCircle [size]="22" class="animate-spin"></svg>
@@ -77,7 +78,7 @@
             <button
               type="button"
               class="grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
-              [attr.aria-label]="'Add ' + game.name"
+              [attr.aria-label]="(game.dlcOf ? 'Add to Wishlist: ' : 'Add ') + game.name"
               (click)="add(game)"
             >
               <svg lucideCirclePlus [size]="26" [strokeWidth]="1.75"></svg>

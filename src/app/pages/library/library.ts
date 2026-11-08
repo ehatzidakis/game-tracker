@@ -1,24 +1,39 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideChevronDown, LucideLibraryBig, LucideStar } from '@lucide/angular';
 import {
   completionLabel,
-  STATUSES,
+  isDlc,
+  shownInLibrary,
+  statusLabel,
   type Status,
-  type TrackedGame,
 } from '../../../../api/_lib/models.js';
-import { countdown } from '../../core/dates';
+import { countdown, today } from '../../core/dates';
 import { LibraryService } from '../../core/library.service';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
-
-type Sort = 'recent' | 'name' | 'release';
+import { compareBy, completedByYear, DEFAULT_SORT, LIBRARY_TABS, type Sort } from './library-sort';
 
 const SORTS: { key: Sort; label: string }[] = [
   { key: 'recent', label: 'Recent' },
   { key: 'name', label: 'Name' },
   { key: 'release', label: 'Release date' },
 ];
+/** The Completed tab can also sort by when you finished, and does by default. */
+const COMPLETED_SORTS: { key: Sort; label: string }[] = [
+  { key: 'completed', label: 'Date completed' },
+  ...SORTS,
+];
+
+/** Bump to reset everyone's remembered sorts to the defaults (2: per-tab defaults, 2026-11-08). */
+const SORT_KEY = 'library.sort.v2';
+
+/**
+ * The tab you're on, kept while the app is open (so coming back from a game keeps it).
+ * The app always opens on Completed.
+ */
+let currentTab: Status = 'completed';
 
 const EMPTY: Record<Status, { title: string; text: string }> = {
   playing: { title: 'Nothing in progress', text: 'Open a game and set it to Playing.' },
@@ -33,79 +48,77 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
 
 @Component({
   selector: 'app-library',
-  imports: [RouterLink, Cover, LucideChevronDown, LucideLibraryBig, LucideStar],
+  imports: [RouterLink, NgTemplateOutlet, Cover, LucideChevronDown, LucideLibraryBig, LucideStar],
   templateUrl: './library.html',
 })
 export class LibraryPage {
   protected readonly library = inject(LibraryService);
-  protected readonly statuses = STATUSES;
-  protected readonly sorts = SORTS;
-
-  protected readonly filter = signal<Status>(
-    remembered(
-      'library.filter',
-      'playing',
-      STATUSES.map((s) => s.key),
-    ),
+  protected readonly tabs = LIBRARY_TABS.map((key) => ({ key, label: statusLabel(key) }));
+  protected readonly filter = signal<Status>(currentTab);
+  protected readonly sorts = computed(() =>
+    this.filter() === 'completed' ? COMPLETED_SORTS : SORTS,
   );
-  protected readonly sort = signal<Sort>(
-    remembered(
-      'library.sort',
-      'recent',
-      SORTS.map((s) => s.key),
-    ),
+  /** Each tab remembers its own sort on this device. */
+  private readonly sortByTab = signal<Record<Status, Sort>>(
+    Object.fromEntries(
+      LIBRARY_TABS.map((tab) => {
+        const options = (tab === 'completed' ? COMPLETED_SORTS : SORTS).map((o) => o.key);
+        return [tab, remembered(`${SORT_KEY}.${tab}`, DEFAULT_SORT[tab], options)];
+      }),
+    ) as Record<Status, Sort>,
   );
+  protected readonly sort = computed(() => this.sortByTab()[this.filter()]);
+  /** Games and wishlisted DLC; owned DLC shows on its main game's page instead. */
+  private readonly listed = computed(() => this.library.games().filter(shownInLibrary));
 
   protected readonly counts = computed(() => {
     const counts = new Map<Status, number>();
-    for (const g of this.library.games()) counts.set(g.status, (counts.get(g.status) ?? 0) + 1);
+    for (const g of this.listed()) counts.set(g.status, (counts.get(g.status) ?? 0) + 1);
     return counts;
   });
 
   protected readonly shown = computed(() =>
-    this.library
-      .games()
+    this.listed()
       .filter((g) => g.status === this.filter())
-      .sort(compareBy(this.sort())),
+      .sort(compareBy(this.sort(), this.filter(), today())),
+  );
+
+  /** Completed, sorted by date completed: split by year, "4 in 2026" above each year's games. */
+  protected readonly yearGroups = computed(() =>
+    this.filter() === 'completed' && this.sort() === 'completed'
+      ? completedByYear(this.shown())
+      : null,
   );
 
   protected readonly emptyTitle = computed(() => EMPTY[this.filter()].title);
   protected readonly emptyText = computed(() => EMPTY[this.filter()].text);
 
-  /** "4 this year · 212 h", shown on the Completed tab. */
-  protected readonly completedStats = computed(() => {
+  /** Total hours across completed games, shown on the Completed tab. */
+  protected readonly completedHours = computed(() =>
+    Math.round(this.shown().reduce((sum, g) => sum + (g.hoursPlayed ?? 0), 0)),
+  );
+  /** "4 in 2026", shown on the Completed tab when it isn't split by year. */
+  protected readonly thisYear = computed(() => {
     const year = new Date().getFullYear();
-    const done = this.library.games().filter((g) => g.status === 'completed');
-    const thisYear = done.filter(
+    const count = this.shown().filter(
       (g) => g.completedAt && new Date(g.completedAt).getFullYear() === year,
-    );
-    const hours = done.reduce((sum, g) => sum + (g.hoursPlayed ?? 0), 0);
-    return { year, thisYear: thisYear.length, hours: Math.round(hours) };
+    ).length;
+    return { year, count };
   });
+
   protected readonly completionLabel = completionLabel;
   protected readonly countdown = countdown;
+  protected readonly isDlc = isDlc;
 
   protected setFilter(status: Status): void {
     this.filter.set(status);
-    remember('library.filter', status);
+    currentTab = status;
   }
 
   protected setSort(event: Event): void {
     const sort = (event.target as HTMLSelectElement).value as Sort;
-    this.sort.set(sort);
-    remember('library.sort', sort);
-  }
-}
-
-function compareBy(sort: Sort): (a: TrackedGame, b: TrackedGame) => number {
-  const byName = (a: TrackedGame, b: TrackedGame) => a.name.localeCompare(b.name);
-  switch (sort) {
-    case 'name':
-      return byName;
-    case 'release':
-      // Newest release first; TBA last.
-      return (a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '') || byName(a, b);
-    default:
-      return (a, b) => b.updatedAt - a.updatedAt;
+    const tab = this.filter();
+    this.sortByTab.update((sorts) => ({ ...sorts, [tab]: sort }));
+    remember(`${SORT_KEY}.${tab}`, sort);
   }
 }

@@ -2,7 +2,7 @@
 
 <!-- Status filter, as an iOS segmented control. -->
 <div class="segmented mt-3" role="tablist" aria-label="Status">
-  @for (s of statuses; track s.key) {
+  @for (s of tabs; track s.key) {
     <button
       type="button"
       role="tab"
@@ -23,10 +23,11 @@
   <p class="num min-w-0 truncate">
     {{ shown().length }} {{ shown().length === 1 ? 'game' : 'games' }}
     @if (filter() === 'completed' && shown().length) {
-      @let stats = completedStats();
-      · {{ stats.thisYear }} in {{ stats.year }}
-      @if (stats.hours) {
-        · {{ stats.hours }} h
+      @if (!yearGroups()) {
+        · {{ thisYear().count }} in {{ thisYear().year }}
+      }
+      @if (completedHours()) {
+        · {{ completedHours() }} h
       }
     }
   </p>
@@ -37,7 +38,7 @@
       class="appearance-none bg-transparent pr-5 text-right text-base outline-none"
       (change)="setSort($event)"
     >
-      @for (s of sorts; track s.key) {
+      @for (s of sorts(); track s.key) {
         <option [value]="s.key" [selected]="s.key === sort()">{{ s.label }}</option>
       }
     </select>
@@ -61,9 +62,26 @@
       Search games
     </a>
   </div>
+} @else if (yearGroups(); as groups) {
+  <!-- Completed by date: "4 in 2026", that year's games, then "12 in 2025", … -->
+  @for (group of groups; track group.title) {
+    <section [attr.aria-label]="group.title">
+      <h2 class="num mt-6 mb-3 text-[20px] leading-6 font-semibold">{{ group.title }}</h2>
+      <ng-container
+        [ngTemplateOutlet]="grid"
+        [ngTemplateOutletContext]="{ $implicit: group.games }"
+      />
+    </section>
+  }
 } @else {
-  <ul class="mt-3 grid grid-cols-3 gap-x-3 gap-y-5">
-    @for (game of shown(); track game.igdbId) {
+  <div class="mt-3">
+    <ng-container [ngTemplateOutlet]="grid" [ngTemplateOutletContext]="{ $implicit: shown() }" />
+  </div>
+}
+
+<ng-template #grid let-games>
+  <ul class="grid grid-cols-3 gap-x-3 gap-y-5">
+    @for (game of games; track game.igdbId) {
       <li>
         <a [routerLink]="['/game', game.igdbId]" class="block active:opacity-70">
           <app-cover [coverId]="game.coverId" [name]="game.name">
@@ -72,6 +90,12 @@
                 class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
               >
                 {{ label }}
+              </span>
+            } @else if (isDlc(game)) {
+              <span
+                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+              >
+                {{ game.preordered ? 'DLC · Pre-ordered' : 'DLC' }}
               </span>
             } @else if (game.preordered && countdown(game) !== null) {
               <span
@@ -109,4 +133,4 @@
       </li>
     }
   </ul>
-}
+</ng-template>

@@ -31,6 +31,20 @@ What Claude built while you were away, what it needs from you, and the choices i
 - Pre-orders are marked on the game's page only; adding stays simple.
 - Price and store for games bought after release: an owned game that's out has a **Purchase** section (Price, Bought from, Bought on). Moving a released game from Wishlist to Backlog, Playing or Completed on its page asks for them (optional). Adding from Search asks nothing extra. Moving a game back to Wishlist keeps what you entered, in case it was a mis-tap.
 
+**Your notes from using the app (2026-11-08), done**
+- **Pre-orders stay on the Wishlist.** Turning on Pre-ordered no longer changes the status, so you can see which upcoming games you want and have already pre-ordered (Calendar says "Pre-ordered", the Wishlist cover has a badge). When it's out and you move it to Backlog or Playing, you're not asked for the price again.
+- **Completed on.** Completed games have an editable "Completed on" date. The Completed tab sorts by it (latest first) by default; each tab remembers its own sort. Library always opens on Completed (and keeps your tab while the app is open).
+- **Library tabs and sorts.** Tabs go Completed, Playing, Backlog, Wishlist, Shelved. Default sorts: Completed by date completed, split into years ("4 in 2026", its games, then "12 in 2025", …); Playing by recent; Backlog and Shelved by newest release; Wishlist by what comes out soonest (then no date yet, then already out). Pick another sort and the tab remembers it on the phone.
+- **DLC and expansions.**
+  - A game's page lists its DLC and expansions (the first 6, then "Show all"), each showing whether you own it or finished it.
+  - Tap one to open its page: On wishlist, Owned, then Completed with a date, and Price. There's no store for DLC.
+  - DLC appears in Search with a "DLC" label right after its main game, and + adds it straight to your Wishlist.
+  - On the Wishlist it's its own entry (with a DLC badge) and shows in the Calendar.
+  - Once owned it's only on the DLC's and the main game's pages. Its completion date doesn't affect the Completed tab's order.
+  - Turning Owned off removes the DLC from your library (after asking).
+
+**New versions show up right away (2026-11-08).** iOS keeps the home-screen app in memory and resumes it, so after a deploy you'd keep seeing the old version until you fully closed it. Now, whenever the app comes back to the screen (and at most once a minute as you move between screens), it checks whether a newer version is live and, if so, reloads into it. Nothing is lost, since every change saves instantly. Versioned app files are also cached on the phone for good, which makes opening the app a bit faster.
+
 ## 5. Design pass (Step 5)
 
 - Done with the `impeccable` skill. You picked the standard iOS look, with Letterboxd and Things 3 as the bar. Brief: [PRODUCT.md](PRODUCT.md); design system: DESIGN.md.

@@ -35,6 +35,7 @@ export type GameEdits = Partial<
     | 'pricePaid'
     | 'boughtFrom'
     | 'orderedOn'
+    | 'completedAt'
   >
 >;
 
@@ -79,10 +80,18 @@ export class LibraryService {
     });
   }
 
-  /** Adds a game from IGDB. Platform defaults to your default one (PS5) if the game is on it. */
-  add(game: IgdbSyncGame, status: Status, completion: Completion | null = null): void {
+  /**
+   * Adds a game from IGDB. Platform defaults to your default one (PS5) if the game is on it.
+   * For DLC, pass the main game; it uses the main game's platform if you track it.
+   */
+  add(
+    game: IgdbSyncGame,
+    status: Status,
+    completion: Completion | null = null,
+    parent: { id: number; name: string } | null = null,
+  ): void {
     const now = Date.now();
-    const myPlatform = this.platformFor(game);
+    const myPlatform = (parent && this.byId().get(parent.id)?.myPlatform) ?? this.platformFor(game);
     const tracked: TrackedGame = {
       igdbId: game.id,
       ...syncedFields(game, myPlatform, now),
@@ -99,9 +108,12 @@ export class LibraryService {
       shelvedAt: null,
       completedAt: null,
       updatedAt: now,
+      ...(parent ? { parentId: parent.id, parentName: parent.name } : {}),
       ...statusStamps({ status: 'wishlist' } as TrackedGame, status, now),
     };
-    this.write(setDoc(this.gameDoc(game.id), tracked), `Added to ${statusLabel(status)}`);
+    // Owned DLC lives on its main game's page, so say where it went.
+    const where = parent && status !== 'wishlist' ? parent.name : statusLabel(status);
+    this.write(setDoc(this.gameDoc(game.id), tracked), `Added to ${where}`);
   }
 
   /** For Completed, pass how far you got. */
@@ -112,9 +124,6 @@ export class LibraryService {
       updateDoc(this.gameDoc(game.igdbId), {
         status,
         ...(completion ? { completion } : {}),
-        // A game you still want to buy isn't pre-ordered. Its price etc. are kept, in case
-        // this was a mis-tap.
-        ...(status === 'wishlist' && game.preordered ? { preordered: false } : {}),
         ...statusStamps(game, status, now),
         updatedAt: now,
       }),
@@ -122,20 +131,14 @@ export class LibraryService {
   }
 
   /**
-   * Pre-ordering an upcoming game counts as buying it, so it moves from Wishlist to Backlog.
-   * Undoing it moves it back and clears the details.
+   * Marks an upcoming game as pre-ordered, or undoes it (clearing the details). The status stays
+   * as it is: a pre-ordered game usually stays on your Wishlist until it's out.
    */
-  setPreordered(game: TrackedGame, preordered: boolean, today: string): void {
-    const now = Date.now();
-    const upcoming = !game.releaseDate || game.releaseDate > today;
-    let status = game.status;
-    if (preordered && status === 'wishlist') status = 'backlog';
-    if (!preordered && status === 'backlog' && upcoming) status = 'wishlist';
+  setPreordered(game: TrackedGame, preordered: boolean): void {
     this.write(
       updateDoc(this.gameDoc(game.igdbId), {
         ...(preordered ? { preordered: true } : NOT_PREORDERED),
-        ...(status !== game.status ? { status, ...statusStamps(game, status, now) } : {}),
-        updatedAt: now,
+        updatedAt: Date.now(),
       }),
     );
   }

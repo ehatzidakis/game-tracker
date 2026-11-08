@@ -81,6 +81,11 @@ export interface TrackedGame {
   /** "YYYY-MM-DD": when you pre-ordered or bought it. */
   orderedOn?: string | null;
 
+  // DLC and expansions are stored like games, plus the main game's IGDB ID and name. DLC on your
+  // wishlist shows in Wishlist and the Calendar; owned DLC shows only on the main game's page.
+  parentId?: number | null;
+  parentName?: string | null;
+
   // Milliseconds since 1970, or null.
   addedAt: number;
   purchasedAt: number | null;
@@ -91,6 +96,16 @@ export interface TrackedGame {
 
   /** Set by the alert job: the release date the alert was sent for, so it's sent once. */
   notifiedFor?: string | null;
+}
+
+/** True for DLC and expansions you track. */
+export function isDlc(game: Pick<TrackedGame, 'parentId'>): boolean {
+  return game.parentId != null;
+}
+
+/** Library tabs list games, plus DLC only while it's on your wishlist. */
+export function shownInLibrary(game: Pick<TrackedGame, 'parentId' | 'status'>): boolean {
+  return !isDlc(game) || game.status === 'wishlist';
 }
 
 /** users/{uid} */

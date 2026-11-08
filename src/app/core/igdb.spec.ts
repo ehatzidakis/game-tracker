@@ -8,7 +8,7 @@ describe('buildSearchQuery', () => {
   it('trims the term and leaves out DLC and bundles', () => {
     const query = buildSearchQuery('  zelda ');
     expect(query).toContain('search "zelda";');
-    expect(query).toContain('game_type = (0,4,8,9,10,11)');
+    expect(query).toContain('game_type = (0,1,2,4,8,9,10,11)');
   });
 });
 
@@ -130,5 +130,35 @@ describe('buildNameQuery', () => {
     const query = buildNameQuery('god "of" war');
     expect(query).toContain('where name ~ *"god \\"of\\" war"*');
     expect(query).toContain('sort first_release_date desc;');
+  });
+});
+
+describe('rankSearchResults with DLC', () => {
+  it('puts DLC of a well-known game right after the games, and matches its main game', () => {
+    const year = (y: number) => Date.UTC(y, 0, 1) / 1000;
+    const ranked = rankSearchResults(
+      'cronos',
+      [
+        {
+          id: 1,
+          name: 'Cronos: The New Dawn',
+          total_rating_count: 69,
+          first_release_date: year(2025),
+        },
+        {
+          id: 2,
+          name: 'Cronos: Lazarus',
+          game_type: 1,
+          hypes: 4,
+          first_release_date: year(2026),
+          parent_game: { id: 1, name: 'Cronos: The New Dawn', total_rating_count: 69 },
+        },
+        { id: 3, name: 'Escape from Cronos X', hypes: 1, first_release_date: year(2022) },
+      ],
+      [],
+    );
+    expect(ranked.map((g) => g.id)).toEqual([1, 2, 3]);
+    expect(toSearchResult(ranked[1]).dlcOf).toEqual({ id: 1, name: 'Cronos: The New Dawn' });
+    expect(toSearchResult(ranked[0]).dlcOf).toBeNull();
   });
 });

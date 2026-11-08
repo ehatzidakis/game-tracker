@@ -1,4 +1,15 @@
-<h1 class="large-title">Calendar</h1>
+<!-- Title on the left, Subscribe on the right; both scroll away with the page. -->
+<div class="flex items-end justify-between gap-3">
+  <h1 class="large-title">Calendar</h1>
+  <button
+    type="button"
+    class="mb-1 flex items-center gap-1.5 text-[17px] text-accent active:opacity-60"
+    (click)="subscribe()"
+  >
+    <svg lucideCalendarPlus [size]="20" [strokeWidth]="2"></svg>
+    Subscribe
+  </button>
+</div>
 
 @if (library.loadError(); as error) {
   <p class="grouped mt-4 px-4 py-3 text-[15px] leading-5 text-danger" role="alert">{{ error }}</p>
@@ -31,7 +42,15 @@
                 [name]="''"
               />
               <div class="min-w-0 flex-1">
-                <p class="truncate">{{ game.name }}</p>
+                <p class="flex items-center gap-1.5">
+                  <span class="truncate">{{ game.name }}</span>
+                  @if (game.parentId) {
+                    <span
+                      class="shrink-0 rounded-[4px] bg-raised px-1 py-px text-[11px] leading-4 font-semibold tracking-normal text-muted"
+                      >DLC</span
+                    >
+                  }
+                </p>
                 <p class="text-[15px] leading-5 text-muted">
                   @if (game.releasePrecision === 'day' && game.releaseDate) {
                     <time [attr.datetime]="game.releaseDate">{{
@@ -48,15 +67,9 @@
                   } @else {
                     {{ game.releaseLabel }}
                   }
-                  @if (game.status !== 'wishlist') {
+                  @if (ownership(game); as label) {
                     ·
-                    <span class="whitespace-nowrap">{{
-                      game.preordered
-                        ? 'Pre-ordered'
-                        : game.status === 'backlog'
-                          ? 'Owned'
-                          : 'Playing'
-                    }}</span>
+                    <span class="whitespace-nowrap">{{ label }}</span>
                   }
                 </p>
               </div>

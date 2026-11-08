@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import { LucideCirclePlus, LucideCircleX, LucideLoaderCircle, LucideSearch } from '@lucide/angular';
 import { Cover } from '../../shared/cover';
-import { statusLabel } from '../../../../api/_lib/models.js';
+import { isDlc, statusLabel, type TrackedGame } from '../../../../api/_lib/models.js';
 import { debounced } from '../../core/debounced';
 import { coverUrl, IgdbService, type GameSearchResult } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
@@ -43,21 +43,28 @@ export class SearchPage {
   protected readonly adding = signal<ReadonlySet<number>>(new Set());
 
   protected readonly coverUrl = coverUrl;
-  protected readonly statusLabel = statusLabel;
+  /** What a tracked result shows instead of the + button. */
+  protected trackedLabel(game: TrackedGame): string {
+    if (!isDlc(game) || game.status === 'wishlist') return statusLabel(game.status);
+    return game.status === 'completed' ? 'Completed' : 'Owned';
+  }
 
   protected onInput(event: Event): void {
     this.term.set((event.target as HTMLInputElement).value);
   }
 
   protected async add(game: GameSearchResult): Promise<void> {
-    const choice = await this.sheet.addTo(game.name, game.upcoming ? 'wishlist' : 'backlog');
+    // DLC goes straight to the wishlist; mark it owned on its page or its main game's page.
+    const choice = game.dlcOf
+      ? { status: 'wishlist' as const, completion: null }
+      : await this.sheet.addTo(game.name, game.upcoming ? 'wishlist' : 'backlog');
     if (!choice) return;
 
     this.adding.update((ids) => new Set(ids).add(game.id));
     try {
       const details = await this.igdb.game(game.id);
       if (!details) throw new Error(`IGDB has no game ${game.id}`);
-      this.library.add(details, choice.status, choice.completion);
+      this.library.add(details, choice.status, choice.completion, game.dlcOf);
     } catch (error) {
       this.toast.error(`Couldn't add ${game.name}. Check your connection and try again.`, error);
     } finally {

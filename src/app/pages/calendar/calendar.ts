@@ -1,9 +1,14 @@
-import { Component, computed, DestroyRef, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LucideBell, LucideCalendarDays, LucideChevronRight } from '@lucide/angular';
+import {
+  LucideBell,
+  LucideCalendarDays,
+  LucideCalendarPlus,
+  LucideChevronRight,
+} from '@lucide/angular';
+import type { TrackedGame } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
 import { LibraryService } from '../../core/library.service';
-import { PageTitle } from '../../core/page-title';
 import { Cover } from '../../shared/cover';
 import { calendarGroups } from './calendar-groups';
 
@@ -21,19 +26,19 @@ const WEEKDAY_DAY_MONTH = new Intl.DateTimeFormat('en-GB', {
 
 @Component({
   selector: 'app-calendar',
-  imports: [RouterLink, Cover, LucideBell, LucideCalendarDays, LucideChevronRight],
+  imports: [
+    RouterLink,
+    Cover,
+    LucideBell,
+    LucideCalendarDays,
+    LucideCalendarPlus,
+    LucideChevronRight,
+  ],
   templateUrl: './calendar.html',
 })
 export class CalendarPage {
   protected readonly library = inject(LibraryService);
   private readonly today = today();
-
-  constructor() {
-    // Subscribe sits in the top bar, so it stays reachable while you scroll.
-    const pageTitle = inject(PageTitle);
-    pageTitle.action.set({ label: 'Subscribe', run: () => this.subscribe() });
-    inject(DestroyRef).onDestroy(() => pageTitle.action.set(null));
-  }
 
   protected readonly groups = computed(() => calendarGroups(this.library.games(), this.today));
 
@@ -57,6 +62,14 @@ export class CalendarPage {
   protected shortDate(date: string, withMonth: boolean): string {
     const format = withMonth ? WEEKDAY_DAY_MONTH : WEEKDAY_DAY;
     return format.format(new Date(`${date}T00:00:00Z`)).replace(',', '');
+  }
+
+  /** "Pre-ordered", "Owned" or "Playing" after the date; nothing for a plain wishlist game. */
+  protected ownership(game: TrackedGame): string | null {
+    if (game.preordered) return 'Pre-ordered';
+    if (game.status === 'backlog') return 'Owned';
+    if (game.status === 'playing') return 'Playing';
+    return null;
   }
 
   /** Opens the iPhone's "Subscribe to calendar" prompt for your feed. */

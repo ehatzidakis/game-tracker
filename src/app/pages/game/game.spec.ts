@@ -50,14 +50,14 @@ function tracked(overrides: Partial<TrackedGame>): TrackedGame {
   };
 }
 
-async function render(game: TrackedGame | null) {
+async function render(game: TrackedGame | null, igdb: GameDetails = details) {
   const games = signal(game ? [game] : []);
   const edits: unknown[] = [];
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
       provideTanStackQuery(new QueryClient()),
-      { provide: IgdbService, useValue: { game: async () => details } },
+      { provide: IgdbService, useValue: { game: async () => igdb } },
       { provide: PushService, useValue: { enabledHere: () => false } },
       {
         provide: LibraryService,
@@ -68,6 +68,9 @@ async function render(game: TrackedGame | null) {
           refresh: () => undefined,
           edit: (_: TrackedGame, e: unknown) => edits.push(e),
           setPreordered: (_: TrackedGame, preordered: boolean) => edits.push({ preordered }),
+          add: (_: unknown, status: string, __: unknown, parent: unknown) =>
+            edits.push({ add: status, parent }),
+          remove: () => edits.push({ removed: true }),
           setStatus: (_: TrackedGame, status: unknown, completion?: unknown) =>
             edits.push(completion ? { status, completion } : { status }),
         },
@@ -183,6 +186,47 @@ describe('GamePage', () => {
     expect(el.textContent).toContain('Purchase');
     expect(el.textContent).toContain('Bought on');
     expect(el.textContent).not.toContain('Pre-ordered');
+  });
+
+  it('lets you set the date you completed a game', async () => {
+    const { el, edits } = await render(
+      tracked({ status: 'completed', releaseDate: '2020-01-01', completedAt: null }),
+    );
+    expect(el.textContent).toContain('Completed on');
+    const input = [...el.querySelectorAll('input[type=date]')][0] as HTMLInputElement;
+    input.value = '2026-03-04';
+    input.dispatchEvent(new Event('change'));
+    expect(edits).toEqual([{ completedAt: new Date(2026, 2, 4, 12).getTime() }]);
+  });
+
+  it('keeps a pre-ordered game on the wishlist', async () => {
+    const { el } = await render(tracked({ status: 'wishlist', preordered: true, pricePaid: 80 }));
+    const checked = el.querySelector('[aria-label=Status] [aria-checked=true]');
+    expect(checked?.textContent?.trim()).toBe('Wishlist');
+    expect([...el.querySelectorAll('input')].map((i) => i.value)).toContain('80.00');
+  });
+
+  it('lists DLC on the main game and shows owned / completed switches on a DLC', async () => {
+    const main = await render(null, {
+      ...details,
+      dlcs: [{ id: 99, name: 'Test Game: Lazarus', first_release_date: 4_000_000_000 }],
+    });
+    expect(main.el.textContent).toContain('DLC and expansions');
+    expect(main.el.textContent).toContain('Test Game: Lazarus');
+    TestBed.resetTestingModule();
+
+    const dlc = await render(null, {
+      ...details,
+      id: 7,
+      game_type: 1,
+      parent_game: { id: 1, name: 'Test Game' },
+    });
+    expect(dlc.el.textContent).toContain('DLC for Test Game');
+    expect(dlc.el.textContent).not.toContain('Status');
+    (
+      dlc.el.querySelector('button[aria-labelledby=dlc-wishlist-label]') as HTMLButtonElement
+    ).click();
+    expect(dlc.edits).toEqual([{ add: 'wishlist', parent: { id: 1, name: 'Test Game' } }]);
   });
 });
 
