@@ -46,6 +46,14 @@ What Claude built while you were away, what it needs from you, and the choices i
 
 **New versions show up right away (2026-11-08).** iOS keeps the home-screen app in memory and resumes it, so after a deploy you'd keep seeing the old version until you fully closed it. Now, whenever the app comes back to the screen (and at most once a minute as you move between screens), it checks whether a newer version is live and, if so, reloads into it. Nothing is lost, since every change saves instantly. Versioned app files are also cached on the phone for good, which makes opening the app a bit faster.
 
+**More from using the app (2026-11-08), done**
+- **Physical copies.** A "Physical copy" switch under Purchase (owned games) and Pre-order (pre-ordered games, also in the pre-order sheet). Library covers show a disc badge in the top-right corner for physical games on Completed, Backlog, Shelved and Playing, and on pre-ordered Wishlist games.
+- **Game page.** Trailer, Screenshots and About are gone. New, from IGDB: Time to beat (Main story / Main + sides / Completionist, your completion level in bold, your hours next to it), Scores (critics and players, out of 100), the rest of the series (tappable like DLC), Details (genres, themes, modes, publisher, PEGI rating) and Links (official site, PlayStation Store, Steam, …).
+- **Bought from.** A visible button next to the field opens a list of stores (yours first, then common ones); you can still type any store. The pre-order sheet shows them as tappable buttons.
+- **Search.** Before you type: Most anticipated, Coming soon (next 60 days) and Recently released (last 60 days), on your default platform, as cover strips you scroll sideways.
+- **PS4** is now a platform (game page "My platform" and Settings' default platform). Xbox is labelled "Xbox" to fit five.
+- **"Just released"** on the Calendar keeps a game for 14 days after its exact release date; it drops off on day 15.
+
 ## 5. Design pass (Step 5)
 
 - Done with the `impeccable` skill. You picked the standard iOS look, with Letterboxd and Things 3 as the bar. Brief: [PRODUCT.md](PRODUCT.md); design system: DESIGN.md.

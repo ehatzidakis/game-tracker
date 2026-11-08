@@ -36,6 +36,7 @@ export type GameEdits = Partial<
     | 'boughtFrom'
     | 'orderedOn'
     | 'completedAt'
+    | 'physical'
   >
 >;
 
@@ -239,7 +240,13 @@ export class LibraryService {
 }
 
 /** Dates stamped when a game moves to a new status. Earlier stamps are kept. */
-const NOT_PREORDERED = { preordered: false, pricePaid: null, boughtFrom: null, orderedOn: null };
+const NOT_PREORDERED = {
+  preordered: false,
+  pricePaid: null,
+  boughtFrom: null,
+  orderedOn: null,
+  physical: false,
+};
 
 export function statusStamps(
   game: Pick<TrackedGame, 'status' | 'purchasedAt' | 'startedAt'>,

@@ -5,12 +5,22 @@ import { LucideCirclePlus, LucideCircleX, LucideLoaderCircle, LucideSearch } fro
 import { Cover } from '../../shared/cover';
 import { isDlc, statusLabel, type TrackedGame } from '../../../../api/_lib/models.js';
 import { debounced } from '../../core/debounced';
-import { coverUrl, IgdbService, type GameSearchResult } from '../../core/igdb';
+import { countdown } from '../../core/dates';
+import { coverUrl, IgdbService, type DiscoverKind, type GameSearchResult } from '../../core/igdb';
+import { platformIgdbId, platformLabel } from '../../../../api/_lib/platforms.js';
 import { LibraryService } from '../../core/library.service';
 import { ToastService } from '../../core/toast.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
 
 const MIN_LENGTH = 2;
+
+/** What Search shows before you type, on your default platform. */
+const DISCOVER: { kind: DiscoverKind; title: string }[] = [
+  { kind: 'anticipated', title: 'Most anticipated' },
+  { kind: 'soon', title: 'Coming soon' },
+  { kind: 'recent', title: 'Recently released' },
+];
+const SHORT_DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
 
 @Component({
   selector: 'app-search',
@@ -38,6 +48,32 @@ export class SearchPage {
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
   }));
+
+  /** Strips of games to browse before you type. They refresh at most once an hour. */
+  private readonly platform = computed(() => this.library.settings().defaultPlatform);
+  protected readonly platformName = computed(() => platformLabel(this.platform()));
+  private readonly discoverQueries = DISCOVER.map(({ kind }) =>
+    injectQuery(() => ({
+      queryKey: ['igdb-discover', kind, this.platform()],
+      queryFn: () => this.igdb.discover(kind, platformIgdbId(this.platform())),
+      staleTime: 60 * 60_000,
+    })),
+  );
+  protected readonly discover = computed(() =>
+    DISCOVER.map((section, i) => ({
+      ...section,
+      games: this.discoverQueries[i].data() ?? [],
+      loading: this.discoverQueries[i].isPending(),
+    })),
+  );
+
+  /** "Thu 19 Nov · in 11 days" style line under a cover. */
+  protected whenText(game: GameSearchResult): string {
+    if (!game.releaseDate) return game.year ? String(game.year) : 'TBA';
+    const ms = Date.parse(game.releaseDate);
+    const left = countdown({ releaseDate: game.releaseDate, releasePrecision: 'day' });
+    return left ?? SHORT_DATE.format(ms);
+  }
 
   /** IDs of games being added (fetching their details from IGDB). */
   protected readonly adding = signal<ReadonlySet<number>>(new Set());

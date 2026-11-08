@@ -125,7 +125,14 @@ function zoneOffset(timezone: string, instant: number): number {
     second: 'numeric',
   }).formatToParts(instant);
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+  const asUtc = Date.UTC(
+    get('year'),
+    get('month') - 1,
+    get('day'),
+    get('hour'),
+    get('minute'),
+    get('second'),
+  );
   return asUtc - Math.floor(instant / 1000) * 1000;
 }
 
@@ -148,5 +155,9 @@ export function alertDueAt(
   settings: { notifyDaysBefore: number; notifyTime: string; timezone: string },
 ): number | null {
   if (release.precision !== 'day' || !release.date) return null;
-  return zonedTime(addDays(release.date, -settings.notifyDaysBefore), settings.notifyTime, settings.timezone);
+  return zonedTime(
+    addDays(release.date, -settings.notifyDaysBefore),
+    settings.notifyTime,
+    settings.timezone,
+  );
 }

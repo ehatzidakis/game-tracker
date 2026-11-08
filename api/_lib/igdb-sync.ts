@@ -48,7 +48,11 @@ export function releaseDatesOf(game: IgdbSyncGame): ReleaseDateInfo[] {
   return (game.release_dates ?? []).map(toReleaseDateInfo);
 }
 
-export function syncedFields(game: IgdbSyncGame, myPlatform: PlatformKey, now = Date.now()): SyncedFields {
+export function syncedFields(
+  game: IgdbSyncGame,
+  myPlatform: PlatformKey,
+  now = Date.now(),
+): SyncedFields {
   const release = pickRelease(releaseDatesOf(game), platformIgdbId(myPlatform));
   return {
     name: game.name,

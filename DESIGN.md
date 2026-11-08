@@ -201,7 +201,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 
 ### Neutral
 - **True Black** (ground): the page, the frame behind the tab bar, the status-bar theme colour. Covers sit directly on it.
-- **Group Grey** (group): inset grouped lists, notes field, trailer and screenshot placeholders.
+- **Group Grey** (group): inset grouped lists, notes field, cover placeholders.
 - **Raised Grey** (raised): sheets, toasts, cover placeholders, inline date and time fields on group surfaces.
 - **Pressed Grey** (pressed): a tapped row, and inline fields that sit on an already-raised sheet.
 - **Thumb Grey** (segment-thumb): the selected segment. Grey, not blue, on purpose.
@@ -268,7 +268,7 @@ Flat by default, with depth carried by tone: black page, group grey lists, raise
 
 ## Shapes
 
-Gently rounded, continuous iOS geometry. Corners grow with the size of the object: list thumbnails 5px, covers 6px, segments 7px, inline fields 8px, segmented tracks 9px, grouped lists and media 10px, primary buttons 12px, action sheets 14px, switches and toasts fully round. Covers are always 3:4 and carry a 0.5px inner white hairline (15% white) so dark box art doesn't melt into black. Trailers and screenshots are 16:9 at 10px. Lines are always hairlines (0.5px).
+Gently rounded, continuous iOS geometry. Corners grow with the size of the object: list thumbnails 5px, covers 6px, segments 7px, inline fields 8px, segmented tracks 9px, grouped lists and media 10px, primary buttons 12px, action sheets 14px, switches and toasts fully round. Covers are always 3:4 and carry a 0.5px inner white hairline (15% white) so dark box art doesn't melt into black. The game screen's hero is the only 16:9 image. Game covers also badge a physical copy with a small round disc icon, top right. Lines are always hairlines (0.5px).
 
 ## Components
 
@@ -329,7 +329,7 @@ A rounded pill of raised grey with blur and a floating shadow, just above the ta
 ### Don't:
 - **Don't** colour the selected segment blue; the thumb is Thumb Grey.
 - **Don't** add glow, neon, RGB effects, or anything that echoes the PS5 interface or Sony's branding.
-- **Don't** add imagery other than game art (covers, screenshots, trailers).
+- **Don't** add imagery other than game art (covers and the game screen's screenshot backdrop).
 - **Don't** use Decoration Grey for text.
 - **Don't** float the tab bar over content with a fixed position or make it translucent; it is an opaque row.
 - **Don't** add shadows to static surfaces; step up the grey ladder instead.

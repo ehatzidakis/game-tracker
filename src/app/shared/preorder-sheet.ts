@@ -12,6 +12,7 @@ export interface PreorderDetails {
   pricePaid: number | null;
   boughtFrom: string | null;
   orderedOn: string | null;
+  physical: boolean;
 }
 
 /** A pre-order of an upcoming game, or buying a game that's out. */
@@ -103,15 +104,25 @@ export function parsePrice(text: string): number | null | undefined {
                 type="text"
                 placeholder="Store"
                 autocomplete="off"
-                list="preorder-stores"
                 class="min-w-0 flex-1 bg-transparent text-right text-[17px] outline-none"
+                (input)="storeText.set(store.value)"
               />
-              <datalist id="preorder-stores">
-                @for (s of req.stores; track s) {
-                  <option [value]="s"></option>
-                }
-              </datalist>
             </label>
+            <!-- Your stores and common ones, one tap to fill the field (or type any store). -->
+            <div class="row flex-wrap gap-2! py-2.5!">
+              @for (s of req.stores.slice(0, 6); track s) {
+                <button
+                  type="button"
+                  class="rounded-full px-3 py-1 text-[15px] active:opacity-60"
+                  [class]="
+                    storeText() === s ? 'bg-accent-fill text-white' : 'bg-pressed text-label'
+                  "
+                  (click)="store.value = s; storeText.set(s)"
+                >
+                  {{ s }}
+                </button>
+              }
+            </div>
             <label class="row">
               <span class="flex-1">{{ req.kind === 'preorder' ? 'Ordered on' : 'Bought on' }}</span>
               <input
@@ -122,6 +133,19 @@ export function parsePrice(text: string): number | null | undefined {
                 [max]="req.today"
               />
             </label>
+            <div class="row">
+              <p id="sheet-physical-label" class="flex-1">Physical copy</p>
+              <button
+                type="button"
+                role="switch"
+                class="switch"
+                aria-labelledby="sheet-physical-label"
+                [attr.aria-checked]="physical()"
+                (click)="physical.set(!physical())"
+              >
+                <span></span>
+              </button>
+            </div>
           </div>
           @if (error()) {
             <p class="px-4 pt-2 text-center text-[13px] text-[#ff6961]" role="alert">
@@ -161,6 +185,9 @@ export function parsePrice(text: string): number | null | undefined {
 export class PreorderSheetOutlet {
   protected readonly sheet = inject(PreorderSheet);
   protected readonly error = signal('');
+  /** What's in the store field, so the matching store button shows as picked. */
+  protected readonly storeText = signal('');
+  protected readonly physical = signal(false);
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
   constructor() {
@@ -168,6 +195,8 @@ export class PreorderSheetOutlet {
       const el = this.dialog().nativeElement;
       if (this.sheet.request() && !el.open) {
         this.error.set('');
+        this.storeText.set('');
+        this.physical.set(false);
         el.showModal();
       }
       if (!this.sheet.request() && el.open) el.close();
@@ -185,6 +214,7 @@ export class PreorderSheetOutlet {
       pricePaid,
       boughtFrom: store.trim().slice(0, 60) || null,
       orderedOn: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+      physical: this.physical(),
     });
   }
 

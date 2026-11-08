@@ -1,4 +1,12 @@
-import { buildNameQuery, buildSearchQuery, rankSearchResults, toSearchResult } from './igdb';
+import {
+  buildDiscoverQuery,
+  linksOf,
+  seriesOf,
+  buildNameQuery,
+  buildSearchQuery,
+  rankSearchResults,
+  toSearchResult,
+} from './igdb';
 
 describe('buildSearchQuery', () => {
   it('escapes quotes so a search term cannot break out of the query', () => {
@@ -24,7 +32,7 @@ describe('toSearchResult', () => {
         { id: 167, abbreviation: 'PS5', name: 'PlayStation 5' },
       ],
     });
-    expect(result.platforms).toEqual(['PS5', 'PC']);
+    expect(result.platforms).toEqual(['PS5', 'PS4', 'PC']);
     expect(result.year).toBe(2025);
     expect(result.coverId).toBeNull();
   });
@@ -160,5 +168,46 @@ describe('rankSearchResults with DLC', () => {
     expect(ranked.map((g) => g.id)).toEqual([1, 2, 3]);
     expect(toSearchResult(ranked[1]).dlcOf).toEqual({ id: 1, name: 'Cronos: The New Dawn' });
     expect(toSearchResult(ranked[0]).dlcOf).toBeNull();
+  });
+});
+
+describe('game page extras', () => {
+  it('lists the rest of the series without DLC or the game itself, newest first', () => {
+    const series = seriesOf({
+      id: 1,
+      name: 'God of War',
+      collections: [
+        {
+          name: 'God of War',
+          games: [
+            { id: 1, name: 'God of War', first_release_date: 100 },
+            { id: 2, name: 'God of War II', first_release_date: 50 },
+            { id: 3, name: 'Valhalla', game_type: 1, first_release_date: 300 },
+            { id: 4, name: 'Ragnarök', first_release_date: 200 },
+          ],
+        },
+      ],
+    });
+    expect(series?.games.map((g) => g.name)).toEqual(['Ragnarök', 'God of War II']);
+  });
+
+  it('keeps store links in a fixed order with friendly names', () => {
+    const links = linksOf({
+      id: 1,
+      name: 'X',
+      websites: [
+        { url: 'https://store.steampowered.com/app/1', type: { type: 'Steam' } },
+        { url: 'https://twitch.tv/x', type: { type: 'Twitch' } },
+        { url: 'https://store.playstation.com/x', type: { type: 'Playstation' } },
+      ],
+    });
+    expect(links.map((l) => l.label)).toEqual(['PlayStation Store', 'Steam']);
+  });
+
+  it('builds the Search lists for one platform', () => {
+    const now = Date.UTC(2026, 10, 8);
+    expect(buildDiscoverQuery('anticipated', 167, now)).toContain('sort hypes desc');
+    expect(buildDiscoverQuery('soon', 167, now)).toContain('sort first_release_date asc');
+    expect(buildDiscoverQuery('recent', 48, now)).toContain('platforms = (48)');
   });
 });

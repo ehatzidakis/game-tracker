@@ -35,7 +35,48 @@
 
 <div class="mt-2" aria-live="polite">
   @if (tooShort()) {
-    <p class="group-footer">Type at least two letters. Newest games come first.</p>
+    <!-- Before you type: strips of games to browse on your default platform. -->
+    @for (section of discover(); track section.kind) {
+      <section [attr.aria-label]="section.title">
+        <h2 class="mt-6 mb-2 flex items-baseline gap-2 text-[20px] leading-6 font-semibold">
+          {{ section.title }}
+          <span class="text-[13px] font-normal text-muted">{{ platformName() }}</span>
+        </h2>
+        <!-- Scrolls sideways inside its own strip; the page itself never does. -->
+        <ul class="shots -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
+          @if (section.loading) {
+            @for (i of [1, 2, 3, 4]; track i) {
+              <li class="w-[104px] shrink-0">
+                <div class="aspect-[3/4] animate-pulse rounded-[6px] bg-group"></div>
+              </li>
+            }
+          }
+          @for (game of section.games; track game.id) {
+            @let tracked = library.byId().get(game.id);
+            <li class="w-[104px] shrink-0 snap-start">
+              <a [routerLink]="['/game', game.id]" class="block active:opacity-70">
+                <app-cover [coverId]="game.coverId" [name]="game.name">
+                  @if (tracked) {
+                    <span
+                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    >
+                      {{ trackedLabel(tracked) }}
+                    </span>
+                  }
+                </app-cover>
+                <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
+                  {{ game.name }}
+                </p>
+                <p class="num mt-0.5 text-[12px] leading-4 tracking-normal text-muted">
+                  {{ whenText(game) }}
+                </p>
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+    <p class="group-footer mt-4">Search: newest games come first.</p>
   } @else if (results.isError()) {
     <p class="group-footer text-danger!" role="alert">
       Search failed. Check your connection and try again.

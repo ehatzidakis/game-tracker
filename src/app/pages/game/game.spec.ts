@@ -13,10 +13,8 @@ import { GamePage } from './game';
 const details: GameDetails = {
   id: 7,
   name: 'Test Game',
-  summary: 'A game.',
   platforms: [{ id: 167, name: 'PlayStation 5', abbreviation: 'PS5' }],
   release_dates: [{ platform: 167, date: Date.parse('2099-03-01') / 1000, date_format: 0 }],
-  videos: [{ video_id: 'abcDEF_123-x' }],
   screenshots: [{ image_id: 'sc1' }],
 };
 
@@ -57,7 +55,18 @@ async function render(game: TrackedGame | null, igdb: GameDetails = details) {
     providers: [
       provideRouter([]),
       provideTanStackQuery(new QueryClient()),
-      { provide: IgdbService, useValue: { game: async () => igdb } },
+      {
+        provide: IgdbService,
+        useValue: {
+          game: async () => igdb,
+          timeToBeat: async () => ({
+            hastily: 36000,
+            normally: 72000,
+            completely: 144000,
+            count: 12,
+          }),
+        },
+      },
       { provide: PushService, useValue: { enabledHere: () => false } },
       {
         provide: LibraryService,
@@ -96,14 +105,15 @@ describe('GamePage', () => {
     const { el } = await render(null);
     expect(el.textContent).toContain('Add to Library');
     expect(el.textContent).toContain('1 Mar 2099');
-    expect(el.textContent).toContain('Trailer');
+    expect(el.textContent).not.toContain('Trailer');
+    expect(el.textContent).toContain('Time to beat');
   });
 
   it('shows the release alert for an upcoming wishlist game', async () => {
     const { el, edits } = await render(tracked({}));
     expect(el.textContent).toContain('Release alert');
     expect(el.textContent).toContain('1 day before');
-    expect(el.textContent).not.toContain('Completion');
+    expect(el.querySelector('[aria-label=Completion]')).toBeNull();
     (el.querySelector('button[aria-labelledby=alert-label]') as HTMLButtonElement).click();
     expect(edits).toEqual([{ notify: true }]);
   });
@@ -153,9 +163,19 @@ describe('GamePage', () => {
     expect(preorder.request()?.name).toBe('Test Game');
     expect(preorder.request()?.kind).toBe('preorder');
     expect(preorder.request()?.stores).toContain('PlayStation Store');
-    preorder.finish({ pricePaid: 79.99, boughtFrom: 'Amazon', orderedOn: '2026-11-07' });
+    preorder.finish({
+      pricePaid: 79.99,
+      boughtFrom: 'Amazon',
+      orderedOn: '2026-11-07',
+      physical: true,
+    });
     await Promise.resolve();
-    expect(edits[1]).toEqual({ pricePaid: 79.99, boughtFrom: 'Amazon', orderedOn: '2026-11-07' });
+    expect(edits[1]).toEqual({
+      pricePaid: 79.99,
+      boughtFrom: 'Amazon',
+      orderedOn: '2026-11-07',
+      physical: true,
+    });
   });
 
   it('shows the pre-order details for a pre-ordered game', async () => {
@@ -227,6 +247,42 @@ describe('GamePage', () => {
       dlc.el.querySelector('button[aria-labelledby=dlc-wishlist-label]') as HTMLButtonElement
     ).click();
     expect(dlc.edits).toEqual([{ add: 'wishlist', parent: { id: 1, name: 'Test Game' } }]);
+  });
+
+  it('shows time to beat with your completion level, scores, details and links', async () => {
+    const { el } = await render(
+      tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main_sides' }),
+      {
+        ...details,
+        aggregated_rating: 96.9,
+        aggregated_rating_count: 10,
+        rating: 93.4,
+        rating_count: 2333,
+        themes: [{ name: 'Fantasy' }],
+        age_ratings: [{ organization: { name: 'PEGI' }, rating_category: { rating: '16' } }],
+        websites: [{ url: 'https://store.playstation.com/x', type: { type: 'Playstation' } }],
+      },
+    );
+    const text = el.textContent!.replace(/\s+/g, ' ');
+    const timeToBeat = [...el.querySelectorAll('[aria-label="Time to beat"] .row')].map((r) =>
+      r.textContent!.replace(/\s+/g, ' ').trim(),
+    );
+    expect(timeToBeat).toEqual(['Main story10 h', 'Main + sides20 h', 'Completionist40 h']);
+    // Your completion level (Main + sides) is in bold.
+    expect(
+      el.querySelector('[aria-label="Time to beat"] .font-semibold')?.textContent?.trim(),
+    ).toBe('Main + sides');
+    expect(text).toContain('Critics');
+    expect(text).toContain('97/100');
+    expect(text).toContain('2,333 ratings');
+    expect(text).toContain('PEGI 16');
+    expect(text).toContain('PlayStation Store');
+  });
+
+  it('marks a game you own as a physical copy', async () => {
+    const { el, edits } = await render(tracked({ status: 'backlog', releaseDate: '2020-01-01' }));
+    (el.querySelector('button[aria-labelledby=physical-label]') as HTMLButtonElement).click();
+    expect(edits).toEqual([{ physical: true }]);
   });
 });
 

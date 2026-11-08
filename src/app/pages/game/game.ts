@@ -1,12 +1,18 @@
 import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
-import { DomSanitizer } from '@angular/platform-browser';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
-import { LucideChevronRight, LucidePlay, LucidePlus } from '@lucide/angular';
+import {
+  LucideChevronRight,
+  LucideChevronsUpDown,
+  LucideExternalLink,
+  LucidePlus,
+} from '@lucide/angular';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
   COMPLETIONS,
+  isDlc,
+  statusLabel,
   STATUSES,
   type Completion,
   type Release,
@@ -20,7 +26,15 @@ import {
 } from '../../../../api/_lib/platforms.js';
 import { pickRelease } from '../../../../api/_lib/release.js';
 import { countdown, dateFieldValue, fromDateField, isReleased, today } from '../../core/dates';
-import { coverUrl, DLC_GAME_TYPES, dlcsOf, IgdbService, type DlcSummary } from '../../core/igdb';
+import {
+  coverUrl,
+  DLC_GAME_TYPES,
+  dlcsOf,
+  IgdbService,
+  linksOf,
+  seriesOf,
+  type GameSummary,
+} from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
@@ -29,8 +43,9 @@ import { Cover } from '../../shared/cover';
 import { ChoiceSheet } from '../../shared/choice-sheet';
 import { parsePrice, PreorderSheet } from '../../shared/preorder-sheet';
 
-/** How many DLC a game's page lists before "Show all". */
+/** How many DLC (or series games) a game's page lists before "Show all". */
 const SHOWN_DLCS = 6;
+const COUNT = new Intl.NumberFormat('en-GB');
 const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -39,9 +54,24 @@ const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
 
 const COMMON_STORES = ['PlayStation Store', 'Amazon', 'Xbox Store', 'Steam', 'Nintendo eShop'];
 
+/** IGDB's time to beat, in your completion levels. */
+const TIME_TO_BEAT = [
+  { field: 'hastily', label: 'Main story', completion: 'main' },
+  { field: 'normally', label: 'Main + sides', completion: 'main_sides' },
+  { field: 'completely', label: 'Completionist', completion: 'platinum' },
+] as const;
+
 @Component({
   selector: 'app-game',
-  imports: [Cover, NgTemplateOutlet, RouterLink, LucideChevronRight, LucidePlay, LucidePlus],
+  imports: [
+    Cover,
+    NgTemplateOutlet,
+    RouterLink,
+    LucideChevronRight,
+    LucideChevronsUpDown,
+    LucideExternalLink,
+    LucidePlus,
+  ],
   templateUrl: './game.html',
 })
 export class GamePage {
@@ -62,6 +92,13 @@ export class GamePage {
     queryFn: () => this.igdb.game(this.gameId()),
     enabled: Number.isInteger(this.gameId()),
     staleTime: 60 * 60_000,
+  }));
+
+  private readonly ttb = injectQuery(() => ({
+    queryKey: ['igdb-time-to-beat', this.gameId()],
+    queryFn: () => this.igdb.timeToBeat(this.gameId()),
+    enabled: Number.isInteger(this.gameId()),
+    staleTime: 24 * 60 * 60_000,
   }));
 
   /** Your copy, if the game is in your library. Works offline. */
@@ -115,21 +152,6 @@ export class GamePage {
       .map((p) => p.abbreviation ?? p.name),
   );
 
-  protected readonly video = computed(() => {
-    const v = this.details.data()?.videos?.[0];
-    // YouTube IDs only, so the embed URL below can't point anywhere else.
-    return v && /^[\w-]{6,20}$/.test(v.video_id) ? v : null;
-  });
-  private readonly sanitizer = inject(DomSanitizer);
-  protected readonly videoEmbedUrl = computed(() => {
-    const v = this.video();
-    return v
-      ? this.sanitizer.bypassSecurityTrustResourceUrl(
-          `https://www.youtube-nocookie.com/embed/${v.video_id}?autoplay=1&playsinline=1`,
-        )
-      : null;
-  });
-  protected readonly screenshots = computed(() => this.details.data()?.screenshots ?? []);
   protected readonly genres = computed(
     () => this.details.data()?.genres?.map((g) => g.name) ?? this.tracked()?.genres ?? [],
   );
@@ -178,8 +200,78 @@ export class GamePage {
     this.allDlcs() ? this.dlcs() : this.dlcs().slice(0, SHOWN_DLCS),
   );
 
-  protected readonly playingVideo = signal(false);
-  protected readonly summaryOpen = signal(false);
+  /** "Main story 46 h", with your completion level in bold. Null when IGDB has no numbers. */
+  protected readonly timeToBeat = computed(() => {
+    const t = this.ttb.data();
+    if (!t) return null;
+    const yours = this.tracked()?.completion;
+    const rows = TIME_TO_BEAT.flatMap((row) => {
+      const seconds = t[row.field];
+      return seconds
+        ? [{ label: row.label, hours: Math.round(seconds / 3600), yours: yours === row.completion }]
+        : [];
+    });
+    return rows.length ? rows : null;
+  });
+  protected readonly ttbPlayers = computed(() => COUNT.format(this.ttb.data()?.count ?? 0));
+
+  /** Critics' and players' scores out of 100. */
+  protected readonly scores = computed(() => {
+    const d = this.details.data();
+    if (!d) return [];
+    const scores = [];
+    if (d.aggregated_rating && d.aggregated_rating_count) {
+      const n = d.aggregated_rating_count;
+      scores.push({
+        label: 'Critics',
+        value: Math.round(d.aggregated_rating),
+        basis: `${COUNT.format(n)} ${n === 1 ? 'review' : 'reviews'}`,
+      });
+    }
+    if (d.rating && d.rating_count) {
+      const n = d.rating_count;
+      scores.push({
+        label: 'Players',
+        value: Math.round(d.rating),
+        basis: `${COUNT.format(n)} ${n === 1 ? 'rating' : 'ratings'} on IGDB`,
+      });
+    }
+    return scores;
+  });
+
+  /** Other games in the same series. */
+  protected readonly series = computed(() => {
+    const d = this.details.data();
+    return d ? seriesOf(d) : null;
+  });
+  protected readonly allSeries = signal(false);
+  protected readonly shownSeries = computed(() => {
+    const games = this.series()?.games ?? [];
+    return this.allSeries() ? games : games.slice(0, SHOWN_DLCS);
+  });
+
+  /** Genres, themes, modes, publisher and age rating. */
+  protected readonly facts = computed(() => {
+    const d = this.details.data();
+    const list = (items?: { name: string }[]) => (items ?? []).map((i) => i.name).join(', ');
+    const pegi = d?.age_ratings?.find((a) => a.organization?.name === 'PEGI')?.rating_category;
+    const publishers = (d?.involved_companies ?? [])
+      .filter((c) => c.publisher && c.company)
+      .map((c) => c.company!.name);
+    return [
+      { label: 'Genres', value: this.genres().join(', ') },
+      { label: 'Themes', value: list(d?.themes) },
+      { label: 'Modes', value: list(d?.game_modes) },
+      { label: publishers.length > 1 ? 'Publishers' : 'Publisher', value: publishers.join(', ') },
+      { label: 'Age rating', value: pegi ? `PEGI ${pegi.rating}` : '' },
+    ].filter((f) => f.value);
+  });
+
+  /** Official website and stores. */
+  protected readonly links = computed(() => {
+    const d = this.details.data();
+    return d ? linksOf(d) : [];
+  });
 
   protected readonly statuses = STATUSES;
   protected readonly completions = COMPLETIONS;
@@ -197,9 +289,8 @@ export class GamePage {
     // Going from a game to one of its DLC reuses this screen: start it fresh.
     effect(() => {
       this.gameId();
-      this.playingVideo.set(false);
-      this.summaryOpen.set(false);
       this.allDlcs.set(false);
+      this.allSeries.set(false);
     });
 
     // Keep your copy of the IGDB data current (e.g. a release date that moved).
@@ -287,6 +378,24 @@ export class GamePage {
     if (price !== (t.pricePaid ?? null)) this.library.edit(t, { pricePaid: price });
   }
 
+  protected togglePhysical(): void {
+    const t = this.tracked();
+    if (t) this.library.edit(t, { physical: !t.physical });
+  }
+
+  /** Picks "Bought from" from your stores and common ones. */
+  protected async pickStore(): Promise<void> {
+    const t = this.tracked();
+    if (!t) return;
+    const store = await this.sheet.choose(
+      ['Where did you buy ', t.name, '?'],
+      this.stores().map((key) => ({ key, label: key })),
+      t.boughtFrom ?? null,
+    );
+    const now = this.tracked();
+    if (store && now && store !== now.boughtFrom) this.library.edit(now, { boughtFrom: store });
+  }
+
   protected setStore(event: Event): void {
     const t = this.tracked();
     const store = (event.target as HTMLInputElement).value.trim().slice(0, 60) || null;
@@ -306,9 +415,15 @@ export class GamePage {
     if (t && completedAt !== t.completedAt) this.library.edit(t, { completedAt });
   }
 
-  /** "Completed 3 Mar 2027", "Owned", "On wishlist", or its release date if you don't track it. */
-  protected dlcState(dlc: DlcSummary): string {
+  /**
+   * For DLC and series rows: "Completed 3 Mar 2027", "Owned", "On wishlist", your status for a
+   * game, or its release date if you don't track it.
+   */
+  protected rowState(dlc: GameSummary): string {
     const t = this.library.byId().get(dlc.id);
+    if (t && !isDlc(t)) {
+      return t.preordered ? `${statusLabel(t.status)} · Pre-ordered` : statusLabel(t.status);
+    }
     if (t?.status === 'completed') {
       return t.completedAt ? `Completed ${SHORT_DATE.format(t.completedAt)}` : 'Completed';
     }

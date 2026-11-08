@@ -5,7 +5,14 @@ import { json, verifyUser } from './_lib/auth.js';
 import { igdbRequest } from './_lib/igdb-client.js';
 
 const RequestBody = z.object({
-  endpoint: z.enum(['games', 'platforms', 'release_dates', 'screenshots', 'game_videos']),
+  endpoint: z.enum([
+    'games',
+    'platforms',
+    'release_dates',
+    'screenshots',
+    'game_videos',
+    'game_time_to_beats',
+  ]),
   query: z.string().min(1).max(4000),
 });
 

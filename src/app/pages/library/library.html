@@ -105,6 +105,14 @@
       <li>
         <a [routerLink]="['/game', game.igdbId]" class="block active:opacity-70">
           <app-cover [coverId]="game.coverId" [name]="game.name">
+            @if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
+              <span
+                class="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                aria-label="Physical copy"
+              >
+                <svg lucideDisc3 [size]="17" [strokeWidth]="2"></svg>
+              </span>
+            }
             @if (game.status === 'completed' && completionLabel(game.completion); as label) {
               <span
                 class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"

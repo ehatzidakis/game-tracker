@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import {
   LucideChevronDown,
   LucideChevronRight,
+  LucideDisc3,
   LucideLibraryBig,
   LucideStar,
 } from '@lucide/angular';
@@ -61,6 +62,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     Cover,
     LucideChevronDown,
     LucideChevronRight,
+    LucideDisc3,
     LucideLibraryBig,
     LucideStar,
   ],

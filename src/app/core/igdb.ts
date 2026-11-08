@@ -11,6 +11,8 @@ export interface GameSearchResult {
   name: string;
   coverId: string | null;
   year: number | null;
+  /** First release, "YYYY-MM-DD", or null when there's no date yet. */
+  releaseDate: string | null;
   /** True if there's no release date yet or it's in the future. */
   upcoming: boolean;
   /** Our platforms first (PS5, Xbox, PC, Switch 2), then up to two others. */
@@ -152,6 +154,9 @@ export function toSearchResult(game: IgdbGame): GameSearchResult {
       ? new Date(game.first_release_date * 1000).getUTCFullYear()
       : null,
     platforms: [...ours, ...others],
+    releaseDate: game.first_release_date
+      ? new Date(game.first_release_date * 1000).toISOString().slice(0, 10)
+      : null,
     upcoming: !game.first_release_date || game.first_release_date * 1000 > Date.now(),
     dlcOf:
       DLC_GAME_TYPES.includes(game.game_type ?? 0) && game.parent_game
@@ -169,43 +174,142 @@ export function coverUrl(imageId: string, size: ImageSize = 'cover_big'): string
 
 /** Everything the game screen shows, plus the fields copied into the library. */
 export interface GameDetails extends IgdbSyncGame {
-  summary?: string;
   first_release_date?: number;
-  total_rating?: number;
   artworks?: { image_id: string }[];
   screenshots?: { image_id: string }[];
-  videos?: { video_id: string; name?: string }[];
   platforms?: { id: number; abbreviation?: string; name: string }[];
   game_type?: number;
   parent_game?: { id: number; name: string };
-  dlcs?: DlcSummary[];
-  expansions?: DlcSummary[];
+  dlcs?: GameSummary[];
+  expansions?: GameSummary[];
+  /** Critics' score out of 100, and how many reviews. */
+  aggregated_rating?: number;
+  aggregated_rating_count?: number;
+  /** Players' score out of 100 on IGDB, and how many ratings. */
+  rating?: number;
+  rating_count?: number;
+  /** The series ("God of War") with its games. */
+  collections?: { name: string; games?: (GameSummary & { game_type?: number })[] }[];
+  involved_companies?: { company?: { name: string }; developer?: boolean; publisher?: boolean }[];
+  age_ratings?: { organization?: { name: string }; rating_category?: { rating: string } }[];
+  game_modes?: { name: string }[];
+  themes?: { name: string }[];
+  websites?: { url: string; type?: { type: string } }[];
 }
 
-/** A DLC or expansion as listed on its main game's page. */
-export interface DlcSummary {
+/** A game as listed on another game's page (its DLC, its series) or in Search's lists. */
+export interface GameSummary {
   id: number;
   name: string;
   cover?: { image_id: string };
   first_release_date?: number;
 }
+/** A DLC or expansion as listed on its main game's page. */
+export type DlcSummary = GameSummary;
+
+/** Time to finish in seconds, from IGDB players: main story, main + sides, everything. */
+export interface TimeToBeat {
+  hastily?: number;
+  normally?: number;
+  completely?: number;
+  /** How many players it's based on. */
+  count?: number;
+}
+
+/** Undated (upcoming) first, then newest first. */
+function newestFirst(a: GameSummary, b: GameSummary): number {
+  return (
+    (b.first_release_date ?? Number.MAX_SAFE_INTEGER) -
+    (a.first_release_date ?? Number.MAX_SAFE_INTEGER)
+  );
+}
 
 /** The main game's DLC and expansions, expansions first, each group newest first. */
-export function dlcsOf(details: Pick<GameDetails, 'dlcs' | 'expansions'>): DlcSummary[] {
-  const newest = (a: DlcSummary, b: DlcSummary) =>
-    (b.first_release_date ?? Number.MAX_SAFE_INTEGER) -
-    (a.first_release_date ?? Number.MAX_SAFE_INTEGER);
-  return [...(details.expansions ?? []).sort(newest), ...(details.dlcs ?? []).sort(newest)];
+export function dlcsOf(details: Pick<GameDetails, 'dlcs' | 'expansions'>): GameSummary[] {
+  return [
+    ...(details.expansions ?? []).sort(newestFirst),
+    ...(details.dlcs ?? []).sort(newestFirst),
+  ];
+}
+
+/** Other games in the same series: main games, remakes and remasters, not DLC. Newest first. */
+export function seriesOf(details: GameDetails): { name: string; games: GameSummary[] } | null {
+  const collection = details.collections?.find((c) => (c.games?.length ?? 0) > 1);
+  if (!collection) return null;
+  const seen = new Set<number>([details.id]);
+  const games = (collection.games ?? [])
+    .filter(
+      (g) => !DLC_GAME_TYPES.includes(g.game_type ?? 0) && !seen.has(g.id) && !!seen.add(g.id),
+    )
+    .sort(newestFirst);
+  return games.length ? { name: collection.name, games } : null;
+}
+
+/** Store and official links worth showing, in this order, with friendlier names. */
+const LINKS: [type: string, label: string][] = [
+  ['Official Website', 'Official website'],
+  ['Playstation', 'PlayStation Store'],
+  ['Xbox', 'Xbox Store'],
+  ['Nintendo', 'Nintendo eShop'],
+  ['Steam', 'Steam'],
+  ['Epic', 'Epic Games Store'],
+  ['GOG', 'GOG'],
+  ['Wikipedia', 'Wikipedia'],
+];
+
+export function linksOf(details: GameDetails): { label: string; url: string }[] {
+  return LINKS.flatMap(([type, label]) => {
+    const site = details.websites?.find(
+      (w) => w.type?.type === type && w.url.startsWith('https://'),
+    );
+    return site ? [{ label, url: site.url }] : [];
+  });
 }
 
 export function buildDetailsQuery(id: number): string {
   return [
-    `fields ${SYNC_FIELDS}, platforms.abbreviation, platforms.name, summary, first_release_date,`,
-    'total_rating, artworks.image_id, screenshots.image_id, videos.video_id, videos.name,',
+    `fields ${SYNC_FIELDS}, platforms.abbreviation, platforms.name, first_release_date,`,
+    'artworks.image_id, screenshots.image_id,',
     'game_type, parent_game.name, dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,',
-    'expansions.name, expansions.cover.image_id, expansions.first_release_date;',
+    'expansions.name, expansions.cover.image_id, expansions.first_release_date,',
+    'aggregated_rating, aggregated_rating_count, rating, rating_count,',
+    'collections.name, collections.games.name, collections.games.game_type,',
+    'collections.games.cover.image_id, collections.games.first_release_date,',
+    'involved_companies.publisher, age_ratings.organization.name,',
+    'age_ratings.rating_category.rating, game_modes.name, themes.name,',
+    'websites.url, websites.type.type;',
     `where id = ${Math.trunc(id)};`,
     'limit 1;',
+  ].join(' ');
+}
+
+export type DiscoverKind = 'anticipated' | 'soon' | 'recent';
+
+const DAY = 86_400;
+
+/** Search's lists before you type, for one platform. Only games people follow on IGDB. */
+export function buildDiscoverQuery(kind: DiscoverKind, platformId: number, now: number): string {
+  const t = Math.floor(now / 1000);
+  const where = [
+    `platforms = (${Math.trunc(platformId)})`,
+    'version_parent = null',
+    'game_type = (0,4,8,9,10,11)',
+    'hypes > 0',
+  ];
+  let sort = 'hypes desc';
+  if (kind === 'anticipated') where.push(`first_release_date > ${t}`);
+  if (kind === 'soon') {
+    // A few more followers, so small indie releases don't fill the list.
+    where.push(`first_release_date > ${t}`, `first_release_date < ${t + 60 * DAY}`, 'hypes > 2');
+    sort = 'first_release_date asc';
+  }
+  if (kind === 'recent')
+    where.push(`first_release_date < ${t}`, `first_release_date > ${t - 60 * DAY}`);
+  return [
+    'fields name, cover.image_id, first_release_date, platforms.abbreviation, platforms.name;',
+    `where ${where.join(' & ')};`,
+    `sort ${sort};`,
+    'limit 15;',
   ].join(' ');
 }
 
@@ -227,6 +331,22 @@ export class IgdbService {
   async game(id: number): Promise<GameDetails | null> {
     const games = await this.query<GameDetails[]>('games', buildDetailsQuery(id));
     return games[0] ?? null;
+  }
+
+  async timeToBeat(id: number): Promise<TimeToBeat | null> {
+    const rows = await this.query<TimeToBeat[]>(
+      'game_time_to_beats',
+      `fields hastily, normally, completely, count; where game_id = ${Math.trunc(id)}; limit 1;`,
+    );
+    return rows[0] ?? null;
+  }
+
+  async discover(kind: DiscoverKind, platformId: number): Promise<GameSearchResult[]> {
+    const games = await this.query<IgdbGame[]>(
+      'games',
+      buildDiscoverQuery(kind, platformId, Date.now()),
+    );
+    return games.map(toSearchResult);
   }
 
   private async query<T>(endpoint: string, query: string): Promise<T> {

@@ -32,14 +32,21 @@ function fold(line: string): string {
 const compact = (date: string) => date.replace(/-/g, '');
 
 function stamp(ms: number): string {
-  return new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  return new Date(ms)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '');
 }
 
 /**
  * One all-day event per game with an exact release day. Vague dates ("Q3 2027") are left out
  * until IGDB has a real day; the daily refresh then adds them.
  */
-export function buildCalendar(games: readonly TrackedGame[], appUrl: string, now = Date.now()): string {
+export function buildCalendar(
+  games: readonly TrackedGame[],
+  appUrl: string,
+  now = Date.now(),
+): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',

@@ -1,7 +1,8 @@
 /** IGDB platform IDs for the platforms the app cares about, in display order. PS5 is the default. */
 export const PLATFORMS = [
   { key: 'ps5', igdbId: 167, label: 'PS5' },
-  { key: 'xbox', igdbId: 169, label: 'Xbox Series' },
+  { key: 'ps4', igdbId: 48, label: 'PS4' },
+  { key: 'xbox', igdbId: 169, label: 'Xbox' },
   { key: 'pc', igdbId: 6, label: 'PC' },
   { key: 'switch2', igdbId: 508, label: 'Switch 2' },
 ] as const;

@@ -80,6 +80,8 @@ export interface TrackedGame {
   boughtFrom?: string | null;
   /** "YYYY-MM-DD": when you pre-ordered or bought it. */
   orderedOn?: string | null;
+  /** You own (or pre-ordered) it on disc rather than as a download. */
+  physical?: boolean;
 
   // DLC and expansions are stored like games, plus the main game's IGDB ID and name. DLC on your
   // wishlist shows in Wishlist and the Calendar; owned DLC shows only on the main game's page.

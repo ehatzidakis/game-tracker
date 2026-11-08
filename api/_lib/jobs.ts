@@ -27,13 +27,19 @@ function setUpVapid(): void {
 }
 
 /** Sends to every device the user turned alerts on for. Drops devices that unsubscribed. */
-export async function sendToUser(userRef: DocumentReference, payload: PushPayload): Promise<number> {
+export async function sendToUser(
+  userRef: DocumentReference,
+  payload: PushPayload,
+): Promise<number> {
   setUpVapid();
   const subs = await userRef.collection('pushSubscriptions').get();
   let sent = 0;
   await Promise.all(
     subs.docs.map(async (doc) => {
-      const { endpoint, keys } = doc.data() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      const { endpoint, keys } = doc.data() as {
+        endpoint: string;
+        keys: { p256dh: string; auth: string };
+      };
       try {
         await sendNotification({ endpoint, keys }, JSON.stringify(payload), {
           TTL: 12 * 3600,
@@ -81,7 +87,8 @@ export async function runNotify(db: Firestore, now = Date.now()) {
 
     for (const doc of games.docs) {
       const game = doc.data() as TrackedGame;
-      if (game.releasePrecision !== 'day' || !game.releaseDate || game.releaseDate < today) continue;
+      if (game.releasePrecision !== 'day' || !game.releaseDate || game.releaseDate < today)
+        continue;
       if (game.notifiedFor === game.releaseDate) continue;
       const due = alertDueAt(
         { date: game.releaseDate, precision: game.releasePrecision },
