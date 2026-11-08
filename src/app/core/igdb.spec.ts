@@ -191,7 +191,7 @@ describe('game page extras', () => {
     expect(series?.games.map((g) => g.name)).toEqual(['Ragnarök', 'God of War II']);
   });
 
-  it('keeps store links in a fixed order with friendly names', () => {
+  it('links the official site and the PlayStation Store, or one other store without it', () => {
     const links = linksOf({
       id: 1,
       name: 'X',
@@ -201,7 +201,18 @@ describe('game page extras', () => {
         { url: 'https://store.playstation.com/x', type: { type: 'Playstation' } },
       ],
     });
-    expect(links.map((l) => l.label)).toEqual(['PlayStation Store', 'Steam']);
+    expect(links.map((l) => l.label)).toEqual(['PlayStation Store']);
+    const noPs = linksOf({
+      id: 1,
+      name: 'X',
+      websites: [
+        { url: 'https://x.com', type: { type: 'Official Website' } },
+        { url: 'https://gog.com/x', type: { type: 'GOG' } },
+        { url: 'https://store.steampowered.com/app/1', type: { type: 'Steam' } },
+        { url: 'https://en.wikipedia.org/x', type: { type: 'Wikipedia' } },
+      ],
+    });
+    expect(noPs.map((l) => l.label)).toEqual(['Official website', 'Steam']);
   });
 
   it('builds the Search lists for one platform', () => {

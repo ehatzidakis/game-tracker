@@ -4,6 +4,8 @@ import { provideRouter } from '@angular/router';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { DEFAULT_SETTINGS, type TrackedGame } from '../../../../api/_lib/models.js';
 import { IgdbService, type GameDetails } from '../../core/igdb';
+import { OpenCriticService } from '../../core/opencritic';
+import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
 import { LibraryService } from '../../core/library.service';
 import { PushService } from '../../core/push.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
@@ -54,7 +56,13 @@ function tracked(overrides: Partial<TrackedGame>): TrackedGame {
   };
 }
 
-async function render(game: TrackedGame | null, igdb: GameDetails = details) {
+const NO_OPENCRITIC: OpenCriticScore = { status: 'none' };
+
+async function render(
+  game: TrackedGame | null,
+  igdb: GameDetails = details,
+  openCritic: OpenCriticScore = NO_OPENCRITIC,
+) {
   const games = signal(game ? [game] : []);
   const edits: unknown[] = [];
   TestBed.configureTestingModule({
@@ -73,6 +81,7 @@ async function render(game: TrackedGame | null, igdb: GameDetails = details) {
           }),
         },
       },
+      { provide: OpenCriticService, useValue: { score: async () => openCritic } },
       { provide: PushService, useValue: { enabledHere: () => false } },
       {
         provide: LibraryService,
@@ -273,34 +282,66 @@ describe('GamePage', () => {
     expect(dlc.edits).toEqual([{ add: 'wishlist', parent: { id: 1, name: 'Test Game' } }]);
   });
 
-  it('shows time to beat with your completion level, scores, details and links', async () => {
-    const { el } = await render(
+  it('shows time to beat with your completion level, OpenCritic, details and links', async () => {
+    const { el, fixture } = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main_sides' }),
       {
         ...details,
-        aggregated_rating: 96.9,
-        aggregated_rating_count: 10,
         rating: 93.4,
         rating_count: 2333,
         themes: [{ name: 'Fantasy' }],
         age_ratings: [{ organization: { name: 'PEGI' }, rating_category: { rating: '16' } }],
         websites: [{ url: 'https://store.playstation.com/x', type: { type: 'Playstation' } }],
       },
+      {
+        status: 'found',
+        url: 'https://opencritic.com/game/12090/elden-ring',
+        tier: 'Mighty',
+        topCriticScore: 95,
+        percentRecommended: 97,
+        numReviews: 219,
+        numTopCriticReviews: 139,
+      },
     );
     const text = el.textContent!.replace(/\s+/g, ' ');
     const timeToBeat = [...el.querySelectorAll('[aria-label="Time to beat"] .row')].map((r) =>
       r.textContent!.replace(/\s+/g, ' ').trim(),
     );
-    expect(timeToBeat).toEqual(['Main story10 h', 'Main + sides20 h', 'Completionist40 h']);
+    expect(timeToBeat).toEqual([
+      'Main story10 h',
+      'Main + sides20 h',
+      'Completionist40 h',
+      'Search on HowLongToBeat',
+    ]);
+    expect(el.querySelector('[aria-label="Time to beat"] a')?.getAttribute('href')).toBe(
+      'https://howlongtobeat.com/?q=Test%20Game',
+    );
+    // Time to beat comes after the OpenCritic scores.
+    const sections = [...el.querySelectorAll('section')].map((x) => x.getAttribute('aria-label'));
+    expect(sections.indexOf('Time to beat')).toBe(sections.indexOf('OpenCritic') + 1);
     // Your completion level (Main + sides) is in bold.
     expect(
       el.querySelector('[aria-label="Time to beat"] .font-semibold')?.textContent?.trim(),
     ).toBe('Main + sides');
-    expect(text).toContain('Critics');
-    expect(text).toContain('97/100');
-    expect(text).toContain('2,333 ratings');
-    expect(text).toContain('PEGI 16');
-    expect(text).toContain('PlayStation Store');
+    const openCritic = [...el.querySelectorAll('[aria-label=OpenCritic] .row')].map((r) =>
+      r.textContent!.replace(/\s+/g, ' ').trim(),
+    );
+    expect(openCritic).toEqual([
+      'Top Critic Average139 top critics 95/100',
+      'Player Rating2,333 ratings on IGDB 93/100',
+      'Reviews on OpenCritic',
+    ]);
+    // Details and Links start folded; their headings open them.
+    expect(text).not.toContain('PEGI 16');
+    for (const name of ['Details', 'Links']) {
+      const heading = el.querySelector(`[aria-label=${name}] h2 button`) as HTMLButtonElement;
+      expect(heading.getAttribute('aria-expanded')).toBe('false');
+      heading.click();
+    }
+    await fixture.whenStable();
+    const opened = el.textContent!.replace(/\s+/g, ' ');
+    expect(opened).toContain('PEGI 16');
+    expect(opened).toContain('PlayStation Store');
   });
 
   it('locks the rating until you tap Edit, then offers Clear and Done', async () => {

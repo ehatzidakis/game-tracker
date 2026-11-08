@@ -42,6 +42,7 @@ import {
   seriesOf,
   type GameSummary,
 } from '../../core/igdb';
+import { OpenCriticService } from '../../core/opencritic';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
@@ -97,6 +98,7 @@ export class GamePage {
   readonly id = input.required<string>();
 
   private readonly igdb = inject(IgdbService);
+  private readonly openCriticService = inject(OpenCriticService);
   private readonly sheet = inject(ChoiceSheet);
   private readonly detailsSheet = inject(DetailsSheet);
   private readonly toast = inject(ToastService);
@@ -117,6 +119,15 @@ export class GamePage {
     queryFn: () => this.igdb.timeToBeat(this.gameId()),
     enabled: Number.isInteger(this.gameId()),
     staleTime: 24 * 60 * 60_000,
+  }));
+
+  /** OpenCritic's verdict. The server keeps it fresh, so it's fine to keep for a few hours here. */
+  private readonly openCriticQuery = injectQuery(() => ({
+    queryKey: ['opencritic', this.gameId()],
+    queryFn: () => this.openCriticService.score(this.gameId()),
+    enabled: Number.isInteger(this.gameId()),
+    staleTime: 6 * 60 * 60_000,
+    retry: false,
   }));
 
   /** Your copy, if the game is in your library. Works offline. */
@@ -270,30 +281,30 @@ export class GamePage {
     });
     return rows.length ? rows : null;
   });
+  /** HowLongToBeat's search for this game (it has no API to ask directly). */
+  protected readonly hltbUrl = computed(
+    () => `https://howlongtobeat.com/?q=${encodeURIComponent(this.name())}`,
+  );
   protected readonly ttbPlayers = computed(() => COUNT.format(this.ttb.data()?.count ?? 0));
 
-  /** Critics' and players' scores out of 100. */
-  protected readonly scores = computed(() => {
+  /**
+   * OpenCritic's Top Critic Average with a link to the reviews, and the players' score from IGDB
+   * (OpenCritic has none). Null when OpenCritic has no page for the game (or can't be asked
+   * today): the section hides.
+   */
+  protected readonly openCritic = computed(() => {
+    const score = this.openCriticQuery.data();
+    if (score?.status !== 'found') return null;
+    const critics = score.numTopCriticReviews;
     const d = this.details.data();
-    if (!d) return [];
-    const scores = [];
-    if (d.aggregated_rating && d.aggregated_rating_count) {
-      const n = d.aggregated_rating_count;
-      scores.push({
-        label: 'Critics',
-        value: Math.round(d.aggregated_rating),
-        basis: `${COUNT.format(n)} ${n === 1 ? 'review' : 'reviews'}`,
-      });
-    }
-    if (d.rating && d.rating_count) {
-      const n = d.rating_count;
-      scores.push({
-        label: 'Players',
-        value: Math.round(d.rating),
-        basis: `${COUNT.format(n)} ${n === 1 ? 'rating' : 'ratings'} on IGDB`,
-      });
-    }
-    return scores;
+    const players = d?.rating && d.rating_count ? d.rating_count : 0;
+    return {
+      url: score.url,
+      topCriticScore: score.topCriticScore,
+      topCritics: `${COUNT.format(critics)} ${critics === 1 ? 'top critic' : 'top critics'}`,
+      playerRating: players ? Math.round(d!.rating!) : null,
+      players: `${COUNT.format(players)} ${players === 1 ? 'rating' : 'ratings'} on IGDB`,
+    };
   });
 
   /** Other games in the same series. */
@@ -302,6 +313,19 @@ export class GamePage {
     return d ? seriesOf(d) : null;
   });
   protected readonly allSeries = signal(false);
+  /** Series, Details and Links start folded on every game; tap the heading to open. */
+  private readonly opened = signal<ReadonlySet<string>>(new Set());
+  protected isOpen(section: string): boolean {
+    return this.opened().has(section);
+  }
+  protected toggleOpen(section: string): void {
+    this.opened.update((open) => {
+      const next = new Set(open);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }
   protected readonly shownSeries = computed(() => {
     const games = this.series()?.games ?? [];
     return this.allSeries() ? games : games.slice(0, SHOWN_DLCS);
@@ -352,6 +376,7 @@ export class GamePage {
       this.gameId();
       this.allDlcs.set(false);
       this.allSeries.set(false);
+      this.opened.set(new Set());
       this.editingRating.set(false);
     });
 

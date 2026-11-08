@@ -182,10 +182,7 @@ export interface GameDetails extends IgdbSyncGame {
   parent_game?: { id: number; name: string };
   dlcs?: GameSummary[];
   expansions?: GameSummary[];
-  /** Critics' score out of 100, and how many reviews. */
-  aggregated_rating?: number;
-  aggregated_rating_count?: number;
-  /** Players' score out of 100 on IGDB, and how many ratings. */
+  /** Players' score out of 100 on IGDB, and how many ratings. (OpenCritic has no player scores.) */
   rating?: number;
   rating_count?: number;
   /** The series ("God of War") with its games. */
@@ -246,24 +243,32 @@ export function seriesOf(details: GameDetails): { name: string; games: GameSumma
 }
 
 /** Store and official links worth showing, in this order, with friendlier names. */
-const LINKS: [type: string, label: string][] = [
-  ['Official Website', 'Official website'],
-  ['Playstation', 'PlayStation Store'],
+/** Other stores, in the order one is picked when there's no PlayStation Store link. */
+const OTHER_STORES: [type: string, label: string][] = [
+  ['Steam', 'Steam'],
   ['Xbox', 'Xbox Store'],
   ['Nintendo', 'Nintendo eShop'],
-  ['Steam', 'Steam'],
   ['Epic', 'Epic Games Store'],
   ['GOG', 'GOG'],
-  ['Wikipedia', 'Wikipedia'],
 ];
 
+/**
+ * The official website and the PlayStation Store. Without a PlayStation Store link, one other
+ * store instead (Steam first).
+ */
 export function linksOf(details: GameDetails): { label: string; url: string }[] {
-  return LINKS.flatMap(([type, label]) => {
+  const find = (type: string, label: string) => {
     const site = details.websites?.find(
       (w) => w.type?.type === type && w.url.startsWith('https://'),
     );
-    return site ? [{ label, url: site.url }] : [];
-  });
+    return site ? { label, url: site.url } : null;
+  };
+  const official = find('Official Website', 'Official website');
+  const store =
+    find('Playstation', 'PlayStation Store') ??
+    OTHER_STORES.map(([type, label]) => find(type, label)).find((link) => link !== null) ??
+    null;
+  return [official, store].filter((link) => link !== null);
 }
 
 export function buildDetailsQuery(id: number): string {
@@ -272,7 +277,7 @@ export function buildDetailsQuery(id: number): string {
     'artworks.image_id, screenshots.image_id,',
     'game_type, parent_game.name, dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,',
     'expansions.name, expansions.cover.image_id, expansions.first_release_date,',
-    'aggregated_rating, aggregated_rating_count, rating, rating_count,',
+    'rating, rating_count,',
     'collections.name, collections.games.name, collections.games.game_type,',
     'collections.games.cover.image_id, collections.games.first_release_date,',
     'involved_companies.publisher, age_ratings.organization.name,',

@@ -48,7 +48,7 @@ What Claude built while you were away, what it needs from you, and the choices i
 
 **More from using the app (2026-11-08), done**
 - **Physical copies.** A "Physical copy" switch under Purchase (owned games) and Pre-order (pre-ordered games, also in the pre-order sheet). Library covers show a disc badge in the top-right corner for physical games on Completed, Backlog, Shelved and Playing, and on pre-ordered Wishlist games.
-- **Game page.** Trailer, Screenshots and About are gone. New, from IGDB: Time to beat (Main story / Main + sides / Completionist, your completion level in bold, your hours next to it), Scores (critics and players, out of 100), the rest of the series (tappable like DLC), Details (genres, themes, modes, publisher, PEGI rating) and Links (official site, PlayStation Store, Steam, …).
+- **Game page.** Trailer, Screenshots and About are gone. New, from IGDB: Time to beat (Main story / Main + sides / Completionist, your completion level in bold, your hours next to it), Scores (critics and players, out of 100; replaced by OpenCritic on 2026-11-08), the rest of the series (tappable like DLC), Details (genres, themes, modes, publisher, PEGI rating) and Links (official site, PlayStation Store, Steam, …).
 - **Bought from.** A visible button next to the field opens a list of stores (yours first, then common ones); you can still type any store. The pre-order sheet shows them as tappable buttons.
 - **Search.** Before you type: Most anticipated, Coming soon (next 60 days) and Recently released (last 60 days), on your default platform, as cover strips you scroll sideways.
 - **PS4** is now a platform (game page "My platform" and Settings' default platform). Xbox is labelled "Xbox" to fit five.

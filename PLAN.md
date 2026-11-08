@@ -54,6 +54,11 @@ Values marked 🔒 are secrets. They live in the local `.env` file (git-ignored)
 
 - [ ] Deploy the Cloudflare Worker in [worker/](worker/README.md) (three commands). It calls the alert job every hour so alerts arrive at your chosen time. Without it, alerts go out once a day, around 13:00–14:00 Athens time.
 
+### 6. OpenCritic scores
+
+- [x] RapidAPI account, subscribed to the free **Basic** plan of the OpenCritic API (200 requests and 25 searches a day, 4 a second; hard limits, never charged). Key 🔒 in `.env` as `RAPIDAPI_KEY`.
+- [x] Add `RAPIDAPI_KEY` to Vercel's environment variables (Production), then redeploy. Without it the game page simply shows no OpenCritic section.
+
 ### Environment variables
 
 | Name | Used by |
@@ -63,6 +68,7 @@ Values marked 🔒 are secrets. They live in the local `.env` file (git-ignored)
 | `FIREBASE_SERVICE_ACCOUNT` 🔒 | `/api/calendar.ics`, daily job |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` 🔒 | push notifications |
 | `CRON_SECRET` 🔒 | daily job and notification trigger |
+| `RAPIDAPI_KEY` 🔒 | `/api/opencritic`, daily job (OpenCritic scores) |
 
 ---
 
@@ -175,7 +181,8 @@ users/{uid}/pushSubscriptions/{id}
 
 - **`/api/igdb`:** holds the Twitch secret, caches the access token, passes queries to IGDB. Signed-in users only.
 - **`/api/calendar.ics?key=…`:** reads your games with the Firebase Admin SDK and returns the calendar feed. The key in the link is the only protection (calendar apps can't sign in).
-- **`/api/cron/daily`:** refreshes release dates from IGDB, then sends due alerts. Vercel Cron at 11:00 UTC. Needs `CRON_SECRET`.
+- **`/api/opencritic?igdb=…`:** a game's OpenCritic tier, Top Critic Average, % recommended and link. Signed-in users only. Serves the stored copy; asks OpenCritic only when it's missing or due.
+- **`/api/cron/daily`:** refreshes release dates from IGDB, sends due alerts, then updates OpenCritic scores. Vercel Cron at 11:00 UTC. Needs `CRON_SECRET`.
 - **`/api/cron/notify`:** sends alerts whose time has come. Called hourly by the Cloudflare Worker in [worker/](worker/). Needs `CRON_SECRET`.
 - **`/api/push-test`:** sends a test notification to your devices (Settings). Signed-in users only.
 
@@ -228,3 +235,7 @@ Already built in: router view transitions (on) and Angular's `animate.enter` / `
 - **2026-11-08:** Countdowns only in days ("in 194 days"), no weeks or months, everywhere (Calendar, Library, Search, game page).
 - **2026-11-08:** Library search: a field under the title searches every tab by title (ignores case, accents and punctuation; every word must match; titles starting with it first). Results show their status under the cover; tabs and sort hide while searching; the search is kept when you come back from a game. 63 tests pass.
 - **2026-11-08:** Calendar search: same field as Library (shared SearchField, shared title matching in core/title-search.ts). Filters by title but keeps the month headings; the next-release highlight stays on the real next release; kept when you come back from a game. 65 tests pass. Committed and pushed with the days-only countdowns and Library search.
+- **2026-11-08:** OpenCritic replaces the IGDB scores on the game page (section "OpenCritic": tier, Top Critic Average, Critics Recommend, link to the reviews). How it works: each game is matched once by name (one search; same name or an IGDB alternative name, first release within a year, so remakes don't mix), then refreshed by its OpenCritic id. Results are shared by all users in `opencritic/{igdbId}`, which only the server can read (no rule change). The daily job refreshes games around release daily, older ones every 30–90 days, and matches games not looked up yet as far as the day's searches allow (keeps 5 searches and 30 requests for opening game pages). Games OpenCritic doesn't have are looked for again weekly or less. Tested live: Elden Ring Mighty 95/97%, Death Stranding 2 Mighty 90/95%, The Witcher IV not on OpenCritic yet. 72 tests pass.
+- **2026-11-08:** OpenCritic section trimmed: tier and Critics Recommend removed; Top Critic Average plus Player Rating (IGDB players' score, since OpenCritic has no player scores) and the reviews link. 72 tests pass.
+- **2026-11-08:** Game page: series, Details and Links fold away (chevron on the heading), folded on every game. Links: official website and PlayStation Store, or one other store (Steam first) when there is no PlayStation Store link; Wikipedia dropped. Notes moved to just above Remove from Library. 72 tests pass.
+- **2026-11-08:** Time to beat moved below OpenCritic, with a "Search on HowLongToBeat" link (HLTB has no API; the unofficial scraper libraries break whenever HLTB moves its search, so we only link). The section now shows for every game, with IGDB's numbers when it has them. 72 tests pass. Committed and pushed with OpenCritic, folding sections, links and notes.

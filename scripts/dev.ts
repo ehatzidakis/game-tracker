@@ -7,12 +7,14 @@ import { GET as calendar } from '../api/calendar.ts';
 import { GET as daily } from '../api/cron/daily.ts';
 import { GET as notify } from '../api/cron/notify.ts';
 import { POST as igdb } from '../api/igdb.ts';
+import { GET as opencritic } from '../api/opencritic.ts';
 import { POST as pushTest } from '../api/push-test.ts';
 
 type Handler = (request: Request) => Promise<Response>;
 // Same paths as on Vercel (vercel.json rewrites /api/calendar.ics to /api/calendar).
 const routes: Record<string, Partial<Record<string, Handler>>> = {
   '/api/igdb': { POST: igdb },
+  '/api/opencritic': { GET: opencritic },
   '/api/calendar.ics': { GET: calendar },
   '/api/push-test': { POST: pushTest },
   '/api/cron/daily': { GET: daily },

@@ -376,17 +376,6 @@
           </div>
         </div>
       }
-
-      <h2 class="group-header">Notes</h2>
-      <!-- One line when empty; grows with what you write. -->
-      <textarea
-        appGrow
-        placeholder="Add a note"
-        aria-label="Notes"
-        class="grouped block w-full resize-none overflow-hidden px-4 py-3 text-[17px] leading-[22px] outline-none"
-        [value]="t.notes"
-        (change)="setNotes($event)"
-      ></textarea>
     </section>
   } @else if (details.data()) {
     <button type="button" class="button-primary mt-6" (click)="add()">
@@ -396,108 +385,198 @@
     <ng-container [ngTemplateOutlet]="dlcList" />
   }
 
-  @if (timeToBeat(); as rows) {
+  @if (openCritic(); as oc) {
+    <section aria-label="OpenCritic">
+      <h2 class="group-header">OpenCritic</h2>
+      <div class="grouped">
+        @if (oc.topCriticScore !== null) {
+          <div class="row">
+            <div class="min-w-0 flex-1">
+              <p>Top Critic Average</p>
+              <p class="num text-[13px] leading-[18px] text-muted">{{ oc.topCritics }}</p>
+            </div>
+            <p class="num shrink-0 text-[20px] font-semibold">
+              {{ oc.topCriticScore }}<span class="text-[13px] font-normal text-muted">/100</span>
+            </p>
+          </div>
+        } @else {
+          <div class="row text-muted">Not enough critic reviews yet</div>
+        }
+        @if (oc.playerRating !== null) {
+          <div class="row">
+            <div class="min-w-0 flex-1">
+              <p>Player Rating</p>
+              <p class="num text-[13px] leading-[18px] text-muted">{{ oc.players }}</p>
+            </div>
+            <p class="num shrink-0 text-[20px] font-semibold">
+              {{ oc.playerRating }}<span class="text-[13px] font-normal text-muted">/100</span>
+            </p>
+          </div>
+        }
+        @if (oc.url) {
+          <a [href]="oc.url" target="_blank" rel="noopener" class="row text-accent">
+            <span class="flex-1">Reviews on OpenCritic</span>
+            <svg lucideExternalLink [size]="16" [strokeWidth]="2" class="shrink-0 text-faint"></svg>
+          </a>
+        }
+      </div>
+    </section>
+  }
+
+  @if (name()) {
     <section aria-label="Time to beat">
       <h2 class="group-header">Time to beat</h2>
       <div class="grouped">
-        @for (row of rows; track row.label) {
+        @for (row of timeToBeat() ?? []; track row.label) {
           <div class="row">
             <span class="flex-1" [class.font-semibold]="row.yours">{{ row.label }}</span>
             <span class="row-value num">{{ row.hours }} h</span>
           </div>
         }
+        <!-- HowLongToBeat has no API, so we link to its search for this game. -->
+        <a [href]="hltbUrl()" target="_blank" rel="noopener" class="row text-accent">
+          <span class="flex-1">Search on HowLongToBeat</span>
+          <svg lucideExternalLink [size]="16" [strokeWidth]="2" class="shrink-0 text-faint"></svg>
+        </a>
       </div>
-      <p class="group-footer">
-        Average from {{ ttbPlayers() }} players on IGDB.
-        @if (formatPlaytime(tracked()?.hoursPlayed); as played) {
-          You've played {{ played }}.
-        }
-      </p>
-    </section>
-  }
-
-  @if (scores().length) {
-    <section aria-label="Scores">
-      <h2 class="group-header">Scores</h2>
-      <div class="grouped">
-        @for (score of scores(); track score.label) {
-          <div class="row">
-            <div class="min-w-0 flex-1">
-              <p>{{ score.label }}</p>
-              <p class="num text-[13px] leading-[18px] text-muted">{{ score.basis }}</p>
-            </div>
-            <p class="num shrink-0 text-[20px] font-semibold">
-              {{ score.value }}<span class="text-[13px] font-normal text-muted">/100</span>
-            </p>
-          </div>
-        }
-      </div>
+      @if (timeToBeat() || formatPlaytime(tracked()?.hoursPlayed)) {
+        <p class="group-footer">
+          @if (timeToBeat()) {
+            Average from {{ ttbPlayers() }} players on IGDB.
+          }
+          @if (formatPlaytime(tracked()?.hoursPlayed); as played) {
+            You've played {{ played }}.
+          }
+        </p>
+      }
     </section>
   }
 
   @if (!isDlcPage() && series(); as s) {
     <section aria-label="Series">
-      <h2 class="group-header">{{ s.name }} series</h2>
-      <ul class="grouped" style="--sep-inset: 68px">
-        @for (g of shownSeries(); track g.id) {
-          <li class="row p-0!">
-            <a [routerLink]="['/game', g.id]" class="row py-2!">
-              <app-cover
-                class="w-10 shrink-0 rounded-[5px]!"
-                [coverId]="g.cover?.image_id"
-                [name]="''"
-              />
-              <div class="min-w-0 flex-1">
-                <p class="truncate">{{ g.name }}</p>
-                <p class="num text-[15px] leading-5 text-muted">{{ rowState(g) }}</p>
-              </div>
-              <svg
-                lucideChevronRight
-                [size]="18"
-                [strokeWidth]="2.25"
-                class="-mr-1 shrink-0 text-faint"
-              ></svg>
-            </a>
-          </li>
-        }
-      </ul>
-      @if (s.games.length > shownSeries().length) {
+      <h2 class="group-header">
         <button
           type="button"
-          class="group-footer text-accent! active:opacity-60"
-          (click)="allSeries.set(true)"
+          class="flex w-full items-center justify-between gap-3 text-left uppercase active:opacity-60"
+          [attr.aria-expanded]="isOpen('series')"
+          (click)="toggleOpen('series')"
         >
-          Show all {{ s.games.length }}
+          {{ s.name }} series
+          <!-- Rotates the wrapper: the icon component manages its own classes. -->
+          <span
+            class="shrink-0 transition-transform duration-200"
+            [class.rotate-90]="isOpen('series')"
+            aria-hidden="true"
+          >
+            <svg lucideChevronRight [size]="16" [strokeWidth]="2.5" class="block"></svg>
+          </span>
         </button>
+      </h2>
+      @if (isOpen('series')) {
+        <ul class="grouped" style="--sep-inset: 68px">
+          @for (g of shownSeries(); track g.id) {
+            <li class="row p-0!">
+              <a [routerLink]="['/game', g.id]" class="row py-2!">
+                <app-cover
+                  class="w-10 shrink-0 rounded-[5px]!"
+                  [coverId]="g.cover?.image_id"
+                  [name]="''"
+                />
+                <div class="min-w-0 flex-1">
+                  <p class="truncate">{{ g.name }}</p>
+                  <p class="num text-[15px] leading-5 text-muted">{{ rowState(g) }}</p>
+                </div>
+                <svg
+                  lucideChevronRight
+                  [size]="18"
+                  [strokeWidth]="2.25"
+                  class="-mr-1 shrink-0 text-faint"
+                ></svg>
+              </a>
+            </li>
+          }
+        </ul>
+        @if (s.games.length > shownSeries().length) {
+          <button
+            type="button"
+            class="group-footer text-accent! active:opacity-60"
+            (click)="allSeries.set(true)"
+          >
+            Show all {{ s.games.length }}
+          </button>
+        }
       }
     </section>
   }
 
   @if (facts().length) {
     <section aria-label="Details">
-      <h2 class="group-header">Details</h2>
-      <div class="grouped">
-        @for (fact of facts(); track fact.label) {
-          <div class="row items-start!">
-            <span class="shrink-0">{{ fact.label }}</span>
-            <span class="row-value min-w-0">{{ fact.value }}</span>
-          </div>
-        }
-      </div>
+      <h2 class="group-header">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between gap-3 text-left uppercase active:opacity-60"
+          [attr.aria-expanded]="isOpen('details')"
+          (click)="toggleOpen('details')"
+        >
+          Details
+          <!-- Rotates the wrapper: the icon component manages its own classes. -->
+          <span
+            class="shrink-0 transition-transform duration-200"
+            [class.rotate-90]="isOpen('details')"
+            aria-hidden="true"
+          >
+            <svg lucideChevronRight [size]="16" [strokeWidth]="2.5" class="block"></svg>
+          </span>
+        </button>
+      </h2>
+      @if (isOpen('details')) {
+        <div class="grouped">
+          @for (fact of facts(); track fact.label) {
+            <div class="row items-start!">
+              <span class="shrink-0">{{ fact.label }}</span>
+              <span class="row-value min-w-0">{{ fact.value }}</span>
+            </div>
+          }
+        </div>
+      }
     </section>
   }
 
   @if (links().length) {
     <section aria-label="Links">
-      <h2 class="group-header">Links</h2>
-      <div class="grouped">
-        @for (link of links(); track link.url) {
-          <a [href]="link.url" target="_blank" rel="noopener" class="row text-accent">
-            <span class="flex-1">{{ link.label }}</span>
-            <svg lucideExternalLink [size]="16" [strokeWidth]="2" class="shrink-0 text-faint"></svg>
-          </a>
-        }
-      </div>
+      <h2 class="group-header">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between gap-3 text-left uppercase active:opacity-60"
+          [attr.aria-expanded]="isOpen('links')"
+          (click)="toggleOpen('links')"
+        >
+          Links
+          <!-- Rotates the wrapper: the icon component manages its own classes. -->
+          <span
+            class="shrink-0 transition-transform duration-200"
+            [class.rotate-90]="isOpen('links')"
+            aria-hidden="true"
+          >
+            <svg lucideChevronRight [size]="16" [strokeWidth]="2.5" class="block"></svg>
+          </span>
+        </button>
+      </h2>
+      @if (isOpen('links')) {
+        <div class="grouped">
+          @for (link of links(); track link.url) {
+            <a [href]="link.url" target="_blank" rel="noopener" class="row text-accent">
+              <span class="flex-1">{{ link.label }}</span>
+              <svg
+                lucideExternalLink
+                [size]="16"
+                [strokeWidth]="2"
+                class="shrink-0 text-faint"
+              ></svg>
+            </a>
+          }
+        </div>
+      }
     </section>
   }
 
@@ -518,6 +597,17 @@
         }
       </div>
       <p class="group-footer">Release dates follow this platform.</p>
+
+      <h2 class="group-header">Notes</h2>
+      <!-- One line when empty; grows with what you write. -->
+      <textarea
+        appGrow
+        placeholder="Add a note"
+        aria-label="Notes"
+        class="grouped block w-full resize-none overflow-hidden px-4 py-3 text-[17px] leading-[22px] outline-none"
+        [value]="t.notes"
+        (change)="setNotes($event)"
+      ></textarea>
     }
 
     <div class="grouped mt-8">
