@@ -16,6 +16,7 @@ import {
 } from '@lucide/angular';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
+  type GamingEvent,
   COMPLETIONS,
   isDlc,
   statusLabel,
@@ -43,6 +44,9 @@ import {
   type GameSummary,
 } from '../../core/igdb';
 import { OpenCriticService } from '../../core/opencritic';
+import { EventsService } from '../../core/events.service';
+import { EventIcon } from '../../shared/event-icon';
+import { EventSheet } from '../../shared/event-sheet';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
@@ -56,6 +60,33 @@ import { FitWidth, Grow } from '../../shared/fit-content';
 /** How many DLC (or series games) a game's page lists before "Show all". */
 const SHOWN_DLCS = 6;
 const COUNT = new Intl.NumberFormat('en-GB');
+
+const EVENT_DATE = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+const NEW_EVENT = '__new';
+const NO_EVENT = '__none';
+
+interface EventField {
+  key: 'firstShownEventId' | 'dateAnnouncedEventId';
+  label: string;
+  question: (name: string) => readonly [string, string, string];
+}
+const EVENT_FIELDS: readonly EventField[] = [
+  {
+    key: 'firstShownEventId',
+    label: 'First shown',
+    question: (name) => ['Where was ', name, ' first shown?'],
+  },
+  {
+    key: 'dateAnnouncedEventId',
+    label: 'Release date announced',
+    question: (name) => ['Where was the release date of ', name, ' announced?'],
+  },
+];
 const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -79,6 +110,7 @@ const TIME_TO_BEAT = [
     NgTemplateOutlet,
     RouterLink,
     FitWidth,
+    EventIcon,
     Grow,
     LucideCalendarCheck,
     LucideChevronRight,
@@ -99,6 +131,8 @@ export class GamePage {
 
   private readonly igdb = inject(IgdbService);
   private readonly openCriticService = inject(OpenCriticService);
+  private readonly events = inject(EventsService);
+  private readonly eventSheet = inject(EventSheet);
   private readonly sheet = inject(ChoiceSheet);
   private readonly detailsSheet = inject(DetailsSheet);
   private readonly toast = inject(ToastService);
@@ -281,6 +315,41 @@ export class GamePage {
     });
     return rows.length ? rows : null;
   });
+  /** The two gaming events a game can point to. */
+  protected readonly eventFields = EVENT_FIELDS;
+
+  /** The event linked in one of the fields, if it still exists. */
+  protected linkedEvent(field: EventField): GamingEvent | null {
+    const id = this.tracked()?.[field.key];
+    return id ? (this.events.byId().get(id) ?? null) : null;
+  }
+
+  /** Picks the event for a field from your events (not archived), or adds a new one. */
+  protected async pickEvent(field: EventField): Promise<void> {
+    const t = this.tracked();
+    if (!t) return;
+    const current = t[field.key] ?? null;
+    const choices = [
+      { key: NEW_EVENT, label: 'New gaming event…' },
+      ...this.events.available().map((e) => ({
+        key: e.id,
+        label: e.title,
+        hint: `${EVENT_DATE.format(e.startsAt).replace(',', '')}${e.id === current ? ' · Selected' : ''}`,
+      })),
+      ...(current ? [{ key: NO_EVENT, label: 'None', hint: 'Unlink the event' }] : []),
+    ];
+    const picked = await this.sheet.choose(field.question(t.name), choices);
+    if (picked === null) return;
+    let id: string | null = picked === NO_EVENT ? null : picked;
+    if (picked === NEW_EVENT) {
+      const created = await this.eventSheet.create();
+      if (!created) return;
+      id = created.id;
+    }
+    const now = this.tracked();
+    if (now && id !== current) this.library.edit(now, { [field.key]: id });
+  }
+
   /** HowLongToBeat's search for this game (it has no API to ask directly). */
   protected readonly hltbUrl = computed(
     () => `https://howlongtobeat.com/?q=${encodeURIComponent(this.name())}`,

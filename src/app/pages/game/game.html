@@ -376,6 +376,31 @@
           </div>
         </div>
       }
+
+      <!-- Which of your gaming events it was first shown at, and dated at. -->
+      <h2 class="group-header">Gaming events</h2>
+      <div class="grouped">
+        @for (field of eventFields; track field.key) {
+          @let linked = linkedEvent(field);
+          <button type="button" class="row text-left" (click)="pickEvent(field)">
+            <span class="shrink-0">{{ field.label }}</span>
+            <span class="flex min-w-0 flex-1 items-center justify-end gap-2">
+              @if (linked) {
+                <app-event-icon class="rounded-[6px]!" [kind]="linked.kind" [size]="22" />
+                <span class="truncate text-muted">{{ linked.title }}</span>
+              } @else {
+                <span class="text-muted">None</span>
+              }
+            </span>
+            <svg
+              lucideChevronRight
+              [size]="18"
+              [strokeWidth]="2.25"
+              class="-mr-1 shrink-0 text-faint"
+            ></svg>
+          </button>
+        }
+      </div>
     </section>
   } @else if (details.data()) {
     <button type="button" class="button-primary mt-6" (click)="add()">

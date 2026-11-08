@@ -26,6 +26,7 @@ import {
 import { PageTitle } from '../core/page-title';
 import { ChoiceSheetOutlet } from '../shared/choice-sheet';
 import { DetailsSheetOutlet } from '../shared/details-sheet';
+import { EventSheetOutlet } from '../shared/event-sheet';
 import { ToastOutlet } from '../shared/toast';
 
 /** What a screen's route data can say about the top bar. */
@@ -57,6 +58,7 @@ const TITLE_AFTER_HERO = 250;
     ToastOutlet,
     ChoiceSheetOutlet,
     DetailsSheetOutlet,
+    EventSheetOutlet,
   ],
   templateUrl: './shell.html',
 })

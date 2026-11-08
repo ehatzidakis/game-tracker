@@ -138,6 +138,26 @@
   }
 </section>
 
+<!-- Gaming events: all of them, including past and archived ones. -->
+<section aria-labelledby="events-title">
+  <h2 id="events-title" class="group-header">Gaming events</h2>
+  <div class="grouped">
+    <a routerLink="/events" class="row">
+      <span class="flex-1">All events</span>
+      <span class="row-value num">{{ eventCount() }}</span>
+      <svg
+        lucideChevronRight
+        [size]="18"
+        [strokeWidth]="2.25"
+        class="-mr-1 shrink-0 text-faint"
+      ></svg>
+    </a>
+  </div>
+  <p class="group-footer">
+    Past and archived ones too. New events are added with + in the Calendar.
+  </p>
+</section>
+
 <!-- Account -->
 <section aria-labelledby="account-title">
   <h2 id="account-title" class="group-header">Account</h2>

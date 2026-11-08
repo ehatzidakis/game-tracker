@@ -40,6 +40,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/game/game').then((m) => m.GamePage),
       },
       {
+        path: 'events',
+        title: 'Gaming events · Game Tracker',
+        data: { title: 'Gaming events', back: true },
+        loadComponent: () => import('./pages/events/events').then((m) => m.EventsPage),
+      },
+      {
         path: 'settings',
         title: 'Settings · Game Tracker',
         data: { title: 'Settings' },

@@ -88,6 +88,12 @@ export interface TrackedGame {
   parentId?: number | null;
   parentName?: string | null;
 
+  // Gaming events (users/{uid}/events) linked to the game, by event id.
+  /** The event where the game was first shown. */
+  firstShownEventId?: string | null;
+  /** The event where its release date was announced. */
+  dateAnnouncedEventId?: string | null;
+
   // Milliseconds since 1970, or null.
   addedAt: number;
   purchasedAt: number | null;
@@ -108,6 +114,34 @@ export function isDlc(game: Pick<TrackedGame, 'parentId'>): boolean {
 /** Library tabs list games, plus DLC only while it's on your wishlist. */
 export function shownInLibrary(game: Pick<TrackedGame, 'parentId' | 'status'>): boolean {
   return !isDlc(game) || game.status === 'wishlist';
+}
+
+/** Who holds a gaming event, for its icon: the three platforms, or a showcase (Summer Game Fest, The Game Awards…). */
+export type EventKind = 'playstation' | 'xbox' | 'nintendo' | 'showcase' | 'other';
+
+export const EVENT_KINDS: readonly { key: EventKind; label: string }[] = [
+  { key: 'playstation', label: 'PlayStation' },
+  { key: 'xbox', label: 'Xbox' },
+  { key: 'nintendo', label: 'Nintendo' },
+  { key: 'showcase', label: 'Showcase' },
+  { key: 'other', label: 'Other' },
+];
+
+/**
+ * users/{uid}/events/{id}: a gaming event you added (State of Play, Nintendo Direct, Summer Game
+ * Fest…). Shows in the Calendar; games can say they were first shown or dated at one.
+ */
+export interface GamingEvent {
+  id: string;
+  title: string;
+  /** When it starts (ms). */
+  startsAt: number;
+  link: string | null;
+  kind: EventKind;
+  /** Done with: hidden from the Calendar and from the lists you pick events from. Games keep it. */
+  archived: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 /** users/{uid} */

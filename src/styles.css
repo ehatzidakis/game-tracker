@@ -118,7 +118,10 @@
     overflow: hidden;
   }
   .grouped > .row + .row::before,
-  .grouped > * + .row::before {
+  .grouped > * + .row::before,
+  /* Rows inside a scrolling part of a group (a long list in a sheet) keep their lines. */
+  .grouped > .group-scroll > * + .row::before,
+  .grouped > * + .group-scroll > .row:first-child::before {
     content: '';
     position: absolute;
     top: 0;

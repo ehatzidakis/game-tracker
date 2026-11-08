@@ -37,6 +37,8 @@ export type GameEdits = Partial<
     | 'orderedOn'
     | 'completedAt'
     | 'physical'
+    | 'firstShownEventId'
+    | 'dateAnnouncedEventId'
   >
 >;
 

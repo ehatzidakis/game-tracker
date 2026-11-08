@@ -88,19 +88,22 @@ export class ChoiceSheet {
               {{ req.heading[0] }}<span class="font-semibold">{{ req.heading[1] }}</span
               >{{ req.heading[2] }}
             </h2>
-            @for (c of req.choices; track c.key) {
-              <button type="button" class="row min-h-[57px]!" (click)="sheet.finish(c.key)">
-                <span class="min-w-0 flex-1">
-                  <span class="block text-[17px]">{{ c.label }}</span>
-                  @if (c.hint) {
-                    <span class="block text-[13px] leading-[18px] text-muted">{{ c.hint }}</span>
+            <!-- Long lists (your gaming events) scroll inside the sheet. -->
+            <div class="group-scroll max-h-[60dvh] overflow-y-auto overscroll-contain">
+              @for (c of req.choices; track c.key) {
+                <button type="button" class="row min-h-[57px]!" (click)="sheet.finish(c.key)">
+                  <span class="min-w-0 flex-1">
+                    <span class="block text-[17px]">{{ c.label }}</span>
+                    @if (c.hint) {
+                      <span class="block text-[13px] leading-[18px] text-muted">{{ c.hint }}</span>
+                    }
+                  </span>
+                  @if (c.key === req.suggested) {
+                    <span class="shrink-0 text-[15px] text-accent-raised">Suggested</span>
                   }
-                </span>
-                @if (c.key === req.suggested) {
-                  <span class="shrink-0 text-[15px] text-accent-raised">Suggested</span>
-                }
-              </button>
-            }
+                </button>
+              }
+            </div>
           </div>
           <div class="grouped mt-2 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
             <button

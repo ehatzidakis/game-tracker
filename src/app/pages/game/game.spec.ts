@@ -2,7 +2,12 @@ import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
-import { DEFAULT_SETTINGS, type TrackedGame } from '../../../../api/_lib/models.js';
+import {
+  DEFAULT_SETTINGS,
+  type GamingEvent,
+  type TrackedGame,
+} from '../../../../api/_lib/models.js';
+import { EventsService } from '../../core/events.service';
 import { IgdbService, type GameDetails } from '../../core/igdb';
 import { OpenCriticService } from '../../core/opencritic';
 import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
@@ -58,6 +63,29 @@ function tracked(overrides: Partial<TrackedGame>): TrackedGame {
 
 const NO_OPENCRITIC: OpenCriticScore = { status: 'none' };
 
+const EVENTS: GamingEvent[] = [
+  {
+    id: 'sop',
+    title: 'State of Play',
+    startsAt: Date.parse('2026-02-12T21:00:00Z'),
+    link: null,
+    kind: 'playstation',
+    archived: false,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: 'old',
+    title: 'E3 2019',
+    startsAt: Date.parse('2019-06-10T18:00:00Z'),
+    link: null,
+    kind: 'showcase',
+    archived: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+];
+
 async function render(
   game: TrackedGame | null,
   igdb: GameDetails = details,
@@ -82,6 +110,14 @@ async function render(
         },
       },
       { provide: OpenCriticService, useValue: { score: async () => openCritic } },
+      {
+        provide: EventsService,
+        useValue: {
+          events: signal(EVENTS),
+          byId: signal(new Map(EVENTS.map((e) => [e.id, e]))),
+          available: signal(EVENTS.filter((e) => !e.archived)),
+        },
+      },
       { provide: PushService, useValue: { enabledHere: () => false } },
       {
         provide: LibraryService,
@@ -116,6 +152,29 @@ async function render(
 }
 
 describe('GamePage', () => {
+  it('links a game to the gaming event it was first shown at', async () => {
+    const { el, edits, sheet, fixture } = await render(tracked({ dateAnnouncedEventId: 'old' }));
+    const rows = () =>
+      [...el.querySelectorAll('button.row')].filter((b) =>
+        /First shown|Release date announced/.test(b.textContent!),
+      ) as HTMLButtonElement[];
+    // An archived event stays on the games that use it.
+    expect(rows().map((r) => r.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
+      'First shownNone',
+      'Release date announcedE3 2019',
+    ]);
+    rows()[0].click();
+    await fixture.whenStable();
+    // Only events that aren't archived can be picked, plus making a new one.
+    expect(sheet.request()?.choices.map((c) => c.label)).toEqual([
+      'New gaming event…',
+      'State of Play',
+    ]);
+    sheet.finish('sop');
+    await new Promise((r) => setTimeout(r));
+    expect(edits).toEqual([{ firstShownEventId: 'sop' }]);
+  });
+
   it('offers to add a game that is not in the library', async () => {
     const { el } = await render(null);
     expect(el.textContent).toContain('Add to Library');

@@ -1,21 +1,37 @@
 import { Component, computed, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { LucideCalendarPlus, LucideChevronsUpDown, LucideCopy, LucideRotateCcw } from '@lucide/angular';
+import { Router, RouterLink } from '@angular/router';
+import {
+  LucideCalendarPlus,
+  LucideChevronRight,
+  LucideChevronsUpDown,
+  LucideCopy,
+  LucideRotateCcw,
+} from '@lucide/angular';
 import { PLATFORMS, type PlatformKey } from '../../../../api/_lib/platforms.js';
 import { AuthService } from '../../core/auth.service';
+import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-settings',
-  imports: [LucideCalendarPlus, LucideChevronsUpDown, LucideCopy, LucideRotateCcw],
+  imports: [
+    RouterLink,
+    LucideCalendarPlus,
+    LucideChevronRight,
+    LucideChevronsUpDown,
+    LucideCopy,
+    LucideRotateCcw,
+  ],
   templateUrl: './settings.html',
 })
 export class SettingsPage {
   protected readonly auth = inject(AuthService);
   protected readonly library = inject(LibraryService);
   protected readonly push = inject(PushService);
+  private readonly events = inject(EventsService);
+  protected readonly eventCount = computed(() => this.events.events().length);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
@@ -64,7 +80,9 @@ export class SettingsPage {
   }
 
   protected setDays(event: Event): void {
-    this.library.saveSettings({ notifyDaysBefore: Number((event.target as HTMLSelectElement).value) });
+    this.library.saveSettings({
+      notifyDaysBefore: Number((event.target as HTMLSelectElement).value),
+    });
   }
 
   protected setPlatform(key: PlatformKey): void {
@@ -94,7 +112,10 @@ export class SettingsPage {
   }
 
   protected resetCalendarLink(): void {
-    if (!confirm('Make a new link? The old one stops working, so calendars using it stop updating.')) return;
+    if (
+      !confirm('Make a new link? The old one stops working, so calendars using it stop updating.')
+    )
+      return;
     this.library.calendarKey(true);
     this.toast.show('New link made');
   }

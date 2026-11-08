@@ -1,5 +1,15 @@
-import type { TrackedGame } from '../../../../api/_lib/models.js';
-import { calendarGroups } from './calendar-groups';
+import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
+import { calendarGroups, type CalendarGroup } from './calendar-groups';
+
+const ids = (groups: CalendarGroup[]) =>
+  groups.map((g) => [
+    g.title,
+    g.items.map((x) => (x.type === 'game' ? x.game.igdbId : x.event.id)),
+  ]);
+
+function event(id: string, startsAt: string, archived = false): GamingEvent {
+  return { id, title: id, startsAt: Date.parse(startsAt), kind: 'other', archived } as GamingEvent;
+}
 
 function game(
   id: number,
@@ -30,12 +40,32 @@ describe('calendarGroups', () => {
       ],
       '2026-11-07',
     );
-    expect(groups.map((g) => [g.title, g.games.map((x) => x.igdbId)])).toEqual([
+    expect(ids(groups)).toEqual([
       ['Just released', [5]],
       ['November 2026', [4]],
       ['December 2026', [3]],
       ['Later in 2027', [2]],
       ['TBA', [1]],
+    ]);
+  });
+
+  it('puts events in their month, before that day’s games, leaving out past and archived ones', () => {
+    const dateOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    const groups = calendarGroups(
+      [game(4, '2026-11-19', 'day'), game(3, '2027-01-10', 'day')],
+      '2026-11-07',
+      [
+        event('sop', '2026-11-19T20:00:00Z'),
+        event('direct', '2026-12-05T14:00:00Z'),
+        event('old', '2026-11-01T20:00:00Z'),
+        event('done', '2026-11-20T20:00:00Z', true),
+      ],
+      dateOf,
+    );
+    expect(ids(groups)).toEqual([
+      ['November 2026', ['sop', 4]],
+      ['December 2026', ['direct']],
+      ['January 2027', [3]],
     ]);
   });
 
