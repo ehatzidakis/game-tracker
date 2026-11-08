@@ -248,25 +248,33 @@
           }
         </div>
 
-        <h2 class="group-header flex">
+        @let shownRating = ratingPreview() ?? t.rating;
+        <h2 class="group-header flex items-baseline gap-3">
           Rating
-          @if (t.rating) {
-            <span class="num ml-auto normal-case text-label">{{ t.rating }}/10</span>
+          @if (shownRating) {
+            <span class="num ml-auto text-[17px] font-semibold normal-case text-label"
+              >{{ shownRating }}<span class="text-[13px] font-normal text-muted">/10</span></span
+            >
+            @if (t.rating && ratingPreview() === null) {
+              <button
+                type="button"
+                class="text-[13px] normal-case text-accent active:opacity-60"
+                (click)="setRating(null)"
+              >
+                Clear
+              </button>
+            }
+          } @else {
+            <span class="ml-auto normal-case">Slide to rate</span>
           }
         </h2>
-        <div class="segmented num" role="radiogroup" aria-label="Rating out of 10">
-          @for (r of ratings; track r) {
-            <button
-              type="button"
-              role="radio"
-              [attr.aria-checked]="t.rating === r"
-              [attr.aria-label]="r + ' out of 10'"
-              (click)="setRating(r)"
-            >
-              {{ r }}
-            </button>
-          }
-        </div>
+        <!-- Slide your finger along the bar (or tap): 1 to 10 in half points. -->
+        <app-rating-slider
+          class="px-1"
+          [value]="t.rating"
+          (preview)="ratingPreview.set($event)"
+          (changed)="setRating($event)"
+        />
 
         <div class="grouped mt-6">
           <label class="row">

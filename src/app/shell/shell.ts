@@ -73,6 +73,11 @@ export class Shell {
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
 
   protected readonly route = signal<ShellRouteData>(this.routeData());
+  private readonly url = signal(this.router.url);
+  /** Which tab the sliding highlight sits under; -1 off the tabs (a game's page). */
+  protected readonly activeTab = computed(() =>
+    this.tabs.findIndex((t) => this.url() === t.path || this.url().startsWith(t.path + '?')),
+  );
   private readonly scrollTop = signal(0);
   /** Past the large title (or the artwork): the bar turns solid and shows the small title. */
   protected readonly titleShown = computed(
@@ -92,12 +97,21 @@ export class Shell {
         restoring = event.navigationTrigger === 'popstate';
       } else if (event instanceof NavigationEnd) {
         this.route.set(this.routeData());
-        const top = restoring ? (positions.get(event.urlAfterRedirects) ?? 0) : 0;
-        // Wait a frame so the new page has rendered and is tall enough.
-        requestAnimationFrame(() => {
-          this.scroller().nativeElement.scrollTop = top;
+        this.url.set(event.urlAfterRedirects);
+        const scroller = this.scroller().nativeElement;
+        if (!restoring) {
+          // A new page starts at the top straight away, so it never shows for a frame at the
+          // old page's scroll position (that jump looked like a flicker).
+          scroller.scrollTop = 0;
           this.onScroll();
-        });
+        } else {
+          // Back: wait a frame so the page has rendered and is tall enough to restore into.
+          const top = positions.get(event.urlAfterRedirects) ?? 0;
+          requestAnimationFrame(() => {
+            scroller.scrollTop = top;
+            this.onScroll();
+          });
+        }
       }
     });
     inject(DestroyRef).onDestroy(() => sub.unsubscribe());

@@ -44,7 +44,7 @@
     <!-- overflow-x-hidden: overflow-y:auto would otherwise let wide content scroll sideways. -->
     <main
       #scroller
-      class="h-full overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-8"
+      class="h-full overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-[calc(var(--tab-bar-space)+16px)]"
       [style.padding-top]="route().hero ? '0' : 'calc(12px + env(safe-area-inset-top))'"
       (scroll)="onScroll()"
     >
@@ -52,18 +52,23 @@
     </main>
   </div>
 
-  <!-- Uses only part of the home-indicator inset, so the labels clear the indicator without
-       dead space under them. -->
-  <nav
-    class="relative grid shrink-0 grid-cols-4 border-t-[0.5px] border-sep bg-[#121214] pb-[max(calc(env(safe-area-inset-bottom)-16px),6px)]"
-    aria-label="Main"
-  >
+  <!-- Floating tab bar, as in Apple's own apps: a frosted capsule over the content, which
+       scrolls underneath it. It's placed inside the app frame rather than pinned to the screen
+       (iOS 26 misplaces bars pinned to the screen's bottom edge), just above the home indicator. -->
+  <nav class="tab-bar absolute inset-x-4 z-30 grid grid-cols-4 p-1" aria-label="Main">
+    <!-- One highlight that slides between tabs (moved by transform, so it stays smooth). -->
+    <span
+      class="tab-pill"
+      [style.transform]="'translateX(' + 100 * (activeTab() < 0 ? 0 : activeTab()) + '%)'"
+      [class.opacity-0]="activeTab() < 0"
+      aria-hidden="true"
+    ></span>
     @for (tab of tabs; track tab.path) {
       <a
         [routerLink]="tab.path"
-        routerLinkActive="!text-accent"
+        routerLinkActive="tab-active"
         ariaCurrentWhenActive="page"
-        class="flex h-[50px] flex-col items-center justify-center gap-[3px] text-[10px] leading-none font-medium tracking-normal text-muted"
+        class="relative flex h-[54px] flex-col items-center justify-center gap-[3px] rounded-full text-[10.5px] leading-none font-semibold tracking-normal text-label/80"
       >
         @switch (tab.path) {
           @case ('/calendar') {

@@ -205,8 +205,8 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 - **Raised Grey** (raised): sheets, toasts, cover placeholders, inline date and time fields on group surfaces.
 - **Pressed Grey** (pressed): a tapped row, and inline fields that sit on an already-raised sheet.
 - **Thumb Grey** (segment-thumb): the selected segment. Grey, not blue, on purpose.
-- **Bar Black** (tab-bar): the opaque tab bar, one step off true black so it reads as a bar.
-- **Hairline** (separator): 0.5px inset separators, the top bar's bottom edge once solid, the tab bar's top edge.
+- **Tab Glass** (tab-bar): the floating tab bar, rgb(36 36 38 / 0.74) with a 24px blur and 180% saturation, on its own compositing layer so its look stays constant while pages change underneath.
+- **Hairline** (separator): 0.5px inset separators, the top bar's bottom edge once solid, the floating tab bar's outline.
 - **Control Fill** (fill): segmented-control track and the search field.
 - **Label White** (label): primary text.
 - **Secondary Grey** (muted): secondary text, group headers and footers, placeholders, row values (5.9:1 on group, 7.3:1 on black).
@@ -238,7 +238,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 - **Footnote** (400, 13px/18px, -0.005em): group headers (uppercase), group footers, sheet headings, row hints, platform lists.
 - **Segment** (500, 13px/18px; 600 when selected): segmented-control labels; five-segment controls step down to 12.5px to fit a 390px phone.
 - **Caption** (400, 12–13px/16px, normal tracking): names and meta under Library grid covers; 11px semibold for the badge on a cover.
-- **Tab Label** (500, 10px): tab bar labels under 24px icons.
+- **Tab Label** (600, 10.5px): tab bar labels under 24px icons.
 
 ### Named Rules
 **The Tabular Figures Rule.** Every date, countdown, count, rating and hour uses tabular numerals so columns of figures don't shimmer.
@@ -251,7 +251,7 @@ A single phone-width column (max 28rem, centred on a desktop browser) inside a f
 
 The page gutter is 16px. Grouped lists sit inside that gutter; rows are at least 44px tall with 11px by 16px padding and 12px gaps. Separators are inset 16px for text rows, 68px for rows that start with a 40px cover, 52px for rows that start with a 22px icon. Group headers sit 22px above their list; footers follow 7px below. The Library grid is three columns with 12px gutters and 20px between rows.
 
-Only the Game screen has a top bar: 44px plus the safe-area inset, laid over the content, see-through over the hero art and solid with the game's name once the art has scrolled away, with the back button on the left. Tab screens have no bar: the large title scrolls away with the page. One-time actions (subscribing to the calendar) live in Settings, not on the tab screens. The tab bar is a normal row at the bottom of the frame, not a floating fixed bar, and uses only part of the home-indicator inset. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
+Only the Game screen has a top bar: 44px plus the safe-area inset, laid over the content, see-through over the hero art and solid with the game's name once the art has scrolled away, with the back button on the left. Tab screens have no bar: the large title scrolls away with the page. One-time actions (subscribing to the calendar) live in Settings, not on the tab screens. The tab bar floats: a capsule inset 16px from the sides, just above the home indicator (bottom: the safe-area inset minus 14px, at least 12px), over the content, which scrolls underneath it. It is positioned inside the app frame, never pinned to the screen with `position: fixed; bottom: 0` (iOS 26 misplaces those in home-screen apps). Pages leave `--tab-bar-space` plus 16px at the bottom so their last item clears it. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
 
 ## Elevation & Depth
 
@@ -304,7 +304,7 @@ The backbone of every screen, as in iOS Settings.
 
 ### Navigation
 - **Top bar (Game screen only):** see-through at rest; turns into a 90% near-black blurred bar with a hairline at the same moment its small centred 17px semibold title fades in (200ms). Back button: a 36px blurred dark circle over art, plain Tint Blue chevron once solid.
-- **Tab bar:** four tabs (Calendar, Library, Search, Settings), opaque Bar Black with a hairline top edge, 24px Lucide icons over 10px labels; the active tab is Tint Blue.
+- **Tab bar:** four tabs (Calendar, Library, Search, Settings) in a floating Tab Glass capsule (fully round, 0.5px white outline, soft shadow, faint top highlight), 24px Lucide icons over 10.5px semibold labels. The active tab is Tint Blue over a single lighter pill (10% white) that slides between tabs (transform, 320ms, iOS spring-like ease) and hides off the tabs (a game's page). The bar itself never animates.
 
 ### Action Sheet
 iOS action sheet from the bottom: choices in one 14px-rounded raised group (94% Raised Grey with blur), Cancel in its own group below, 57px rows, Sheet Blue text, a muted 13px heading with the game's name in semibold. Slides up over 280ms; the backdrop dims to 50% black and dismisses on tap.

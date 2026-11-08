@@ -54,6 +54,10 @@ What Claude built while you were away, what it needs from you, and the choices i
 - **PS4** is now a platform (game page "My platform" and Settings' default platform). Xbox is labelled "Xbox" to fit five.
 - **"Just released"** on the Calendar keeps a game for 14 days after its exact release date; it drops off on day 15.
 
+**Floating tab bar (2026-11-08).** The tab bar is now a frosted capsule floating above the content, like Apple Music, with the current tab in its own pill. It sits inside the app frame rather than pinned to the screen, because iOS 26 home-screen apps misplace bars pinned to the bottom edge. Worth a look on the phone, especially right after opening the app.
+
+**Rating slider (2026-11-08).** Ratings go from 1 to 10 in half points (8.5, 7.5…). Slide your finger along the bar (or tap it); the value shows as you drag and saves when you let go. "Clear" removes it. Also: long press does nothing anywhere (no link previews or Save to Photos), and switching tabs no longer cross-fades the screen.
+
 ## 5. Design pass (Step 5)
 
 - Done with the `impeccable` skill. You picked the standard iOS look, with Letterboxd and Things 3 as the bar. Brief: [PRODUCT.md](PRODUCT.md); design system: DESIGN.md.

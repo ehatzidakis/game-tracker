@@ -40,6 +40,7 @@ import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
 import { Cover } from '../../shared/cover';
+import { RatingSlider } from '../../shared/rating-slider';
 import { ChoiceSheet } from '../../shared/choice-sheet';
 import { parsePrice, PreorderSheet } from '../../shared/preorder-sheet';
 
@@ -65,6 +66,7 @@ const TIME_TO_BEAT = [
   selector: 'app-game',
   imports: [
     Cover,
+    RatingSlider,
     NgTemplateOutlet,
     RouterLink,
     LucideChevronRight,
@@ -275,7 +277,8 @@ export class GamePage {
 
   protected readonly statuses = STATUSES;
   protected readonly completions = COMPLETIONS;
-  protected readonly ratings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  /** The rating under your finger while you slide, shown in the heading. */
+  protected readonly ratingPreview = signal<number | null>(null);
   protected readonly platformLabel = platformLabel;
   protected readonly coverUrl = coverUrl;
   protected readonly dateFieldValue = dateFieldValue;
@@ -334,9 +337,10 @@ export class GamePage {
     if (t && t.completion !== completion) this.library.edit(t, { completion });
   }
 
-  protected setRating(rating: number): void {
+  /** 1–10 in half points, or null to clear it. */
+  protected setRating(rating: number | null): void {
     const t = this.tracked();
-    if (t) this.library.edit(t, { rating: t.rating === rating ? null : rating });
+    if (t && t.rating !== rating) this.library.edit(t, { rating });
   }
 
   protected setHours(event: Event): void {

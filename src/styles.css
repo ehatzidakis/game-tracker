@@ -47,6 +47,25 @@
     background: var(--color-ground);
   }
 
+  /* Long press does nothing, as in a native app: no link previews or "Save to Photos" menu, no
+     text selection. Fields you type in still select and paste normally. */
+  html {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input,
+  textarea,
+  [contenteditable],
+  .select-all {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  img {
+    -webkit-user-drag: none;
+  }
+
   body {
     overflow-x: clip;
     overscroll-behavior: none;
@@ -252,6 +271,48 @@ dialog.sheet[open]::backdrop {
     -webkit-backdrop-filter: blur(0);
     backdrop-filter: blur(0);
   }
+}
+
+/*
+ * Floating tab bar: a frosted capsule above the home indicator. --tab-bar-space is how much of
+ * the screen's bottom it takes, so the page can leave room to scroll its last items above it.
+ */
+:root {
+  --tab-bar-bottom: max(calc(env(safe-area-inset-bottom) - 14px), 12px);
+  --tab-bar-space: calc(62px + var(--tab-bar-bottom));
+}
+.tab-bar {
+  bottom: var(--tab-bar-bottom);
+  border-radius: 999px;
+  /* Solid enough that a page changing underneath doesn't show through as a flicker. */
+  background: rgb(36 36 38 / 0.74);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid rgb(255 255 255 / 0.14);
+  box-shadow:
+    0 12px 32px rgb(0 0 0 / 0.5),
+    inset 0 0.5px 0 rgb(255 255 255 / 0.18);
+  /* Its own compositing layer: iOS keeps the blur steady instead of redrawing it (and flashing)
+     when the page underneath changes. */
+  transform: translateZ(0);
+  isolation: isolate;
+}
+/* The tab you're on: blue, over the sliding pill. */
+.tab-bar .tab-active {
+  color: var(--color-accent);
+}
+.tab-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 4);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.1);
+  transition:
+    transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease-out;
+  will-change: transform;
 }
 
 /* The search field draws its own clear button (iOS shows none, Chrome its own). */
