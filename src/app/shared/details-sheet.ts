@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import type { TrackedGame } from '../../../api/_lib/models.js';
 import { dateFieldValue, fromDateField } from '../core/dates';
+import { parsePlaytime, splitPlaytime } from '../core/playtime';
 import { FitWidth } from './fit-content';
 
 /** Your own data about a game: what you paid, where and when, and how long you played. */
@@ -34,7 +35,7 @@ interface SheetRequest {
   /** "Pre-order details", "Purchase details", "Your data". */
   title: string;
   name: string;
-  /** "Ordered on" for pre-orders, "Bought on" otherwise. */
+  /** "Preordered on" for pre-orders, "Bought on" otherwise. */
   dateLabel: string;
   /** "Skip" when asked as you buy or pre-order, "Cancel" when editing. */
   dismiss: string;
@@ -64,7 +65,7 @@ export class DetailsSheet {
     return this.open({
       title: kind === 'preorder' ? 'Pre-order details for ' : 'Purchase details for ',
       name,
-      dateLabel: kind === 'preorder' ? 'Ordered on' : 'Bought on',
+      dateLabel: kind === 'preorder' ? 'Preordered on' : 'Bought on',
       dismiss: 'Skip',
       fields: { purchase: true, hours: false, completed: false },
       initial: { orderedOn: today },
@@ -83,7 +84,7 @@ export class DetailsSheet {
     return this.open({
       title: 'Your data for ',
       name: game.name,
-      dateLabel: game.preordered ? 'Ordered on' : 'Bought on',
+      dateLabel: game.preordered ? 'Preordered on' : 'Bought on',
       dismiss: 'Cancel',
       fields,
       initial: {
@@ -118,14 +119,6 @@ export function parsePrice(text: string): number | null | undefined {
   return Number.isFinite(price) && price >= 0 && price < 100_000 ? price : undefined;
 }
 
-/** "12,5" or "12.5" → 12.5. Empty → null. Anything else → undefined (invalid). */
-export function parseHours(text: string): number | null | undefined {
-  const clean = text.trim().replace(',', '.');
-  if (clean === '') return null;
-  const hours = Math.round(Number(clean) * 10) / 10;
-  return Number.isFinite(hours) && hours >= 0 && hours <= 100_000 ? hours : undefined;
-}
-
 /** Rendered once, in the shell. */
 @Component({
   selector: 'app-details-sheet',
@@ -152,22 +145,38 @@ export function parseHours(text: string): number | null | undefined {
             </p>
             <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
             @if (req.fields.hours) {
-              <label class="row">
-                <span class="flex-1">Hours played</span>
-                <span class="flex items-baseline gap-1">
+              @let played = req.initial.hoursPlayed ? splitPlaytime(req.initial.hoursPlayed) : null;
+              <div class="row">
+                <span class="flex-1">Playtime</span>
+                <label class="flex items-baseline gap-0.5">
                   <input
                     appFitWidth
                     name="hours"
                     type="text"
-                    inputmode="decimal"
+                    inputmode="numeric"
                     placeholder="0"
                     autocomplete="off"
+                    aria-label="Hours"
                     class="num bg-transparent text-right text-[17px] outline-none"
-                    [value]="req.initial.hoursPlayed ?? ''"
+                    [value]="played?.hours || ''"
                   />
                   <span class="text-muted">h</span>
-                </span>
-              </label>
+                </label>
+                <label class="ml-0.5 flex items-baseline gap-0.5">
+                  <input
+                    appFitWidth
+                    name="minutes"
+                    type="text"
+                    inputmode="numeric"
+                    placeholder="0"
+                    autocomplete="off"
+                    aria-label="Minutes"
+                    class="num bg-transparent text-right text-[17px] outline-none"
+                    [value]="played?.minutes || ''"
+                  />
+                  <span class="text-muted">m</span>
+                </label>
+              </div>
             }
             @if (req.fields.completed) {
               <label class="row">
@@ -293,6 +302,7 @@ export class DetailsSheetOutlet {
   protected readonly storeText = signal('');
   protected readonly physical = signal(false);
   protected readonly dateFieldValue = dateFieldValue;
+  protected readonly splitPlaytime = splitPlaytime;
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
   constructor() {
@@ -319,8 +329,10 @@ export class DetailsSheetOutlet {
     const data: Partial<MyData> = {};
 
     if (req.fields.hours) {
-      const hours = parseHours(field('hours'));
-      if (hours === undefined) return this.error.set('Hours should be a number, like 12 or 12.5.');
+      const hours = parsePlaytime(field('hours'), field('minutes'));
+      if (hours === undefined) {
+        return this.error.set('Playtime should be whole hours and minutes, up to 59 minutes.');
+      }
       data.hoursPlayed = hours;
     }
     if (req.fields.completed) {

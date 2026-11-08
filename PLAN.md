@@ -143,8 +143,8 @@ users/{uid}/games/{igdbId}        one record per game you track
   status             "wishlist" | "backlog" | "playing" | "shelved" | "completed"
   completion         "main" | "main_sides" | "platinum" | null
   myPlatform         "ps5" | "xbox" | "pc" | "switch2"   defaults to PS5
-  hoursPlayed        optional
-  rating             1–10, optional, asked for on completion
+  hoursPlayed        optional, in hours; minutes as a fraction (34h 21m = 34.35)
+  rating             1–10 in half points, optional, asked for on completion
   notes
   notify             false by default; true = release alert on
   addedAt, purchasedAt, startedAt, shelvedAt, completedAt, updatedAt   (milliseconds)
@@ -221,3 +221,4 @@ Already built in: router view transitions (on) and Angular's `animate.enter` / `
 - **2026-11-08:** Tab switches: page cross-fade (view transitions) removed, it animated a frozen snapshot of the screen and flickered; new pages start at the top immediately. Long press does nothing (no link previews, Save to Photos or text selection; fields still work). Committed and pushed.
 - **2026-11-08:** Rating is a slider you drag (or tap), 1–10 in half points, with Clear. 54 tests pass. Committed and pushed with the tab bar and long-press changes.
 - **2026-11-08:** Changelog batch: rating sort on Completed, Just released = 7 days, bottom spacer for the floating bar, growing notes, € next to prices, blue selections, game page shows your data at the top with an Edit my data sheet. 55 tests pass. Then: platform back by the date; rating locked until Edit (line marker), Clear/Done while editing. 57 tests pass. Committed and pushed.
+- **2026-11-08:** Playtime in hours and minutes ("34h 21m playtime"; two fields in Edit my data; older entries like 12.5 read as 12h 30m, no data change needed). Pre-order date labelled "Preordered on". Store buttons: Xbox Store, Steam and Nintendo eShop dropped from the suggestions. 58 tests pass. Committed and pushed.

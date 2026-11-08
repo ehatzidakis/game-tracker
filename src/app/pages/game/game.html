@@ -409,8 +409,8 @@
       </div>
       <p class="group-footer">
         Average from {{ ttbPlayers() }} players on IGDB.
-        @if (tracked()?.hoursPlayed; as hours) {
-          You've played {{ hours }} h.
+        @if (formatPlaytime(tracked()?.hoursPlayed); as played) {
+          You've played {{ played }}.
         }
       </p>
     </section>

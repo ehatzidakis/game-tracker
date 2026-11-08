@@ -151,9 +151,7 @@
                 {{ countdown(game) }}
               }
               @case ('playing') {
-                @if (game.hoursPlayed) {
-                  {{ game.hoursPlayed }} h
-                }
+                {{ formatPlaytime(game.hoursPlayed) }}
               }
             }
           </p>

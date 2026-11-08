@@ -7,7 +7,8 @@ import { IgdbService, type GameDetails } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { PushService } from '../../core/push.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
-import { DetailsSheet, parseHours, parsePrice } from '../../shared/details-sheet';
+import { DetailsSheet, parsePrice } from '../../shared/details-sheet';
+import { formatPlaytime, parsePlaytime, splitPlaytime } from '../../core/playtime';
 import { GamePage } from './game';
 
 const details: GameDetails = {
@@ -155,13 +156,13 @@ describe('GamePage', () => {
   it('marks an upcoming game as pre-ordered and asks for the details', async () => {
     const { el, edits, sheet2 } = await render(tracked({}));
     expect(el.textContent).toContain('Pre-ordered');
-    expect(el.textContent).not.toContain('Hours played');
+    expect(el.textContent).not.toContain('playtime');
     const toggle = el.querySelector('button[aria-labelledby=preorder-label]') as HTMLButtonElement;
 
     toggle.click();
     expect(edits).toEqual([{ preordered: true }]);
     expect(sheet2.request()?.name).toBe('Test Game');
-    expect(sheet2.request()?.dateLabel).toBe('Ordered on');
+    expect(sheet2.request()?.dateLabel).toBe('Preordered on');
     expect(sheet2.request()?.fields).toEqual({ purchase: true, hours: false, completed: false });
     expect(sheet2.request()?.stores).toContain('PlayStation Store');
     const data = {
@@ -180,7 +181,7 @@ describe('GamePage', () => {
       tracked({
         status: 'completed',
         releaseDate: '2020-01-01',
-        hoursPlayed: 42,
+        hoursPlayed: 34.35,
         completedAt: new Date(2026, 2, 4, 12).getTime(),
         pricePaid: 69.9,
         boughtFrom: 'Germanos',
@@ -192,7 +193,7 @@ describe('GamePage', () => {
       li.textContent!.trim(),
     );
     expect(items).toEqual([
-      '42 h played',
+      '34h 21m playtime',
       'Completed 4 Mar 2026',
       '69.90',
       'Germanos',
@@ -329,10 +330,24 @@ describe('parsePrice', () => {
   });
 });
 
-describe('parseHours', () => {
-  it('reads commas and dots to one decimal, and rejects junk', () => {
-    expect(parseHours('12,5')).toBe(12.5);
-    expect(parseHours('')).toBeNull();
-    expect(parseHours('x')).toBeUndefined();
+describe('playtime', () => {
+  it('shows hours and minutes, leaving out a zero part', () => {
+    expect(formatPlaytime(34.35)).toBe('34h 21m');
+    expect(formatPlaytime(12.5)).toBe('12h 30m');
+    expect(formatPlaytime(34)).toBe('34h');
+    expect(formatPlaytime(0.35)).toBe('21m');
+    expect(formatPlaytime(null)).toBe('');
+    expect(splitPlaytime(34.35)).toEqual({ hours: 34, minutes: 21 });
+  });
+
+  it('reads the hours and minutes fields, and rejects junk', () => {
+    expect(splitPlaytime(parsePlaytime('34', '21')!)).toEqual({ hours: 34, minutes: 21 });
+    expect(parsePlaytime('34', '')).toBe(34);
+    expect(parsePlaytime('', '45')).toBe(0.75);
+    expect(parsePlaytime('', '')).toBeNull();
+    expect(parsePlaytime('0', '0')).toBeNull();
+    expect(parsePlaytime('12.5', '')).toBeUndefined();
+    expect(parsePlaytime('3', '60')).toBeUndefined();
+    expect(parsePlaytime('x', '')).toBeUndefined();
   });
 });

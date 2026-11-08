@@ -296,7 +296,7 @@ The backbone of every screen, as in iOS Settings.
 - **Style:** 51 by 31px pill, grey track off, Fill Blue track on, white 27px knob that slides 20px over 200ms with an iOS spring-like ease.
 
 ### Inputs / Fields
-- **In rows:** borderless, transparent, right-aligned 17px values in the row (Price, Bought from, Hours played).
+- **In rows:** borderless, transparent, right-aligned 17px values in the row (Price, Bought from, Playtime hours and minutes).
 - **Date and time:** a small 8px-rounded chip one step up the grey ladder from its surface.
 - **Search field:** 36px tall, Control Fill, 10px radius, leading muted search icon, its own clear button.
 - **Notes:** a grouped-surface textarea, 17px.

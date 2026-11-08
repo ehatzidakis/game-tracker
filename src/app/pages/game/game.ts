@@ -32,6 +32,7 @@ import {
 } from '../../../../api/_lib/platforms.js';
 import { pickRelease } from '../../../../api/_lib/release.js';
 import { countdown, dateFieldValue, fromDateField, isReleased, today } from '../../core/dates';
+import { formatPlaytime } from '../../core/playtime';
 import {
   coverUrl,
   DLC_GAME_TYPES,
@@ -60,7 +61,7 @@ const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
   year: 'numeric',
 });
 
-const COMMON_STORES = ['PlayStation Store', 'Amazon', 'Xbox Store', 'Steam', 'Nintendo eShop'];
+const COMMON_STORES = ['PlayStation Store', 'Amazon'];
 
 /** IGDB's time to beat, in your completion levels. */
 const TIME_TO_BEAT = [
@@ -196,14 +197,14 @@ export class GamePage {
     return fields.hours || fields.completed || fields.purchase ? fields : null;
   });
 
-  /** "142 h played", "Completed 7 Nov 2026", "€69.99", … Only what you've filled in. */
+  /** "34h 21m playtime", "Completed 7 Nov 2026", "€69.99", … Only what you've filled in. */
   protected readonly myData = computed(() => {
     const t = this.tracked();
     const fields = this.editableFields();
     if (!t || !fields) return [];
     const items: { icon: string; label: string }[] = [];
-    if (fields.hours && t.hoursPlayed)
-      items.push({ icon: 'hours', label: `${t.hoursPlayed} h played` });
+    const played = formatPlaytime(t.hoursPlayed);
+    if (fields.hours && played) items.push({ icon: 'hours', label: `${played} playtime` });
     if (fields.completed && t.completedAt) {
       items.push({ icon: 'completed', label: `Completed ${SHORT_DATE.format(t.completedAt)}` });
     }
@@ -212,7 +213,7 @@ export class GamePage {
       if (t.boughtFrom) items.push({ icon: 'store', label: t.boughtFrom });
       if (t.orderedOn) {
         const when = SHORT_DATE.format(new Date(`${t.orderedOn}T12:00:00`));
-        items.push({ icon: 'date', label: `${t.preordered ? 'Ordered' : 'Bought'} ${when}` });
+        items.push({ icon: 'date', label: `${t.preordered ? 'Preordered' : 'Bought'} ${when}` });
       }
       if (t.physical) items.push({ icon: 'physical', label: 'Physical copy' });
     }
@@ -338,6 +339,7 @@ export class GamePage {
   protected readonly platformLabel = platformLabel;
   protected readonly coverUrl = coverUrl;
   protected readonly dateFieldValue = dateFieldValue;
+  protected readonly formatPlaytime = formatPlaytime;
 
   constructor() {
     // The top bar shows the game's name once you scroll past the artwork.

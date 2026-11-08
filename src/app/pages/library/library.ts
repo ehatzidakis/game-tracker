@@ -16,6 +16,7 @@ import {
   type Status,
 } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
+import { formatPlaytime } from '../../core/playtime';
 import { LibraryService } from '../../core/library.service';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
@@ -128,6 +129,7 @@ export class LibraryPage {
 
   protected readonly completionLabel = completionLabel;
   protected readonly countdown = countdown;
+  protected readonly formatPlaytime = formatPlaytime;
   protected readonly isDlc = isDlc;
 
   protected isCollapsed(key: string): boolean {
