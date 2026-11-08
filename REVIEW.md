@@ -34,7 +34,8 @@ What Claude built while you were away, what it needs from you, and the choices i
 **Your notes from using the app (2026-11-08), done**
 - **Pre-orders stay on the Wishlist.** Turning on Pre-ordered no longer changes the status, so you can see which upcoming games you want and have already pre-ordered (Calendar says "Pre-ordered", the Wishlist cover has a badge). When it's out and you move it to Backlog or Playing, you're not asked for the price again.
 - **Completed on.** Completed games have an editable "Completed on" date. The Completed tab sorts by it (latest first) by default; each tab remembers its own sort. Library always opens on Completed (and keeps your tab while the app is open).
-- **Library tabs and sorts.** Tabs go Completed, Playing, Backlog, Wishlist, Shelved. Default sorts: Completed by date completed, split into years ("4 in 2026", its games, then "12 in 2025", …); Playing by recent; Backlog and Shelved by newest release; Wishlist by what comes out soonest (then no date yet, then already out). Pick another sort and the tab remembers it on the phone.
+- **Library tabs and sorts.** Tabs go Completed, Wishlist, Backlog, Shelved, Playing. Default sorts: Completed by date completed and Wishlist by release date (soonest first), both split into years ("4 in 2026", its games, then the next year; Wishlist ends with "without a date" and "already out"); tap a year to fold it (remembered while the app is open). Playing by recent; Backlog and Shelved by newest release. Pick another sort and the tab remembers it on the phone.
+- **Calendar subscription** lives only in Settings now (one tap: Add to Calendar app). You do it once and the calendar keeps itself updated.
 - **DLC and expansions.**
   - A game's page lists its DLC and expansions (the first 6, then "Show all"), each showing whether you own it or finished it.
   - Tap one to open its page: On wishlist, Owned, then Completed with a date, and Price. There's no store for DLC.

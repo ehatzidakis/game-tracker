@@ -2,13 +2,13 @@ import type { Status, TrackedGame } from '../../../../api/_lib/models.js';
 
 export type Sort = 'recent' | 'name' | 'release' | 'completed';
 
-/** Library tabs: Completed first, then the usual order. */
+/** Library tabs, in your order. */
 export const LIBRARY_TABS: readonly Status[] = [
   'completed',
-  'playing',
-  'backlog',
   'wishlist',
+  'backlog',
   'shelved',
+  'playing',
 ];
 
 /** Each tab's sort until you pick another one. */
@@ -56,20 +56,59 @@ export function compareBy(
 }
 
 export interface YearGroup {
-  /** "4 in 2026", or "3 without a date". */
+  /** Stable id, used to remember whether the group is collapsed. */
+  key: string;
+  /** "4 in 2026", "3 without a date", "2 already out". */
   title: string;
   games: TrackedGame[];
 }
 
-/** Completed games (already sorted, latest first) split by the year you finished them. */
-export function completedByYear(games: readonly TrackedGame[]): YearGroup[] {
-  const groups = new Map<string, TrackedGame[]>();
-  for (const g of games) {
-    const key = g.completedAt ? String(new Date(g.completedAt).getFullYear()) : '';
-    groups.set(key, [...(groups.get(key) ?? []), g]);
+/**
+ * Splits an already-sorted tab into year groups, when its sort calls for it:
+ * - Completed by date completed: the year you finished each game, latest first.
+ * - Wishlist by release date: the year each upcoming game comes out, soonest first, then games
+ *   without a date, then games already out.
+ * Other tabs and sorts aren't grouped (null).
+ */
+export function groupByYear(
+  tab: Status,
+  sort: Sort,
+  games: readonly TrackedGame[],
+  today: string,
+): YearGroup[] | null {
+  if (tab === 'completed' && sort === 'completed') {
+    return consecutive(games, (g) =>
+      g.completedAt ? String(new Date(g.completedAt).getFullYear()) : 'none',
+    );
   }
-  return [...groups].map(([year, list]) => ({
-    title: year ? `${list.length} in ${year}` : `${list.length} without a date`,
-    games: list,
-  }));
+  if (tab === 'wishlist' && sort === 'release') {
+    return consecutive(games, (g) =>
+      !g.releaseDate ? 'none' : g.releaseDate < today ? 'out' : g.releaseDate.slice(0, 4),
+    );
+  }
+  return null;
+}
+
+/** Groups neighbours with the same key, keeping the sort order. */
+function consecutive(
+  games: readonly TrackedGame[],
+  keyOf: (g: TrackedGame) => string,
+): YearGroup[] {
+  const groups: YearGroup[] = [];
+  for (const g of games) {
+    const key = keyOf(g);
+    const last = groups.at(-1);
+    if (last?.key === key) last.games.push(g);
+    else groups.push({ key, title: '', games: [g] });
+  }
+  for (const group of groups) {
+    const n = group.games.length;
+    group.title =
+      group.key === 'none'
+        ? `${n} without a date`
+        : group.key === 'out'
+          ? `${n} already out`
+          : `${n} in ${group.key}`;
+  }
+  return groups;
 }

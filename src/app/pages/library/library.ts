@@ -1,7 +1,12 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { LucideChevronDown, LucideLibraryBig, LucideStar } from '@lucide/angular';
+import {
+  LucideChevronDown,
+  LucideChevronRight,
+  LucideLibraryBig,
+  LucideStar,
+} from '@lucide/angular';
 import {
   completionLabel,
   isDlc,
@@ -13,7 +18,7 @@ import { countdown, today } from '../../core/dates';
 import { LibraryService } from '../../core/library.service';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
-import { compareBy, completedByYear, DEFAULT_SORT, LIBRARY_TABS, type Sort } from './library-sort';
+import { compareBy, DEFAULT_SORT, groupByYear, LIBRARY_TABS, type Sort } from './library-sort';
 
 const SORTS: { key: Sort; label: string }[] = [
   { key: 'recent', label: 'Recent' },
@@ -34,6 +39,8 @@ const SORT_KEY = 'library.sort.v2';
  * The app always opens on Completed.
  */
 let currentTab: Status = 'completed';
+/** Year groups you've folded ("completed:2025"), kept while the app is open. */
+const collapsedGroups = new Set<string>();
 
 const EMPTY: Record<Status, { title: string; text: string }> = {
   playing: { title: 'Nothing in progress', text: 'Open a game and set it to Playing.' },
@@ -48,7 +55,15 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
 
 @Component({
   selector: 'app-library',
-  imports: [RouterLink, NgTemplateOutlet, Cover, LucideChevronDown, LucideLibraryBig, LucideStar],
+  imports: [
+    RouterLink,
+    NgTemplateOutlet,
+    Cover,
+    LucideChevronDown,
+    LucideChevronRight,
+    LucideLibraryBig,
+    LucideStar,
+  ],
   templateUrl: './library.html',
 })
 export class LibraryPage {
@@ -83,12 +98,14 @@ export class LibraryPage {
       .sort(compareBy(this.sort(), this.filter(), today())),
   );
 
-  /** Completed, sorted by date completed: split by year, "4 in 2026" above each year's games. */
+  /**
+   * Completed (by date completed) and Wishlist (by release date) split into years:
+   * "4 in 2026", that year's games, then the next year. Each year folds away.
+   */
   protected readonly yearGroups = computed(() =>
-    this.filter() === 'completed' && this.sort() === 'completed'
-      ? completedByYear(this.shown())
-      : null,
+    groupByYear(this.filter(), this.sort(), this.shown(), today()),
   );
+  private readonly collapsed = signal<ReadonlySet<string>>(new Set(collapsedGroups));
 
   protected readonly emptyTitle = computed(() => EMPTY[this.filter()].title);
   protected readonly emptyText = computed(() => EMPTY[this.filter()].text);
@@ -109,6 +126,17 @@ export class LibraryPage {
   protected readonly completionLabel = completionLabel;
   protected readonly countdown = countdown;
   protected readonly isDlc = isDlc;
+
+  protected isCollapsed(key: string): boolean {
+    return this.collapsed().has(`${this.filter()}:${key}`);
+  }
+
+  protected toggleGroup(key: string): void {
+    const id = `${this.filter()}:${key}`;
+    if (collapsedGroups.has(id)) collapsedGroups.delete(id);
+    else collapsedGroups.add(id);
+    this.collapsed.set(new Set(collapsedGroups));
+  }
 
   protected setFilter(status: Status): void {
     this.filter.set(status);

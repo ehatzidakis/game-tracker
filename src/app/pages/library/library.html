@@ -63,14 +63,34 @@
     </a>
   </div>
 } @else if (yearGroups(); as groups) {
-  <!-- Completed by date: "4 in 2026", that year's games, then "12 in 2025", … -->
-  @for (group of groups; track group.title) {
+  <!-- Split by year: "4 in 2026", that year's games, then the next year. Tap a year to fold it. -->
+  @for (group of groups; track group.key) {
+    @let open = !isCollapsed(group.key);
     <section [attr.aria-label]="group.title">
-      <h2 class="num mt-6 mb-3 text-[20px] leading-6 font-semibold">{{ group.title }}</h2>
-      <ng-container
-        [ngTemplateOutlet]="grid"
-        [ngTemplateOutletContext]="{ $implicit: group.games }"
-      />
+      <h2 class="mt-6 mb-3">
+        <button
+          type="button"
+          class="num flex w-full items-center justify-between gap-3 text-left text-[20px] leading-6 font-semibold active:opacity-60"
+          [attr.aria-expanded]="open"
+          (click)="toggleGroup(group.key)"
+        >
+          {{ group.title }}
+          <!-- Rotates the wrapper: the icon component manages its own classes. -->
+          <span
+            class="shrink-0 text-muted transition-transform duration-200"
+            [class.rotate-90]="open"
+            aria-hidden="true"
+          >
+            <svg lucideChevronRight [size]="20" [strokeWidth]="2.5" class="block"></svg>
+          </span>
+        </button>
+      </h2>
+      @if (open) {
+        <ng-container
+          [ngTemplateOutlet]="grid"
+          [ngTemplateOutletContext]="{ $implicit: group.games }"
+        />
+      }
     </section>
   }
 } @else {

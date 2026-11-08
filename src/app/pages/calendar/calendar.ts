@@ -3,7 +3,6 @@ import { RouterLink } from '@angular/router';
 import {
   LucideBell,
   LucideCalendarDays,
-  LucideCalendarPlus,
   LucideChevronRight,
 } from '@lucide/angular';
 import type { TrackedGame } from '../../../../api/_lib/models.js';
@@ -31,7 +30,6 @@ const WEEKDAY_DAY_MONTH = new Intl.DateTimeFormat('en-GB', {
     Cover,
     LucideBell,
     LucideCalendarDays,
-    LucideCalendarPlus,
     LucideChevronRight,
   ],
   templateUrl: './calendar.html',
@@ -70,11 +68,5 @@ export class CalendarPage {
     if (game.status === 'backlog') return 'Owned';
     if (game.status === 'playing') return 'Playing';
     return null;
-  }
-
-  /** Opens the iPhone's "Subscribe to calendar" prompt for your feed. */
-  protected subscribe(): void {
-    const key = this.library.calendarKey();
-    location.href = `webcal://${location.host}/api/calendar.ics?key=${key}`;
   }
 }

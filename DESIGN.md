@@ -195,7 +195,7 @@ Density is phone-native: 17px body, 44px minimum rows, a 16px page gutter, and a
 A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStation-like blue that is not Sony's brand value.
 
 ### Primary
-- **Tint Blue** (accent): links, the active tab, the next release's countdown, the release-alert bell, "Subscribe" and other text actions, focus rings and the caret. Text and icons on black and grouped surfaces only (5:1 on the group grey).
+- **Tint Blue** (accent): links, the active tab, the next release's countdown, the release-alert bell, text actions, focus rings and the caret. Text and icons on black and grouped surfaces only (5:1 on the group grey).
 - **Sheet Blue** (accent-raised): the same tint, lifted so it still reads on raised surfaces: action-sheet choices, "Suggested", Cancel (5:1 on the raised grey).
 - **Fill Blue** (accent-fill): the blue that carries white text or a white knob: the primary button, the "on" switch track, the confirm button in the pre-order sheet (5.2:1 under white).
 
@@ -251,7 +251,7 @@ A single phone-width column (max 28rem, centred on a desktop browser) inside a f
 
 The page gutter is 16px. Grouped lists sit inside that gutter; rows are at least 44px tall with 11px by 16px padding and 12px gaps. Separators are inset 16px for text rows, 68px for rows that start with a 40px cover, 52px for rows that start with a 22px icon. Group headers sit 22px above their list; footers follow 7px below. The Library grid is three columns with 12px gutters and 20px between rows.
 
-Only the Game screen has a top bar: 44px plus the safe-area inset, laid over the content, see-through over the hero art and solid with the game's name once the art has scrolled away, with the back button on the left. Tab screens have no bar: the large title sits on the left and the screen's action (Calendar: Subscribe) on the right of the same row, and both scroll away with the page. The tab bar is a normal row at the bottom of the frame, not a floating fixed bar, and uses only part of the home-indicator inset. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
+Only the Game screen has a top bar: 44px plus the safe-area inset, laid over the content, see-through over the hero art and solid with the game's name once the art has scrolled away, with the back button on the left. Tab screens have no bar: the large title scrolls away with the page. One-time actions (subscribing to the calendar) live in Settings, not on the tab screens. The tab bar is a normal row at the bottom of the frame, not a floating fixed bar, and uses only part of the home-indicator inset. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
 
 ## Elevation & Depth
 
@@ -277,7 +277,7 @@ Calm and full-width, as iOS puts them at the end of a form.
 - **Shape:** gently rounded (12px), 50px tall, full width.
 - **Primary:** Fill Blue with white semibold label; an icon may lead it (Add to Library with a plus).
 - **Pressed / Disabled:** darkens slightly (brightness 0.9) on press; 60% opacity when disabled. Focus is the global 2px Tint Blue ring offset by 2px.
-- **Text actions:** most actions are plain Tint Blue 17px text (Subscribe, Search games, Forgot password?, More) that dims to 60% on press. Destructive actions are centred System Red rows in their own group.
+- **Text actions:** most actions are plain Tint Blue 17px text (Search games, Forgot password?, More) that dims to 60% on press. Destructive actions are centred System Red rows in their own group.
 
 ### Grouped Lists
 The backbone of every screen, as in iOS Settings.

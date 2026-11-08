@@ -76,8 +76,10 @@ export class SettingsPage {
     return days === 1 ? '1 day before' : `${days} days before`;
   }
 
-  protected createCalendarLink(): void {
-    this.library.calendarKey();
+  /** Makes your calendar link if needed and opens the iPhone's "Subscribe to calendar" prompt. */
+  protected subscribe(): void {
+    const key = this.library.calendarKey();
+    location.href = `webcal://${location.host}/api/calendar.ics?key=${key}`;
   }
 
   protected async copyCalendarLink(): Promise<void> {

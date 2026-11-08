@@ -1,15 +1,5 @@
-<!-- Title on the left, Subscribe on the right; both scroll away with the page. -->
-<div class="flex items-end justify-between gap-3">
-  <h1 class="large-title">Calendar</h1>
-  <button
-    type="button"
-    class="mb-1 flex items-center gap-1.5 text-[17px] text-accent active:opacity-60"
-    (click)="subscribe()"
-  >
-    <svg lucideCalendarPlus [size]="20" [strokeWidth]="2"></svg>
-    Subscribe
-  </button>
-</div>
+<!-- Subscribing to the iPhone Calendar is a one-time thing, so it lives in Settings. -->
+<h1 class="large-title">Calendar</h1>
 
 @if (library.loadError(); as error) {
   <p class="grouped mt-4 px-4 py-3 text-[15px] leading-5 text-danger" role="alert">{{ error }}</p>

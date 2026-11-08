@@ -1,5 +1,5 @@
 import type { TrackedGame } from '../../../../api/_lib/models.js';
-import { compareBy, completedByYear, DEFAULT_SORT, LIBRARY_TABS } from './library-sort';
+import { compareBy, DEFAULT_SORT, groupByYear, LIBRARY_TABS } from './library-sort';
 
 const game = (name: string, extra: Partial<TrackedGame>) => ({ name, ...extra }) as TrackedGame;
 const names = (games: TrackedGame[]) => games.map((g) => g.name);
@@ -7,7 +7,7 @@ const today = '2026-11-08';
 
 describe('library sorting', () => {
   it('opens on Completed, with each tab’s own default sort', () => {
-    expect(LIBRARY_TABS).toEqual(['completed', 'playing', 'backlog', 'wishlist', 'shelved']);
+    expect(LIBRARY_TABS).toEqual(['completed', 'wishlist', 'backlog', 'shelved', 'playing']);
     expect(DEFAULT_SORT).toEqual({
       completed: 'completed',
       playing: 'recent',
@@ -53,10 +53,29 @@ describe('library sorting', () => {
       game('C', { completedAt: null }),
       game('D', { completedAt: at(2026, 1) }),
     ].sort(compareBy('completed', 'completed', today));
-    expect(completedByYear(done).map((g) => [g.title, names(g.games)])).toEqual([
+    expect(
+      groupByYear('completed', 'completed', done, today)!.map((g) => [g.title, names(g.games)]),
+    ).toEqual([
       ['2 in 2026', ['B', 'D']],
       ['1 in 2025', ['A']],
       ['1 without a date', ['C']],
     ]);
+  });
+
+  it('groups the Wishlist by release year, soonest first, then no date, then already out', () => {
+    const sorted = [...games].sort(compareBy('release', 'wishlist', today));
+    expect(
+      groupByYear('wishlist', 'release', sorted, today)!.map((g) => [g.title, names(g.games)]),
+    ).toEqual([
+      ['1 in 2026', ['Soon']],
+      ['1 in 2027', ['Later']],
+      ['1 without a date', ['TBA']],
+      ['2 already out', ['Recent', 'Old']],
+    ]);
+  });
+
+  it('only groups Completed by date completed and Wishlist by release date', () => {
+    expect(groupByYear('wishlist', 'name', games, today)).toBeNull();
+    expect(groupByYear('backlog', 'release', games, today)).toBeNull();
   });
 });
