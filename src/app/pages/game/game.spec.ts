@@ -7,7 +7,7 @@ import { IgdbService, type GameDetails } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { PushService } from '../../core/push.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
-import { parsePrice, PreorderSheet } from '../../shared/preorder-sheet';
+import { DetailsSheet, parseHours, parsePrice } from '../../shared/details-sheet';
 import { GamePage } from './game';
 
 const details: GameDetails = {
@@ -96,7 +96,7 @@ async function render(game: TrackedGame | null, igdb: GameDetails = details) {
     edits,
     fixture,
     sheet: TestBed.inject(ChoiceSheet),
-    preorder: TestBed.inject(PreorderSheet),
+    sheet2: TestBed.inject(DetailsSheet),
   };
 }
 
@@ -153,77 +153,95 @@ describe('GamePage', () => {
   });
 
   it('marks an upcoming game as pre-ordered and asks for the details', async () => {
-    const { el, edits, preorder } = await render(tracked({}));
+    const { el, edits, sheet2 } = await render(tracked({}));
     expect(el.textContent).toContain('Pre-ordered');
     expect(el.textContent).not.toContain('Hours played');
     const toggle = el.querySelector('button[aria-labelledby=preorder-label]') as HTMLButtonElement;
 
     toggle.click();
     expect(edits).toEqual([{ preordered: true }]);
-    expect(preorder.request()?.name).toBe('Test Game');
-    expect(preorder.request()?.kind).toBe('preorder');
-    expect(preorder.request()?.stores).toContain('PlayStation Store');
-    preorder.finish({
+    expect(sheet2.request()?.name).toBe('Test Game');
+    expect(sheet2.request()?.dateLabel).toBe('Ordered on');
+    expect(sheet2.request()?.fields).toEqual({ purchase: true, hours: false, completed: false });
+    expect(sheet2.request()?.stores).toContain('PlayStation Store');
+    const data = {
       pricePaid: 79.99,
       boughtFrom: 'Amazon',
       orderedOn: '2026-11-07',
       physical: true,
-    });
+    };
+    sheet2.finish(data);
     await Promise.resolve();
-    expect(edits[1]).toEqual({
-      pricePaid: 79.99,
-      boughtFrom: 'Amazon',
-      orderedOn: '2026-11-07',
-      physical: true,
-    });
+    expect(edits[1]).toEqual(data);
   });
 
-  it('shows the pre-order details for a pre-ordered game', async () => {
+  it('shows your data at the top, skipping what is empty', async () => {
     const { el } = await render(
-      tracked({ status: 'backlog', preordered: true, pricePaid: 69.9, boughtFrom: 'Amazon' }),
+      tracked({
+        status: 'completed',
+        releaseDate: '2020-01-01',
+        hoursPlayed: 42,
+        completedAt: new Date(2026, 2, 4, 12).getTime(),
+        pricePaid: 69.9,
+        boughtFrom: 'Germanos',
+        orderedOn: null,
+        physical: true,
+      }),
     );
-    const values = [...el.querySelectorAll('input')].map((i) => i.value);
-    expect(values).toContain('69.90');
-    expect(values).toContain('Amazon');
+    const items = [...el.querySelectorAll('header + p + ul li, ul li.num')].map((li) =>
+      li.textContent!.trim(),
+    );
+    expect(items).toEqual([
+      '42 h played',
+      'Completed 4 Mar 2026',
+      '69.90',
+      'Germanos',
+      'Physical copy',
+    ]);
+    // The other platforms line is gone.
+    expect(el.textContent).not.toContain('On PS5');
+  });
+
+  it('edits hours, completed date and purchase details in a sheet', async () => {
+    const { el, edits, sheet2 } = await render(
+      tracked({ status: 'completed', releaseDate: '2020-01-01', hoursPlayed: 10 }),
+    );
+    [...el.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Edit my data'))!
+      .click();
+    expect(sheet2.request()?.fields).toEqual({ purchase: true, hours: true, completed: true });
+    expect(sheet2.request()?.initial.hoursPlayed).toBe(10);
+    sheet2.finish({ hoursPlayed: 12.5 });
+    await Promise.resolve();
+    expect(edits).toEqual([{ hoursPlayed: 12.5 }]);
+  });
+
+  it('offers only purchase details for an upcoming pre-order', async () => {
+    const { el, sheet2 } = await render(tracked({ preordered: true, pricePaid: 80 }));
+    expect(el.textContent).toContain('80.00');
+    [...el.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Edit my data'))!
+      .click();
+    expect(sheet2.request()?.fields).toEqual({ purchase: true, hours: false, completed: false });
+    sheet2.finish(null);
   });
 
   it('asks what you paid when a released wishlist game moves to Backlog', async () => {
-    const { el, edits, preorder } = await render(
+    const { el, edits, sheet2 } = await render(
       tracked({ releaseDate: '2020-01-01', releaseLabel: '1 Jan 2020' }),
     );
-    expect(el.textContent).not.toContain('Purchase');
+    expect(el.textContent).not.toContain('Edit my data');
     [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Backlog')!.click();
     await Promise.resolve();
     expect(edits[0]).toEqual({ status: 'backlog' });
-    expect(preorder.request()?.kind).toBe('purchase');
-    preorder.finish(null);
-  });
-
-  it('shows Purchase details for an owned released game', async () => {
-    const { el } = await render(
-      tracked({ status: 'backlog', releaseDate: '2020-01-01', pricePaid: 20, boughtFrom: 'Steam' }),
-    );
-    expect(el.textContent).toContain('Purchase');
-    expect(el.textContent).toContain('Bought on');
-    expect(el.textContent).not.toContain('Pre-ordered');
-  });
-
-  it('lets you set the date you completed a game', async () => {
-    const { el, edits } = await render(
-      tracked({ status: 'completed', releaseDate: '2020-01-01', completedAt: null }),
-    );
-    expect(el.textContent).toContain('Completed on');
-    const input = [...el.querySelectorAll('input[type=date]')][0] as HTMLInputElement;
-    input.value = '2026-03-04';
-    input.dispatchEvent(new Event('change'));
-    expect(edits).toEqual([{ completedAt: new Date(2026, 2, 4, 12).getTime() }]);
+    expect(sheet2.request()?.dateLabel).toBe('Bought on');
+    sheet2.finish(null);
   });
 
   it('keeps a pre-ordered game on the wishlist', async () => {
     const { el } = await render(tracked({ status: 'wishlist', preordered: true, pricePaid: 80 }));
     const checked = el.querySelector('[aria-label=Status] [aria-checked=true]');
     expect(checked?.textContent?.trim()).toBe('Wishlist');
-    expect([...el.querySelectorAll('input')].map((i) => i.value)).toContain('80.00');
   });
 
   it('lists DLC on the main game and shows owned / completed switches on a DLC', async () => {
@@ -279,10 +297,25 @@ describe('GamePage', () => {
     expect(text).toContain('PlayStation Store');
   });
 
-  it('marks a game you own as a physical copy', async () => {
-    const { el, edits } = await render(tracked({ status: 'backlog', releaseDate: '2020-01-01' }));
-    (el.querySelector('button[aria-labelledby=physical-label]') as HTMLButtonElement).click();
-    expect(edits).toEqual([{ physical: true }]);
+  it('locks the rating until you tap Edit, then offers Clear and Done', async () => {
+    const { el, fixture } = await render(
+      tracked({ status: 'completed', releaseDate: '2020-01-01', rating: 8 }),
+    );
+    const slider = () => el.querySelector('[role=slider]')!;
+    const button = (label: string) =>
+      [...el.querySelectorAll('h2 button')].find((b) => b.textContent?.trim() === label) as
+        HTMLButtonElement | undefined;
+    expect(slider().getAttribute('aria-disabled')).toBe('true');
+    expect(button('Clear')).toBeUndefined();
+    button('Edit')!.click();
+    await fixture.whenStable();
+    expect(slider().getAttribute('aria-disabled')).toBe('false');
+    expect(button('Clear')).toBeDefined();
+    button('Done')!.click();
+    await fixture.whenStable();
+    expect(slider().getAttribute('aria-disabled')).toBe('true');
+    // Your platform is back next to the release date.
+    expect(el.textContent).toContain('· PS5');
   });
 });
 
@@ -293,5 +326,13 @@ describe('parsePrice', () => {
     expect(parsePrice('')).toBeNull();
     expect(parsePrice('abc')).toBeUndefined();
     expect(parsePrice('-5')).toBeUndefined();
+  });
+});
+
+describe('parseHours', () => {
+  it('reads commas and dots to one decimal, and rejects junk', () => {
+    expect(parseHours('12,5')).toBe(12.5);
+    expect(parseHours('')).toBeNull();
+    expect(parseHours('x')).toBeUndefined();
   });
 });

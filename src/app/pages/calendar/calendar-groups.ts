@@ -10,7 +10,7 @@ export interface CalendarGroup {
 const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /** How long a released game stays at the top under "Just released". */
-export const JUST_RELEASED_DAYS = 14;
+export const JUST_RELEASED_DAYS = 7;
 
 /**
  * Upcoming games in calendar order: just released, then exact dates by month, then vague dates

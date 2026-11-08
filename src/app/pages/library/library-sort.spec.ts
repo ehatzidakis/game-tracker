@@ -78,4 +78,13 @@ describe('library sorting', () => {
     expect(groupByYear('wishlist', 'name', games, today)).toBeNull();
     expect(groupByYear('backlog', 'release', games, today)).toBeNull();
   });
+
+  it('sorts Completed by rating, highest first, unrated last', () => {
+    const rated = [
+      game('A', { rating: 7 }),
+      game('B', { rating: null }),
+      game('C', { rating: 8.5 }),
+    ];
+    expect(names(rated.sort(compareBy('rating', 'completed', today)))).toEqual(['C', 'A', 'B']);
+  });
 });

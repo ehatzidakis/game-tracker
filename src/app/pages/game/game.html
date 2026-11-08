@@ -84,14 +84,45 @@
       }
     </p>
   }
-  @if (ourPlatforms().length || otherPlatforms().length) {
-    <p class="mt-0.5 text-[13px] leading-[18px] text-muted">
-      On
-      @for (p of ourPlatforms(); track p.key; let last = $last) {
-        {{ p.label }}{{ last && !otherPlatforms().length ? '' : ', ' }}
-      }
-      {{ otherPlatforms().join(', ') }}
-    </p>
+  <!-- Your data at a glance (only what you've filled in), edited in a sheet. -->
+  @if (!isDlcPage() && editableFields()) {
+    @if (myData().length) {
+      <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted">
+        @for (item of myData(); track item.label) {
+          <li class="num flex items-center gap-1.5">
+            @switch (item.icon) {
+              @case ('hours') {
+                <svg lucideClock [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('completed') {
+                <svg lucideCircleCheck [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('price') {
+                <svg lucideEuro [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('store') {
+                <svg lucideStore [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('date') {
+                <svg lucideCalendarCheck [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('physical') {
+                <svg lucideDisc3 [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+            }
+            {{ item.label }}
+          </li>
+        }
+      </ul>
+    }
+    <button
+      type="button"
+      class="mt-2.5 flex items-center gap-1.5 text-[15px] leading-5 text-accent active:opacity-60"
+      (click)="editMyData()"
+    >
+      <svg lucidePencil [size]="15" [strokeWidth]="2.25"></svg>
+      Edit my data
+    </button>
   }
   @if (isDlcPage() && parent(); as p) {
     <a
@@ -174,16 +205,19 @@
           <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
           <label class="row">
             <span class="flex-1">Price</span>
-            <span class="text-muted">€</span>
-            <input
-              type="text"
-              inputmode="decimal"
-              placeholder="0.00"
-              autocomplete="off"
-              class="num w-24 bg-transparent text-right text-[17px] text-muted outline-none"
-              [value]="t.pricePaid != null ? t.pricePaid.toFixed(2) : ''"
-              (change)="setPrice($event)"
-            />
+            <span class="flex items-baseline gap-0.5 text-muted">
+              €
+              <input
+                appFitWidth
+                type="text"
+                inputmode="decimal"
+                placeholder="0.00"
+                autocomplete="off"
+                class="num bg-transparent text-right text-[17px] outline-none"
+                [value]="t.pricePaid != null ? t.pricePaid.toFixed(2) : ''"
+                (change)="setPrice($event)"
+              />
+            </span>
           </label>
         }
         @if (t && !released()) {
@@ -255,129 +289,69 @@
             <span class="num ml-auto text-[17px] font-semibold normal-case text-label"
               >{{ shownRating }}<span class="text-[13px] font-normal text-muted">/10</span></span
             >
+          } @else {
+            <span class="ml-auto normal-case">{{
+              editingRating() ? 'Slide to rate' : 'Not rated'
+            }}</span>
+          }
+          <!-- Locked until you tap Edit, so scrolling past can't change it. -->
+          @if (editingRating()) {
             @if (t.rating && ratingPreview() === null) {
               <button
                 type="button"
-                class="text-[13px] normal-case text-accent active:opacity-60"
-                (click)="setRating(null)"
+                class="text-[13px] normal-case text-danger active:opacity-60"
+                (click)="setRating(null); editingRating.set(false)"
               >
                 Clear
               </button>
             }
+            <button
+              type="button"
+              class="text-[13px] font-semibold normal-case text-accent active:opacity-60"
+              (click)="editingRating.set(false)"
+            >
+              Done
+            </button>
           } @else {
-            <span class="ml-auto normal-case">Slide to rate</span>
+            <button
+              type="button"
+              class="text-[13px] normal-case text-accent active:opacity-60"
+              (click)="editingRating.set(true)"
+            >
+              Edit
+            </button>
           }
         </h2>
-        <!-- Slide your finger along the bar (or tap): 1 to 10 in half points. -->
+        <!-- While editing: slide your finger along the bar (or tap), 1 to 10 in half points. -->
         <app-rating-slider
           class="px-1"
           [value]="t.rating"
+          [disabled]="!editingRating()"
           (preview)="ratingPreview.set($event)"
           (changed)="setRating($event)"
         />
-
-        <div class="grouped mt-6">
-          <label class="row">
-            <span class="flex-1">Completed on</span>
-            <input
-              type="date"
-              class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none scheme-dark"
-              [value]="dateFieldValue(t.completedAt)"
-              (change)="setCompletedOn($event)"
-            />
-          </label>
-        </div>
       }
 
       <ng-container [ngTemplateOutlet]="dlcList" />
 
-      <!-- Before release: a pre-order switch (any status, usually Wishlist), then its details.
-           Once out and owned (or pre-ordered): what you paid. -->
-      @if (!released() || t.status !== 'wishlist' || t.preordered) {
-        <h2 class="group-header">{{ released() ? 'Purchase' : 'Pre-order' }}</h2>
+      <!-- Before release: the pre-order switch (any status, usually Wishlist) and the release
+           alert. What you paid, hours and dates are under "Edit my data" at the top. -->
+      @if (!released()) {
+        <h2 class="group-header">Pre-order</h2>
         <div class="grouped">
-          @if (!released()) {
-            <div class="row">
-              <p id="preorder-label" class="flex-1">Pre-ordered</p>
-              <button
-                type="button"
-                role="switch"
-                class="switch"
-                aria-labelledby="preorder-label"
-                [attr.aria-checked]="!!t.preordered"
-                (click)="togglePreorder()"
-              >
-                <span></span>
-              </button>
-            </div>
-          }
-          @if (t.preordered || released()) {
-            <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
-            <label class="row">
-              <span class="flex-1">Price</span>
-              <span class="text-muted">€</span>
-              <input
-                type="text"
-                inputmode="decimal"
-                placeholder="0.00"
-                autocomplete="off"
-                class="num w-24 bg-transparent text-right text-[17px] text-muted outline-none"
-                [value]="t.pricePaid != null ? t.pricePaid.toFixed(2) : ''"
-                (change)="setPrice($event)"
-              />
-            </label>
-            <div class="row pr-2!">
-              <label for="bought-from" class="shrink-0">Bought from</label>
-              <input
-                id="bought-from"
-                type="text"
-                placeholder="Store"
-                autocomplete="off"
-                class="min-w-0 flex-1 bg-transparent text-right text-[17px] text-muted outline-none"
-                [value]="t.boughtFrom ?? ''"
-                (change)="setStore($event)"
-              />
-              <!-- Your stores and common ones, as a list to pick from (or type any store). -->
-              <button
-                type="button"
-                class="-my-2 grid size-9 shrink-0 place-items-center rounded-full text-accent active:bg-pressed"
-                aria-label="Choose a store"
-                (click)="pickStore()"
-              >
-                <svg lucideChevronsUpDown [size]="18" [strokeWidth]="2.25"></svg>
-              </button>
-            </div>
-            <label class="row">
-              <span class="flex-1">{{ t.preordered ? 'Ordered on' : 'Bought on' }}</span>
-              <input
-                type="date"
-                class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none scheme-dark"
-                [value]="t.orderedOn ?? ''"
-                (change)="setOrderedOn($event)"
-              />
-            </label>
-            <div class="row">
-              <div class="min-w-0 flex-1">
-                <p id="physical-label">Physical copy</p>
-                <p class="text-[13px] leading-[18px] text-muted">On disc, not a download.</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                class="switch"
-                aria-labelledby="physical-label"
-                [attr.aria-checked]="!!t.physical"
-                (click)="togglePhysical()"
-              >
-                <span></span>
-              </button>
-            </div>
-          }
-        </div>
-      }
-
-      <div class="grouped mt-6">
-        @if (!released()) {
+          <div class="row">
+            <p id="preorder-label" class="flex-1">Pre-ordered</p>
+            <button
+              type="button"
+              role="switch"
+              class="switch"
+              aria-labelledby="preorder-label"
+              [attr.aria-checked]="!!t.preordered"
+              (click)="togglePreorder()"
+            >
+              <span></span>
+            </button>
+          </div>
           <div class="row">
             <div class="min-w-0 flex-1">
               <p id="alert-label">Release alert</p>
@@ -400,28 +374,16 @@
               <span></span>
             </button>
           </div>
-        }
-        @if (t.status !== 'wishlist' && released()) {
-          <label class="row">
-            <span class="flex-1">Hours played</span>
-            <input
-              type="text"
-              inputmode="decimal"
-              placeholder="0"
-              class="num w-24 bg-transparent text-right text-[17px] text-muted outline-none"
-              [value]="t.hoursPlayed ?? ''"
-              (change)="setHours($event)"
-            />
-          </label>
-        }
-      </div>
+        </div>
+      }
 
       <h2 class="group-header">Notes</h2>
+      <!-- One line when empty; grows with what you write. -->
       <textarea
-        rows="3"
-        placeholder="Anything to remember"
+        appGrow
+        placeholder="Add a note"
         aria-label="Notes"
-        class="grouped block w-full resize-none px-4 py-3 text-[17px] leading-[22px] outline-none"
+        class="grouped block w-full resize-none overflow-hidden px-4 py-3 text-[17px] leading-[22px] outline-none"
         [value]="t.notes"
         (change)="setNotes($event)"
       ></textarea>

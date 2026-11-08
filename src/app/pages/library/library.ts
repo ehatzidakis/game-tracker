@@ -29,6 +29,7 @@ const SORTS: { key: Sort; label: string }[] = [
 /** The Completed tab can also sort by when you finished, and does by default. */
 const COMPLETED_SORTS: { key: Sort; label: string }[] = [
   { key: 'completed', label: 'Date completed' },
+  { key: 'rating', label: 'Rating' },
   ...SORTS,
 ];
 

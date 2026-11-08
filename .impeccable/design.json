@@ -8,7 +8,7 @@
       "group": { "role": "neutral", "displayName": "Group Grey", "canonical": "#1c1c1e", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
       "raised": { "role": "neutral", "displayName": "Raised Grey", "canonical": "#2c2c2e", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
       "pressed": { "role": "neutral", "displayName": "Pressed Grey", "canonical": "#3a3a3c", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
-      "segment-thumb": { "role": "neutral", "displayName": "Thumb Grey", "canonical": "#636366", "tonalRamp": ["#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#7c7c80", "#98989f", "#c7c7cc"] },
+      "segment-thumb": { "role": "accent", "displayName": "Thumb Blue", "canonical": "#2462e8", "tonalRamp": ["#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#7c7c80", "#98989f", "#c7c7cc"] },
       "tab-bar": { "role": "neutral", "displayName": "Bar Black", "canonical": "#121214", "tonalRamp": ["#000000", "#121214", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#8e8e93"] },
       "separator": { "role": "neutral", "displayName": "Hairline", "canonical": "rgb(84 84 88 / 0.65)", "tonalRamp": ["#1c1c1e", "#2c2c2e", "#38383a", "#48484a", "#545458", "#636366", "#7c7c80", "#98989f"] },
       "fill": { "role": "neutral", "displayName": "Control Fill", "canonical": "rgb(118 118 128 / 0.24)", "tonalRamp": ["#1c1c1e", "#242426", "#2c2c2e", "#3a3a3c", "#48484a", "#636366", "#767680", "#98989f"] },

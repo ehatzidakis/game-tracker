@@ -44,11 +44,14 @@
     <!-- overflow-x-hidden: overflow-y:auto would otherwise let wide content scroll sideways. -->
     <main
       #scroller
-      class="h-full overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-[calc(var(--tab-bar-space)+16px)]"
+      class="h-full overflow-y-auto overflow-x-hidden overscroll-contain px-4"
       [style.padding-top]="route().hero ? '0' : 'calc(12px + env(safe-area-inset-top))'"
       (scroll)="onScroll()"
     >
       <router-outlet />
+      <!-- Room to scroll the last item above the floating tab bar. A real element rather than
+           bottom padding, which Safari doesn't always count in a scrolling area. -->
+      <div class="h-[calc(var(--tab-bar-space)+24px)]" aria-hidden="true"></div>
     </main>
   </div>
 
@@ -90,5 +93,5 @@
     <app-toast />
   </nav>
   <app-choice-sheet />
-  <app-preorder-sheet />
+  <app-details-sheet />
 </div>

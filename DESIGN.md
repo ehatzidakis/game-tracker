@@ -6,7 +6,7 @@ colors:
   group: "#1c1c1e"
   raised: "#2c2c2e"
   pressed: "#3a3a3c"
-  segment-thumb: "#636366"
+  segment-thumb: "#2462e8"
   tab-bar: "#121214"
   separator: "rgb(84 84 88 / 0.65)"
   fill: "rgb(118 118 128 / 0.24)"
@@ -216,7 +216,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 ### Named Rules
 **The Contrast-Picks-the-Blue Rule.** The accent has three values and the surface decides which one: Tint Blue on black and group grey, Sheet Blue on raised sheets, Fill Blue whenever white sits on top. Never put Tint Blue text on a raised surface.
 
-**The Rare Blue Rule.** Blue marks what you can act on and the one thing that is next. Selection states inside controls (segmented thumb) stay grey; only switches turn blue, as in iOS. If a screen looks blue, something is wrong.
+**The Rare Blue Rule.** Blue marks what you can act on and the one thing that is next. Selected segments (status, completion, platforms, Library tabs), switches and the rating slider share the one blue fill, so every choice reads the same way (the owner's call, 2026-11-08). Beyond those, if a screen looks blue, something is wrong.
 
 **The Faint-Is-Not-Text Rule.** Decoration Grey fails as text and is reserved for chevrons and empty marks.
 
@@ -289,7 +289,7 @@ The backbone of every screen, as in iOS Settings.
 
 ### Segmented Control
 - **Style:** Control Fill track, 2px padding, 9px radius; equal-width segments 28px tall.
-- **State:** the selected segment gets the Thumb Grey thumb, semibold label and a soft shadow; changes ease over 160ms.
+- **State:** the selected segment gets the blue fill (#2462e8) with a white semibold label and a soft shadow; changes ease over 160ms.
 - **Use:** Library's status filter, a game's status, completion, rating (1–10) and platform; the default platform in Settings.
 
 ### Switch

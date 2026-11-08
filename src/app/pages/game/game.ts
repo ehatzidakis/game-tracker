@@ -3,10 +3,16 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import {
+  LucideCalendarCheck,
   LucideChevronRight,
-  LucideChevronsUpDown,
+  LucideCircleCheck,
+  LucideClock,
+  LucideDisc3,
+  LucideEuro,
   LucideExternalLink,
+  LucidePencil,
   LucidePlus,
+  LucideStore,
 } from '@lucide/angular';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
@@ -42,7 +48,8 @@ import { ToastService } from '../../core/toast.service';
 import { Cover } from '../../shared/cover';
 import { RatingSlider } from '../../shared/rating-slider';
 import { ChoiceSheet } from '../../shared/choice-sheet';
-import { parsePrice, PreorderSheet } from '../../shared/preorder-sheet';
+import { DetailsSheet, parsePrice, type SheetFields } from '../../shared/details-sheet';
+import { FitWidth, Grow } from '../../shared/fit-content';
 
 /** How many DLC (or series games) a game's page lists before "Show all". */
 const SHOWN_DLCS = 6;
@@ -69,10 +76,18 @@ const TIME_TO_BEAT = [
     RatingSlider,
     NgTemplateOutlet,
     RouterLink,
+    FitWidth,
+    Grow,
+    LucideCalendarCheck,
     LucideChevronRight,
-    LucideChevronsUpDown,
+    LucideCircleCheck,
+    LucideClock,
+    LucideDisc3,
+    LucideEuro,
     LucideExternalLink,
+    LucidePencil,
     LucidePlus,
+    LucideStore,
   ],
   templateUrl: './game.html',
 })
@@ -82,7 +97,7 @@ export class GamePage {
 
   private readonly igdb = inject(IgdbService);
   private readonly sheet = inject(ChoiceSheet);
-  private readonly preorderSheet = inject(PreorderSheet);
+  private readonly detailsSheet = inject(DetailsSheet);
   private readonly toast = inject(ToastService);
   protected readonly library = inject(LibraryService);
   protected readonly push = inject(PushService);
@@ -163,6 +178,45 @@ export class GamePage {
     const { notifyDaysBefore: days, notifyTime } = this.library.settings();
     const when = days === 0 ? 'On the day' : `${days} ${days === 1 ? 'day' : 'days'} before`;
     return `${when}, at ${notifyTime}`;
+  });
+
+  /**
+   * Which of your fields apply: hours once a game is out and yours, the completed date once
+   * it's completed, purchase details once you own or pre-ordered it. Null when none do.
+   */
+  protected readonly editableFields = computed<SheetFields | null>(() => {
+    const t = this.tracked();
+    if (!t) return null;
+    const owned = t.status !== 'wishlist';
+    const fields = {
+      hours: owned && this.released(),
+      completed: t.status === 'completed',
+      purchase: owned || !!t.preordered,
+    };
+    return fields.hours || fields.completed || fields.purchase ? fields : null;
+  });
+
+  /** "142 h played", "Completed 7 Nov 2026", "€69.99", … Only what you've filled in. */
+  protected readonly myData = computed(() => {
+    const t = this.tracked();
+    const fields = this.editableFields();
+    if (!t || !fields) return [];
+    const items: { icon: string; label: string }[] = [];
+    if (fields.hours && t.hoursPlayed)
+      items.push({ icon: 'hours', label: `${t.hoursPlayed} h played` });
+    if (fields.completed && t.completedAt) {
+      items.push({ icon: 'completed', label: `Completed ${SHORT_DATE.format(t.completedAt)}` });
+    }
+    if (fields.purchase) {
+      if (t.pricePaid) items.push({ icon: 'price', label: t.pricePaid.toFixed(2) });
+      if (t.boughtFrom) items.push({ icon: 'store', label: t.boughtFrom });
+      if (t.orderedOn) {
+        const when = SHORT_DATE.format(new Date(`${t.orderedOn}T12:00:00`));
+        items.push({ icon: 'date', label: `${t.preordered ? 'Ordered' : 'Bought'} ${when}` });
+      }
+      if (t.physical) items.push({ icon: 'physical', label: 'Physical copy' });
+    }
+    return items;
   });
 
   /** Stores you've bought from before, then common ones, as suggestions. */
@@ -279,6 +333,8 @@ export class GamePage {
   protected readonly completions = COMPLETIONS;
   /** The rating under your finger while you slide, shown in the heading. */
   protected readonly ratingPreview = signal<number | null>(null);
+  /** The rating bar only moves after you tap Edit. */
+  protected readonly editingRating = signal(false);
   protected readonly platformLabel = platformLabel;
   protected readonly coverUrl = coverUrl;
   protected readonly dateFieldValue = dateFieldValue;
@@ -294,6 +350,7 @@ export class GamePage {
       this.gameId();
       this.allDlcs.set(false);
       this.allSeries.set(false);
+      this.editingRating.set(false);
     });
 
     // Keep your copy of the IGDB data current (e.g. a release date that moved).
@@ -326,7 +383,12 @@ export class GamePage {
     // Moving a released game out of Wishlist means you bought it: ask what you paid (optional),
     // unless you already entered that when you pre-ordered it.
     if (t.status === 'wishlist' && status !== 'shelved' && this.released() && !t.preordered) {
-      const details = await this.preorderSheet.ask('purchase', t.name, today(), this.stores());
+      const details = await this.detailsSheet.askPurchase(
+        'purchase',
+        t.name,
+        today(),
+        this.stores(),
+      );
       const now = this.tracked();
       if (details && now) this.library.edit(now, details);
     }
@@ -343,27 +405,13 @@ export class GamePage {
     if (t && t.rating !== rating) this.library.edit(t, { rating });
   }
 
-  protected setHours(event: Event): void {
-    const t = this.tracked();
-    const input = event.target as HTMLInputElement;
-    if (!t) return;
-    const text = input.value.trim().replace(',', '.');
-    const hours = text === '' ? null : Math.round(Number(text) * 10) / 10;
-    if (hours !== null && (!Number.isFinite(hours) || hours < 0 || hours > 100_000)) {
-      input.value = t.hoursPlayed?.toString() ?? '';
-      this.toast.error('Hours should be a number, like 12 or 12.5.');
-      return;
-    }
-    if (hours !== t.hoursPlayed) this.library.edit(t, { hoursPlayed: hours });
-  }
-
   protected async togglePreorder(): Promise<void> {
     const t = this.tracked();
     if (!t) return;
     const on = !t.preordered;
     this.library.setPreordered(t, on);
     if (!on) return;
-    const details = await this.preorderSheet.ask('preorder', t.name, today(), this.stores());
+    const details = await this.detailsSheet.askPurchase('preorder', t.name, today(), this.stores());
     const now = this.tracked();
     if (details && now) this.library.edit(now, details);
   }
@@ -380,43 +428,6 @@ export class GamePage {
     }
     input.value = price != null ? price.toFixed(2) : '';
     if (price !== (t.pricePaid ?? null)) this.library.edit(t, { pricePaid: price });
-  }
-
-  protected togglePhysical(): void {
-    const t = this.tracked();
-    if (t) this.library.edit(t, { physical: !t.physical });
-  }
-
-  /** Picks "Bought from" from your stores and common ones. */
-  protected async pickStore(): Promise<void> {
-    const t = this.tracked();
-    if (!t) return;
-    const store = await this.sheet.choose(
-      ['Where did you buy ', t.name, '?'],
-      this.stores().map((key) => ({ key, label: key })),
-      t.boughtFrom ?? null,
-    );
-    const now = this.tracked();
-    if (store && now && store !== now.boughtFrom) this.library.edit(now, { boughtFrom: store });
-  }
-
-  protected setStore(event: Event): void {
-    const t = this.tracked();
-    const store = (event.target as HTMLInputElement).value.trim().slice(0, 60) || null;
-    if (t && store !== (t.boughtFrom ?? null)) this.library.edit(t, { boughtFrom: store });
-  }
-
-  protected setOrderedOn(event: Event): void {
-    const t = this.tracked();
-    const value = (event.target as HTMLInputElement).value;
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
-    if (t && date !== (t.orderedOn ?? null)) this.library.edit(t, { orderedOn: date });
-  }
-
-  protected setCompletedOn(event: Event): void {
-    const t = this.tracked();
-    const completedAt = fromDateField((event.target as HTMLInputElement).value);
-    if (t && completedAt !== t.completedAt) this.library.edit(t, { completedAt });
   }
 
   /**
@@ -469,6 +480,23 @@ export class GamePage {
     } else {
       this.library.setStatus(t, 'completed');
     }
+  }
+
+  /** The completed date of a DLC, set on its own page. */
+  protected setCompletedOn(event: Event): void {
+    const t = this.tracked();
+    const completedAt = fromDateField((event.target as HTMLInputElement).value);
+    if (t && completedAt !== t.completedAt) this.library.edit(t, { completedAt });
+  }
+
+  /** "Edit my data": hours, completed date and purchase details in a sheet. */
+  protected async editMyData(): Promise<void> {
+    const t = this.tracked();
+    const fields = this.editableFields();
+    if (!t || !fields) return;
+    const data = await this.detailsSheet.edit(t, fields, today(), this.stores());
+    const now = this.tracked();
+    if (data && now) this.library.edit(now, data);
   }
 
   protected setNotes(event: Event): void {

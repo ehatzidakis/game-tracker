@@ -52,11 +52,22 @@ What Claude built while you were away, what it needs from you, and the choices i
 - **Bought from.** A visible button next to the field opens a list of stores (yours first, then common ones); you can still type any store. The pre-order sheet shows them as tappable buttons.
 - **Search.** Before you type: Most anticipated, Coming soon (next 60 days) and Recently released (last 60 days), on your default platform, as cover strips you scroll sideways.
 - **PS4** is now a platform (game page "My platform" and Settings' default platform). Xbox is labelled "Xbox" to fit five.
-- **"Just released"** on the Calendar keeps a game for 14 days after its exact release date; it drops off on day 15.
+- **"Just released"** on the Calendar keeps a game for 7 days after its exact release date; it drops off on day 8.
 
 **Floating tab bar (2026-11-08).** The tab bar is now a frosted capsule floating above the content, like Apple Music, with the current tab in its own pill. It sits inside the app frame rather than pinned to the screen, because iOS 26 home-screen apps misplace bars pinned to the bottom edge. Worth a look on the phone, especially right after opening the app.
 
 **Rating slider (2026-11-08).** Ratings go from 1 to 10 in half points (8.5, 7.5…). Slide your finger along the bar (or tap it); the value shows as you drag and saves when you let go. "Clear" removes it. Also: long press does nothing anywhere (no link previews or Save to Photos), and switching tabs no longer cross-fades the screen.
+
+**Changelog notes (2026-11-08), done**
+- Completed tab can sort by **Rating** (highest first, unrated last).
+- **Just released**: 7 days.
+- Every screen leaves room at the bottom so its last item clears the floating tab bar.
+- **Notes**: one line when empty, grows as you write.
+- **Price**: the € sits right next to the amount.
+- **Selections** (status, completion, platforms, Library tabs) use the same blue as the rating bar.
+- **Game page top**: no platforms line. Under the date you see your data: hours played, completed on, price, store, bought/ordered on, physical copy (anything empty is left out), and **Edit my data** opens a sheet to change them. Those fields are no longer edited inline; the Pre-order switch and Release alert stay on the page for upcoming games.
+
+**Tweaks (2026-11-08).** Your platform is back next to the release date. The rating is locked (a thin line marks it, and scrolling over it changes nothing) until you tap **Edit**; then the round handle appears, with **Clear** and **Done**.
 
 ## 5. Design pass (Step 5)
 

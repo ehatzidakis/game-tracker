@@ -1,6 +1,6 @@
 import type { Status, TrackedGame } from '../../../../api/_lib/models.js';
 
-export type Sort = 'recent' | 'name' | 'release' | 'completed';
+export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating';
 
 /** Library tabs, in your order. */
 export const LIBRARY_TABS: readonly Status[] = [
@@ -38,6 +38,9 @@ export function compareBy(
     case 'completed':
       // Latest finished first; games without a date last.
       return (a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0) || byName(a, b);
+    case 'rating':
+      // Highest first; unrated last.
+      return (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || byName(a, b);
     case 'release':
       if (tab === 'wishlist') {
         const rank = (g: TrackedGame) => (!g.releaseDate ? 1 : g.releaseDate >= today ? 0 : 2);

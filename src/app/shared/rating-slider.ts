@@ -21,13 +21,15 @@ export function ratingAt(ratio: number): number {
     <div
       #track
       role="slider"
-      tabindex="0"
+      [attr.tabindex]="disabled() ? -1 : 0"
+      [attr.aria-disabled]="disabled()"
       aria-label="Rating out of 10"
       [attr.aria-valuemin]="min"
       [attr.aria-valuemax]="max"
       [attr.aria-valuenow]="shown()"
       [attr.aria-valuetext]="shown() ? shown() + ' out of 10' : 'Not rated'"
-      class="relative h-11 touch-none select-none"
+      class="relative h-11 select-none"
+      [class.touch-none]="!disabled()"
       (pointerdown)="start($event)"
       (pointermove)="move($event)"
       (pointerup)="end($event)"
@@ -44,8 +46,14 @@ export function ratingAt(ratio: number): number {
         ></div>
       </div>
       @if (shown(); as v) {
+        <!-- A round handle while editing; a thin line marking the rating while locked. -->
         <div
-          class="absolute top-1/2 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_2px_8px_rgb(0_0_0/0.35)]"
+          class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white transition-[width,height,border-radius] duration-200"
+          [class]="
+            disabled()
+              ? 'h-5 w-[3px] rounded-full'
+              : 'size-7 rounded-full shadow-[0_2px_8px_rgb(0_0_0/0.35)]'
+          "
           [style.left.%]="percent()"
           [class.scale-110]="dragging()"
           [class.transition-[left,scale]]="!dragging()"
@@ -69,6 +77,8 @@ export function ratingAt(ratio: number): number {
 export class RatingSlider {
   /** The saved rating, or null if there isn't one. */
   readonly value = input<number | null>(null);
+  /** Shown but locked: no sliding, and scrolling over it works normally. */
+  readonly disabled = input(false);
   /** While dragging: the rating under your finger. Null when you let go. */
   readonly preview = output<number | null>();
   /** When you let go (or press an arrow key): the rating to save. */
@@ -92,6 +102,7 @@ export class RatingSlider {
   }
 
   protected start(event: PointerEvent): void {
+    if (this.disabled()) return;
     // Keep getting moves even if your finger drifts off the bar.
     this.track().nativeElement.setPointerCapture?.(event.pointerId);
     this.dragging.set(true);
@@ -119,6 +130,7 @@ export class RatingSlider {
   }
 
   protected key(event: KeyboardEvent): void {
+    if (this.disabled()) return;
     const now = this.value() ?? MIN;
     const next =
       event.key === 'ArrowRight' || event.key === 'ArrowUp'

@@ -45,4 +45,23 @@ describe('RatingSlider', () => {
     track.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
     expect(saved).toEqual([8.5]);
   });
+
+  it('ignores touches while locked', async () => {
+    const fixture = TestBed.createComponent(RatingSlider);
+    fixture.componentRef.setInput('value', 7);
+    fixture.componentRef.setInput('disabled', true);
+    await fixture.whenStable();
+    const track = fixture.nativeElement.querySelector('[role=slider]') as HTMLElement;
+    track.getBoundingClientRect = () => ({ left: 0, width: 180, top: 0, height: 44 }) as DOMRect;
+    const saved: number[] = [];
+    fixture.componentInstance.changed.subscribe((v) => saved.push(v));
+    track.dispatchEvent(
+      new PointerEvent('pointerdown', { clientX: 170, pointerId: 1, bubbles: true }),
+    );
+    track.dispatchEvent(
+      new PointerEvent('pointerup', { clientX: 170, pointerId: 1, bubbles: true }),
+    );
+    expect(saved).toEqual([]);
+    expect(track.classList.contains('touch-none')).toBe(false);
+  });
 });
