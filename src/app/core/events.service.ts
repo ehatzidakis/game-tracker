@@ -15,7 +15,10 @@ import { LibraryService } from './library.service';
 import { ToastService } from './toast.service';
 
 /** What you fill in for an event. */
-export type EventFields = Pick<GamingEvent, 'title' | 'startsAt' | 'link' | 'kind' | 'archived'>;
+export type EventFields = Pick<
+  GamingEvent,
+  'title' | 'startsAt' | 'durationMinutes' | 'link' | 'kind' | 'archived'
+>;
 
 /** Your gaming events, kept live from Firestore (users/{uid}/events). */
 @Injectable({ providedIn: 'root' })

@@ -4,7 +4,7 @@ import type { GamingEvent } from '../../../../api/_lib/models.js';
 import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
 import { EventIcon } from '../../shared/event-icon';
-import { EventSheet } from '../../shared/event-sheet';
+import { EventSheet, timeRange } from '../../shared/event-sheet';
 
 const DAY = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short',
@@ -12,7 +12,6 @@ const DAY = new Intl.DateTimeFormat('en-GB', {
   month: 'short',
   year: 'numeric',
 });
-const TIME = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
 
 /**
  * Settings → Gaming events: every event you've added, including past and archived ones (the
@@ -31,8 +30,9 @@ const TIME = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digi
       </button>
     </div>
     <p class="group-footer">
-      Events show in the Calendar until they've happened. Games can say which event they were first
-      shown at and which one announced their release date.
+      Events show in the Calendar tab until they've happened, and in your iPhone Calendar
+      subscription. Games can say which event they were first shown at and which one announced
+      their release date.
     </p>
 
     @for (group of groups(); track group.title) {
@@ -99,7 +99,7 @@ export class EventsPage {
   protected when(event: GamingEvent): string {
     const n = this.uses().get(event.id) ?? 0;
     const games = n ? ` · ${n} ${n === 1 ? 'game' : 'games'}` : '';
-    return `${DAY.format(event.startsAt).replace(',', '')} · ${TIME.format(event.startsAt)}${games}`;
+    return `${DAY.format(event.startsAt).replace(',', '')} · ${timeRange(event)}${games}`;
   }
 
   protected add(): void {

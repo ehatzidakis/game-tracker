@@ -2,7 +2,7 @@
 // No sign-in: calendar apps can't sign in, so the long random key in the link is the password.
 import { adminDb } from './_lib/admin.js';
 import { buildCalendar } from './_lib/ics.js';
-import type { TrackedGame } from './_lib/models.js';
+import type { GamingEvent, TrackedGame } from './_lib/models.js';
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -14,10 +14,16 @@ export async function GET(request: Request): Promise<Response> {
     const users = await db.collection('users').where('calendarKey', '==', key).limit(1).get();
     if (users.empty) return new Response('Not found', { status: 404 });
 
-    const games = await users.docs[0].ref.collection('games').get();
+    const user = users.docs[0].ref;
+    const [games, events] = await Promise.all([
+      user.collection('games').get(),
+      user.collection('events').get(),
+    ]);
     const body = buildCalendar(
       games.docs.map((d) => d.data() as TrackedGame),
       `${url.protocol}//${url.host}`,
+      Date.now(),
+      events.docs.map((d) => d.data() as GamingEvent),
     );
     return new Response(body, {
       headers: {

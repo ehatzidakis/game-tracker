@@ -8,6 +8,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { EVENT_KINDS, type EventKind, type GamingEvent } from '../../../api/_lib/models.js';
+import { readAnnouncedTime } from '../core/announced-time';
 import { EventsService, type EventFields } from '../core/events.service';
 import { EventIcon } from './event-icon';
 
@@ -32,6 +33,33 @@ export function fromDateTimeField(value: string): number | null {
   const [, y, mo, d, h, mi] = m.map(Number);
   return new Date(y, mo - 1, d, h, mi).getTime();
 }
+
+const TIME = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+const DAY_TIME = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+/** "22:00", or "22:00–23:30" when the event has a duration. */
+export function timeRange(event: Pick<GamingEvent, 'startsAt' | 'durationMinutes'>): string {
+  const start = TIME.format(event.startsAt);
+  if (!event.durationMinutes) return start;
+  return `${start}–${TIME.format(event.startsAt + event.durationMinutes * 60_000)}`;
+}
+
+/** Durations to pick from, in minutes. */
+export const DURATIONS: readonly { minutes: number | null; label: string }[] = [
+  { minutes: null, label: 'Not sure' },
+  { minutes: 30, label: '30 min' },
+  { minutes: 45, label: '45 min' },
+  { minutes: 60, label: '1 h' },
+  { minutes: 90, label: '1 h 30' },
+  { minutes: 120, label: '2 h' },
+  { minutes: 180, label: '3 h' },
+];
 
 /** Who's likely holding an event, from its title. Null when it doesn't say. */
 export function guessKind(title: string): EventKind | null {
@@ -71,6 +99,7 @@ export class EventSheet {
     return this.open(null, {
       title: '',
       startsAt: evening.getTime(),
+      durationMinutes: null,
       link: null,
       kind: 'other',
       archived: false,
@@ -81,6 +110,7 @@ export class EventSheet {
     return this.open(event, {
       title: event.title,
       startsAt: event.startsAt,
+      durationMinutes: event.durationMinutes ?? null,
       link: event.link,
       kind: event.kind,
       archived: event.archived,
@@ -158,9 +188,35 @@ export class EventSheet {
                 (input)="onTitle(title.value)"
               />
             </label>
+            <!-- Paste the time as the announcement writes it; it's turned into your time. -->
+            <div class="row flex-col items-stretch! gap-1! py-2.5!">
+              <label for="event-announced" class="text-[13px] leading-[18px] text-muted">
+                Time from the announcement
+              </label>
+              <input
+                #announced
+                id="event-announced"
+                type="text"
+                placeholder="Paste it, like June 9, 2pm PT / 5pm ET"
+                autocomplete="off"
+                enterkeyhint="done"
+                class="min-w-0 bg-transparent text-[17px] outline-none"
+                (input)="onAnnounced(announced.value, starts)"
+              />
+              @if (announcedNote(); as note) {
+                <p
+                  class="text-[13px] leading-[18px]"
+                  [class]="note.ok ? 'text-accent-raised' : 'text-muted'"
+                  aria-live="polite"
+                >
+                  {{ note.text }}
+                </p>
+              }
+            </div>
             <label class="row">
               <span class="flex-1">Starts</span>
               <input
+                #starts
                 name="startsAt"
                 type="datetime-local"
                 required
@@ -168,6 +224,33 @@ export class EventSheet {
                 [value]="dateTimeFieldValue(req.initial.startsAt)"
               />
             </label>
+            <div class="row flex-col items-start! gap-2! py-2.5!">
+              <span id="event-duration-label" class="text-[13px] leading-[18px] text-muted"
+                >Duration</span
+              >
+              <div
+                class="flex flex-wrap gap-2"
+                role="radiogroup"
+                aria-labelledby="event-duration-label"
+              >
+                @for (d of durations; track d.label) {
+                  <button
+                    type="button"
+                    role="radio"
+                    class="rounded-full px-3 py-1 text-[15px] active:opacity-60"
+                    [class]="
+                      duration() === d.minutes
+                        ? 'bg-accent-fill text-white'
+                        : 'bg-pressed text-label'
+                    "
+                    [attr.aria-checked]="duration() === d.minutes"
+                    (click)="duration.set(d.minutes)"
+                  >
+                    {{ d.label }}
+                  </button>
+                }
+              </div>
+            </div>
             <div class="row flex-col items-start! gap-2! py-2.5!">
               <span id="event-kind-label" class="text-[13px] leading-[18px] text-muted"
                 >Hosted by</span
@@ -277,6 +360,10 @@ export class EventSheet {
 export class EventSheetOutlet {
   protected readonly sheet = inject(EventSheet);
   protected readonly kinds = EVENT_KINDS;
+  protected readonly durations = DURATIONS;
+  protected readonly duration = signal<number | null>(null);
+  /** What the pasted announcement time came to, or why it couldn't be read. */
+  protected readonly announcedNote = signal<{ ok: boolean; text: string } | null>(null);
   protected readonly kind = signal<EventKind>('other');
   protected readonly archived = signal(false);
   protected readonly error = signal('');
@@ -292,6 +379,8 @@ export class EventSheetOutlet {
       const req = this.sheet.request();
       if (req && !el.open) {
         this.kind.set(req.initial.kind);
+        this.duration.set(req.initial.durationMinutes ?? null);
+        this.announcedNote.set(null);
         this.archived.set(req.initial.archived);
         this.error.set('');
         this.deleting.set(false);
@@ -299,6 +388,27 @@ export class EventSheetOutlet {
         el.showModal();
       }
       if (!req && el.open) el.close();
+    });
+  }
+
+  /** Reads the pasted time and puts it in Starts, in your time. */
+  protected onAnnounced(text: string, starts: HTMLInputElement): void {
+    if (!text.trim()) return this.announcedNote.set(null);
+    const fallbackDay = starts.value.slice(0, 10);
+    const read = readAnnouncedTime(text, fallbackDay);
+    if (!read) {
+      return this.announcedNote.set({
+        ok: false,
+        text: 'No time in that yet. Include the time and its zone, like 6pm BST.',
+      });
+    }
+    starts.value = dateTimeFieldValue(read.startsAt);
+    const when = DAY_TIME.format(read.startsAt).replace(',', '');
+    this.announcedNote.set({
+      ok: true,
+      text: read.dateFound
+        ? `${read.read} is ${when} your time.`
+        : `${read.read} is ${when} your time (no date in it, so the day in Starts was used).`,
     });
   }
 
@@ -328,7 +438,14 @@ export class EventSheetOutlet {
     if (startsAt === null) return this.error.set('Pick a date and time.');
     const link = cleanLink(field('link'));
     if (link === undefined) return this.error.set('The link should be a web address.');
-    this.sheet.save({ title, startsAt, link, kind: this.kind(), archived: this.archived() });
+    this.sheet.save({
+      title,
+      startsAt,
+      durationMinutes: this.duration(),
+      link,
+      kind: this.kind(),
+      archived: this.archived(),
+    });
   }
 
   // Tapping the dimmed area outside the sheet closes it without saving.

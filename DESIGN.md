@@ -206,7 +206,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 - **Pressed Grey** (pressed): a tapped row, and inline fields that sit on an already-raised sheet.
 - **Thumb Grey** (segment-thumb): the selected segment. Grey, not blue, on purpose.
 - **Tab Glass** (tab-bar): the floating tab bar, rgb(36 36 38 / 0.74) with a 24px blur and 180% saturation, on its own compositing layer so its look stays constant while pages change underneath.
-- **Hairline** (separator): 0.5px inset separators, the top bar's bottom edge once solid, the floating tab bar's outline.
+- **Hairline** (separator): 0.5px inset separators, the floating tab bar's outline and the top bar's glass back button.
 - **Control Fill** (fill): segmented-control track and the search field.
 - **Label White** (label): primary text.
 - **Secondary Grey** (muted): secondary text, group headers and footers, placeholders, row values (5.9:1 on group, 7.3:1 on black).
@@ -232,7 +232,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 - **Large Title** (700, 34px/41px, +0.011em): the first line of every tab screen; it scrolls away with the page (tab screens have no top bar; you already know which tab you're on).
 - **Title** (700, 24px/29px, +0.005em, balanced wrapping): the game's name on the Game screen, next to its cover.
 - **Headline** (600, 20px/24px): empty-state headings.
-- **Nav Title** (600, 17px): the game's name in the Game screen's solid top bar; also the weight of primary buttons and Cancel.
+- **Nav Title** (700, 17px): the game's name, centred in the top bar once you scroll. Primary buttons and Cancel use 600.
 - **Body** (400, 17px/22px, -0.02em): row labels, inputs, text actions. All text inputs are 17px so iOS never zooms on focus.
 - **Subhead** (400, 15px/20px): row subtitles (date · countdown · status), developer line, counts, toasts, inline errors.
 - **Footnote** (400, 13px/18px, -0.005em): group headers (uppercase), group footers, sheet headings, row hints, platform lists.
@@ -251,7 +251,7 @@ A single phone-width column (max 28rem, centred on a desktop browser) inside a f
 
 The page gutter is 16px. Grouped lists sit inside that gutter; rows are at least 44px tall with 11px by 16px padding and 12px gaps. Separators are inset 16px for text rows, 68px for rows that start with a 40px cover, 52px for rows that start with a 22px icon. Group headers sit 22px above their list; footers follow 7px below. The Library grid is three columns with 12px gutters and 20px between rows.
 
-Only the Game screen has a top bar: 44px plus the safe-area inset, laid over the content, see-through over the hero art and solid with the game's name once the art has scrolled away, with the back button on the left. Tab screens have no bar: the large title scrolls away with the page. One-time actions (subscribing to the calendar) live in Settings, not on the tab screens. The tab bar floats: a capsule inset 16px from the sides, just above the home indicator (bottom: the safe-area inset minus 14px, at least 12px), over the content, which scrolls underneath it. It is positioned inside the app frame, never pinned to the screen with `position: fixed; bottom: 0` (iOS 26 misplaces those in home-screen apps). Pages leave `--tab-bar-space` plus 16px at the bottom so their last item clears it. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
+Only screens with a back button (the Game screen, Gaming events) have a top bar: 56px plus the safe-area inset, laid over the content. The back button is a 44px round frosted-glass button (the tab bar's glass, white chevron), the same over the art and after scrolling. Once you scroll, the page fades and blurs into the top of the screen behind it, with no hard edge or line (like iOS 26), and the bold title appears in the middle. Tab screens have no bar: the large title scrolls away with the page. One-time actions (subscribing to the calendar) live in Settings, not on the tab screens. The tab bar floats: a capsule inset 16px from the sides, just above the home indicator (bottom: the safe-area inset minus 14px, at least 12px), over the content, which scrolls underneath it. It is positioned inside the app frame, never pinned to the screen with `position: fixed; bottom: 0` (iOS 26 misplaces those in home-screen apps). Pages leave `--tab-bar-space` plus 16px at the bottom so their last item clears it. Sheets keep an 8px margin from the screen edges and respect the bottom safe area.
 
 ## Elevation & Depth
 

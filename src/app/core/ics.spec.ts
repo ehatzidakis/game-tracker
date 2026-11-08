@@ -1,5 +1,5 @@
 import { buildCalendar } from '../../../api/_lib/ics.js';
-import type { TrackedGame } from '../../../api/_lib/models.js';
+import type { GamingEvent, TrackedGame } from '../../../api/_lib/models.js';
 
 const base = {
   myPlatform: 'ps5',
@@ -58,5 +58,36 @@ describe('buildCalendar', () => {
     for (const line of long.split('\r\n')) {
       expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
     }
+  });
+
+  it('puts gaming events in at their time, an hour long without a duration', () => {
+    const event = (id: string, startsAt: number, extra: Partial<GamingEvent> = {}) =>
+      ({
+        id,
+        title: id,
+        startsAt,
+        link: null,
+        kind: 'other',
+        archived: false,
+        updatedAt: 0,
+        ...extra,
+      }) as GamingEvent;
+    const feed = buildCalendar([], 'https://example.app', Date.UTC(2026, 10, 7, 12), [
+      event('Nintendo Direct', Date.UTC(2026, 11, 3, 14), {
+        durationMinutes: 40,
+        link: 'https://nintendo.com/direct',
+      }),
+      event('State of Play', Date.UTC(2026, 10, 12, 20)),
+    ]);
+    const lines = feed.split('\r\n');
+    expect(lines.filter((l) => l.startsWith('SUMMARY:'))).toEqual([
+      'SUMMARY:📣 State of Play',
+      'SUMMARY:📣 Nintendo Direct',
+    ]);
+    expect(lines).toContain('DTSTART:20261112T200000Z');
+    expect(lines).toContain('DTEND:20261112T210000Z');
+    expect(lines).toContain('DTSTART:20261203T140000Z');
+    expect(lines).toContain('DTEND:20261203T144000Z');
+    expect(lines).toContain('URL:https://nintendo.com/direct');
   });
 });

@@ -129,13 +129,16 @@ export const EVENT_KINDS: readonly { key: EventKind; label: string }[] = [
 
 /**
  * users/{uid}/events/{id}: a gaming event you added (State of Play, Nintendo Direct, Summer Game
- * Fest…). Shows in the Calendar; games can say they were first shown or dated at one.
+ * Fest…). Shows in the Calendar tab and the calendar feed; games can say they were first shown
+ * or dated at one.
  */
 export interface GamingEvent {
   id: string;
   title: string;
   /** When it starts (ms). */
   startsAt: number;
+  /** How long it runs, if you know (minutes). The iPhone Calendar shows an hour without it. */
+  durationMinutes?: number | null;
   link: string | null;
   kind: EventKind;
   /** Done with: hidden from the Calendar and from the lists you pick events from. Games keep it. */

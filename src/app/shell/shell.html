@@ -13,30 +13,25 @@
          back screens (Gaming events) get room for it above their large title. Tab screens have
          no bar: their large title and its action scroll away with the page. -->
     @if (route().back) {
-      <header
-        class="absolute inset-x-0 top-0 z-20 pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-200"
-        [class]="
-          scrolled()
-            ? 'border-b-[0.5px] border-sep bg-[rgb(22_22_24/0.9)] backdrop-blur-xl backdrop-saturate-150'
-            : 'border-b-[0.5px] border-transparent'
-        "
-      >
-        <div class="relative flex h-11 items-center px-2">
+      <header class="absolute inset-x-0 top-0 z-20 pt-[env(safe-area-inset-top)]">
+        <!-- Once scrolled: the page fades and blurs into the top of the screen, with no hard
+             edge or line (like iOS 26). Its own layer, so the button and title stay sharp. -->
+        <div
+          class="top-fade pointer-events-none absolute inset-x-0 top-0 -bottom-5 transition-opacity duration-200"
+          [class.opacity-0]="!scrolled()"
+          aria-hidden="true"
+        ></div>
+        <div class="relative flex h-14 items-center px-3">
           <button
             type="button"
-            class="z-10 grid size-9 place-items-center rounded-full transition-colors duration-200"
-            [class]="
-              scrolled() || !route().hero
-                ? 'text-accent'
-                : 'bg-black/45 text-white backdrop-blur-md'
-            "
+            class="glass-button z-10 grid size-11 place-items-center rounded-full text-white active:scale-95"
             aria-label="Back"
             (click)="back()"
           >
-            <svg lucideChevronLeft [size]="24" [strokeWidth]="2.25" class="-ml-0.5"></svg>
+            <svg lucideChevronLeft [size]="26" [strokeWidth]="2.25" class="-ml-0.5"></svg>
           </button>
           <p
-            class="pointer-events-none absolute inset-x-14 truncate text-center text-[17px] font-semibold transition-opacity duration-200"
+            class="pointer-events-none absolute inset-x-16 truncate text-center text-[17px] font-bold transition-opacity duration-200"
             [class.opacity-0]="!titleShown()"
             [attr.aria-hidden]="!titleShown()"
           >
@@ -54,7 +49,7 @@
         route().hero
           ? '0'
           : route().back
-            ? 'calc(44px + env(safe-area-inset-top))'
+            ? 'calc(56px + env(safe-area-inset-top))'
             : 'calc(12px + env(safe-area-inset-top))'
       "
       (scroll)="onScroll()"

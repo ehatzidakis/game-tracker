@@ -8,7 +8,7 @@ import { LibraryService } from '../../core/library.service';
 import { titleMatcher } from '../../core/title-search';
 import { Cover } from '../../shared/cover';
 import { EventIcon } from '../../shared/event-icon';
-import { EventSheet } from '../../shared/event-sheet';
+import { EventSheet, timeRange } from '../../shared/event-sheet';
 import { SearchField } from '../../shared/search-field';
 import { calendarGroups } from './calendar-groups';
 
@@ -17,7 +17,6 @@ const WEEKDAY_DAY = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   timeZone: 'UTC',
 });
-const TIME = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
 const WEEKDAY_DAY_MONTH = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short',
   day: 'numeric',
@@ -98,12 +97,10 @@ export class CalendarPage {
     return format.format(new Date(`${date}T00:00:00Z`)).replace(',', '');
   }
 
-  /** "Tue 9 · 22:00 · in 3 days" for an event. */
+  /** "Tue 9 · 22:00–23:00 · in 3 days" for an event. */
   protected eventWhen(event: GamingEvent, date: string): string {
     const left = countdown({ releaseDate: date, releasePrecision: 'day' }, this.today);
-    return [this.shortDate(date, false), TIME.format(event.startsAt), left]
-      .filter(Boolean)
-      .join(' · ');
+    return [this.shortDate(date, false), timeRange(event), left].filter(Boolean).join(' · ');
   }
 
   protected addEvent(): void {
