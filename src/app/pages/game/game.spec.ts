@@ -8,7 +8,12 @@ import { LibraryService } from '../../core/library.service';
 import { PushService } from '../../core/push.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
 import { DetailsSheet, parsePrice } from '../../shared/details-sheet';
-import { formatPlaytime, parsePlaytime, splitPlaytime } from '../../core/playtime';
+import {
+  formatPlaytime,
+  formatPlaytimeClock,
+  parsePlaytime,
+  splitPlaytime,
+} from '../../core/playtime';
 import { GamePage } from './game';
 
 const details: GameDetails = {
@@ -338,6 +343,9 @@ describe('playtime', () => {
     expect(formatPlaytime(0.35)).toBe('21m');
     expect(formatPlaytime(null)).toBe('');
     expect(splitPlaytime(34.35)).toEqual({ hours: 34, minutes: 21 });
+    expect(formatPlaytimeClock(34.35)).toBe('34h 21m');
+    expect(formatPlaytimeClock(5.1)).toBe('5h 06m');
+    expect(formatPlaytimeClock(0)).toBe('');
   });
 
   it('reads the hours and minutes fields, and rejects junk', () => {

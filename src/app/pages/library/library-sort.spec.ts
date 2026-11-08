@@ -87,4 +87,66 @@ describe('library sorting', () => {
     ];
     expect(names(rated.sort(compareBy('rating', 'completed', today)))).toEqual(['C', 'A', 'B']);
   });
+
+  it('sorts by playtime, most played first, none last, and flips either way', () => {
+    const played = () => [
+      game('A', { hoursPlayed: 12.5 }),
+      game('B', { hoursPlayed: null }),
+      game('C', { hoursPlayed: 40 }),
+      game('D', { hoursPlayed: 0 }),
+    ];
+    expect(names(played().sort(compareBy('playtime', 'shelved', today)))).toEqual([
+      'C',
+      'A',
+      'B',
+      'D',
+    ]);
+    expect(names(played().sort(compareBy('playtime', 'shelved', today, true)))).toEqual([
+      'A',
+      'C',
+      'B',
+      'D',
+    ]);
+  });
+
+  it('reverses each sort, keeping games without a value last', () => {
+    const rated = [
+      game('A', { rating: 7 }),
+      game('B', { rating: null }),
+      game('C', { rating: 8.5 }),
+    ];
+    expect(names(rated.sort(compareBy('rating', 'completed', today, true)))).toEqual([
+      'A',
+      'C',
+      'B',
+    ]);
+    const byName = [game('B', {}), game('A', {}), game('C', {})];
+    expect(names(byName.sort(compareBy('name', 'backlog', today, true)))).toEqual(['C', 'B', 'A']);
+    const released = [
+      game('Old', { releaseDate: '2020-01-01' }),
+      game('TBA', { releaseDate: null }),
+      game('New', { releaseDate: '2025-01-01' }),
+    ];
+    expect(names(released.sort(compareBy('release', 'backlog', today, true)))).toEqual([
+      'Old',
+      'New',
+      'TBA',
+    ]);
+  });
+
+  it('flips the Wishlist order and its year groups when reversed', () => {
+    const wished = [
+      game('Soon', { releaseDate: '2026-12-01' }),
+      game('Later', { releaseDate: '2027-05-01' }),
+      game('TBA', { releaseDate: null }),
+      game('Out', { releaseDate: '2026-01-01' }),
+    ].sort(compareBy('release', 'wishlist', today, true));
+    expect(names(wished)).toEqual(['Out', 'TBA', 'Later', 'Soon']);
+    expect(groupByYear('wishlist', 'release', wished, today)!.map((g) => g.title)).toEqual([
+      '1 already out',
+      '1 without a date',
+      '1 in 2027',
+      '1 in 2026',
+    ]);
+  });
 });

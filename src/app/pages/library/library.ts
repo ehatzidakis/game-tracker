@@ -2,21 +2,23 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  LucideArrowUpDown,
   LucideChevronDown,
   LucideChevronRight,
   LucideDisc3,
   LucideLibraryBig,
   LucideStar,
+  LucideTrophy,
 } from '@lucide/angular';
 import {
-  completionLabel,
   isDlc,
   shownInLibrary,
   statusLabel,
   type Status,
+  type TrackedGame,
 } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
-import { formatPlaytime } from '../../core/playtime';
+import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
 import { LibraryService } from '../../core/library.service';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
@@ -27,12 +29,18 @@ const SORTS: { key: Sort; label: string }[] = [
   { key: 'name', label: 'Name' },
   { key: 'release', label: 'Release date' },
 ];
-/** The Completed tab can also sort by when you finished, and does by default. */
-const COMPLETED_SORTS: { key: Sort; label: string }[] = [
-  { key: 'completed', label: 'Date completed' },
-  { key: 'rating', label: 'Rating' },
-  ...SORTS,
-];
+const PLAYTIME = { key: 'playtime', label: 'Playtime' } as const;
+/** Extra sorts where they make sense: Completed also by when you finished (its default). */
+const TAB_SORTS: Partial<Record<Status, { key: Sort; label: string }[]>> = {
+  completed: [
+    { key: 'completed', label: 'Date completed' },
+    { key: 'rating', label: 'Rating' },
+    PLAYTIME,
+    ...SORTS,
+  ],
+  shelved: [...SORTS, PLAYTIME],
+};
+const sortsFor = (tab: Status) => TAB_SORTS[tab] ?? SORTS;
 
 /** Bump to reset everyone's remembered sorts to the defaults (2: per-tab defaults, 2026-11-08). */
 const SORT_KEY = 'library.sort.v2';
@@ -62,11 +70,13 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     RouterLink,
     NgTemplateOutlet,
     Cover,
+    LucideArrowUpDown,
     LucideChevronDown,
     LucideChevronRight,
     LucideDisc3,
     LucideLibraryBig,
     LucideStar,
+    LucideTrophy,
   ],
   templateUrl: './library.html',
 })
@@ -74,19 +84,26 @@ export class LibraryPage {
   protected readonly library = inject(LibraryService);
   protected readonly tabs = LIBRARY_TABS.map((key) => ({ key, label: statusLabel(key) }));
   protected readonly filter = signal<Status>(currentTab);
-  protected readonly sorts = computed(() =>
-    this.filter() === 'completed' ? COMPLETED_SORTS : SORTS,
-  );
+  protected readonly sorts = computed(() => sortsFor(this.filter()));
   /** Each tab remembers its own sort on this device. */
   private readonly sortByTab = signal<Record<Status, Sort>>(
     Object.fromEntries(
       LIBRARY_TABS.map((tab) => {
-        const options = (tab === 'completed' ? COMPLETED_SORTS : SORTS).map((o) => o.key);
+        const options = sortsFor(tab).map((o) => o.key);
         return [tab, remembered(`${SORT_KEY}.${tab}`, DEFAULT_SORT[tab], options)];
       }),
     ) as Record<Status, Sort>,
   );
   protected readonly sort = computed(() => this.sortByTab()[this.filter()]);
+  /** Each tab remembers whether its order is flipped, too. */
+  private readonly reversedTabs = signal<ReadonlySet<Status>>(
+    new Set(
+      LIBRARY_TABS.filter(
+        (tab) => remembered(`${SORT_KEY}.${tab}.reversed`, '0', ['0', '1']) === '1',
+      ),
+    ),
+  );
+  protected readonly reversed = computed(() => this.reversedTabs().has(this.filter()));
   /** Games and wishlisted DLC; owned DLC shows on its main game's page instead. */
   private readonly listed = computed(() => this.library.games().filter(shownInLibrary));
 
@@ -99,7 +116,7 @@ export class LibraryPage {
   protected readonly shown = computed(() =>
     this.listed()
       .filter((g) => g.status === this.filter())
-      .sort(compareBy(this.sort(), this.filter(), today())),
+      .sort(compareBy(this.sort(), this.filter(), today(), this.reversed())),
   );
 
   /**
@@ -114,10 +131,11 @@ export class LibraryPage {
   protected readonly emptyTitle = computed(() => EMPTY[this.filter()].title);
   protected readonly emptyText = computed(() => EMPTY[this.filter()].text);
 
-  /** Total hours across completed games, shown on the Completed tab. */
-  protected readonly completedHours = computed(() =>
-    Math.round(this.shown().reduce((sum, g) => sum + (g.hoursPlayed ?? 0), 0)),
-  );
+  /** Hours played across a year's completed games, rounded: "4 in 2026 · 120 h". */
+  protected groupHours(games: readonly TrackedGame[]): number {
+    if (this.filter() !== 'completed') return 0;
+    return Math.round(games.reduce((sum, g) => sum + (g.hoursPlayed ?? 0), 0));
+  }
   /** "4 in 2026", shown on the Completed tab when it isn't split by year. */
   protected readonly thisYear = computed(() => {
     const year = new Date().getFullYear();
@@ -127,9 +145,9 @@ export class LibraryPage {
     return { year, count };
   });
 
-  protected readonly completionLabel = completionLabel;
   protected readonly countdown = countdown;
   protected readonly formatPlaytime = formatPlaytime;
+  protected readonly formatPlaytimeClock = formatPlaytimeClock;
   protected readonly isDlc = isDlc;
 
   protected isCollapsed(key: string): boolean {
@@ -153,5 +171,17 @@ export class LibraryPage {
     const tab = this.filter();
     this.sortByTab.update((sorts) => ({ ...sorts, [tab]: sort }));
     remember(`${SORT_KEY}.${tab}`, sort);
+  }
+
+  protected toggleReversed(): void {
+    const tab = this.filter();
+    const reversed = !this.reversed();
+    this.reversedTabs.update((tabs) => {
+      const next = new Set(tabs);
+      if (reversed) next.add(tab);
+      else next.delete(tab);
+      return next;
+    });
+    remember(`${SORT_KEY}.${tab}.reversed`, reversed ? '1' : '0');
   }
 }

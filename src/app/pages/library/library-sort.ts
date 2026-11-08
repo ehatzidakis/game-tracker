@@ -1,6 +1,6 @@
 import type { Status, TrackedGame } from '../../../../api/_lib/models.js';
 
-export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating';
+export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating' | 'playtime';
 
 /** Library tabs, in your order. */
 export const LIBRARY_TABS: readonly Status[] = [
@@ -23,38 +23,59 @@ export const DEFAULT_SORT: Record<Status, Sort> = {
 const byName = (a: TrackedGame, b: TrackedGame) => a.name.localeCompare(b.name);
 
 /**
- * "Release date" means newest release first, except on the Wishlist, where it means what's
- * coming soonest: upcoming games nearest first, then games without a date, then ones already out
- * (newest first).
+ * Orders by a value, games without one last (in either direction), then by name.
+ * `dir` 1 is highest first, -1 lowest first.
+ */
+function byValue<T extends number | string>(
+  value: (g: TrackedGame) => T | null | undefined,
+  dir: 1 | -1,
+): (a: TrackedGame, b: TrackedGame) => number {
+  return (a, b) => {
+    const va = value(a);
+    const vb = value(b);
+    if (va == null || vb == null) return Number(va == null) - Number(vb == null) || byName(a, b);
+    const order = typeof va === 'number' ? (vb as number) - va : String(vb).localeCompare(va);
+    return dir * order || byName(a, b);
+  };
+}
+
+/**
+ * Each sort's usual order, or the opposite when `reversed`. Games missing the value (no date,
+ * no rating, no playtime) stay last either way.
+ * - Recent: last changed first. Name: A–Z. Date completed: latest first. Rating: highest first.
+ *   Playtime: most played first. Release date: newest first.
+ * - On the Wishlist, release date means what's coming soonest: upcoming games nearest first, then
+ *   games without a date, then ones already out (newest first). Reversed, that whole order flips.
  */
 export function compareBy(
   sort: Sort,
   tab: Status,
   today: string,
+  reversed = false,
 ): (a: TrackedGame, b: TrackedGame) => number {
+  const dir = reversed ? -1 : 1;
   switch (sort) {
     case 'name':
-      return byName;
+      return (a, b) => dir * byName(a, b);
     case 'completed':
-      // Latest finished first; games without a date last.
-      return (a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0) || byName(a, b);
+      return byValue((g) => g.completedAt, dir);
     case 'rating':
-      // Highest first; unrated last.
-      return (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || byName(a, b);
+      return byValue((g) => g.rating, dir);
+    case 'playtime':
+      return byValue((g) => g.hoursPlayed || null, dir);
     case 'release':
       if (tab === 'wishlist') {
         const rank = (g: TrackedGame) => (!g.releaseDate ? 1 : g.releaseDate >= today ? 0 : 2);
         return (a, b) =>
-          rank(a) - rank(b) ||
-          (rank(a) === 0
-            ? a.releaseDate!.localeCompare(b.releaseDate!)
-            : (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '')) ||
-          byName(a, b);
+          dir *
+            (rank(a) - rank(b) ||
+              (rank(a) === 0
+                ? a.releaseDate!.localeCompare(b.releaseDate!)
+                : (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''))) || byName(a, b);
       }
-      // Newest release first; TBA last.
-      return (a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? '') || byName(a, b);
+      return byValue((g) => g.releaseDate, dir);
     default:
-      return (a, b) => b.updatedAt - a.updatedAt;
+      return (a, b) => dir * (b.updatedAt - a.updatedAt);
   }
 }
 

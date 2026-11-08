@@ -16,6 +16,14 @@ export function formatPlaytime(hours: number | null | undefined): string {
   return split.hours ? `${split.hours}h ${split.minutes}m` : `${split.minutes}m`;
 }
 
+/** Cover badges, minutes always two digits: 34.35 → "34h 21m", 5.1 → "5h 06m". Empty for nothing played. */
+export function formatPlaytimeClock(hours: number | null | undefined): string {
+  if (!hours) return '';
+  const split = splitPlaytime(hours);
+  if (!split.hours && !split.minutes) return '';
+  return `${split.hours}h ${String(split.minutes).padStart(2, '0')}m`;
+}
+
 /**
  * The hours and minutes fields → hours ("34", "21" → 34.35). An empty field counts as 0, both
  * empty (or both 0) → null. Anything that isn't a whole number, or minutes over 59 → undefined.

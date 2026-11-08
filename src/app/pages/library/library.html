@@ -26,9 +26,6 @@
       @if (!yearGroups()) {
         · {{ thisYear().count }} in {{ thisYear().year }}
       }
-      @if (completedHours()) {
-        · {{ completedHours() }} h
-      }
     }
   </p>
   <label class="relative ml-auto flex shrink-0 items-center text-accent">
@@ -49,6 +46,17 @@
       class="pointer-events-none absolute right-0"
     ></svg>
   </label>
+  <!-- Flips the order: oldest first, lowest rating first, Z–A, … -->
+  <button
+    type="button"
+    class="-my-1 grid size-8 shrink-0 place-items-center rounded-full active:opacity-60"
+    [class]="reversed() ? 'bg-accent-fill text-white' : 'text-accent'"
+    aria-label="Reverse order"
+    [attr.aria-pressed]="reversed()"
+    (click)="toggleReversed()"
+  >
+    <svg lucideArrowUpDown [size]="17" [strokeWidth]="2.25"></svg>
+  </button>
 </div>
 
 @if (library.loading()) {
@@ -74,7 +82,12 @@
           [attr.aria-expanded]="open"
           (click)="toggleGroup(group.key)"
         >
-          {{ group.title }}
+          <span class="min-w-0">
+            {{ group.title }}
+            @if (groupHours(group.games); as hours) {
+              <span class="font-normal text-muted">· {{ hours }} h</span>
+            }
+          </span>
           <!-- Rotates the wrapper: the icon component manages its own classes. -->
           <span
             class="shrink-0 text-muted transition-transform duration-200"
@@ -113,11 +126,24 @@
                 <svg lucideDisc3 [size]="17" [strokeWidth]="2"></svg>
               </span>
             }
-            @if (game.status === 'completed' && completionLabel(game.completion); as label) {
+            @if (game.status === 'completed' && game.completion === 'platinum') {
               <span
-                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="absolute top-1.5 left-1.5 grid size-7 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                aria-label="Platinum"
               >
-                {{ label }}
+                <svg lucideTrophy [size]="15" [strokeWidth]="2"></svg>
+              </span>
+            }
+            @let clock =
+              game.status === 'completed' || game.status === 'shelved'
+                ? formatPlaytimeClock(game.hoursPlayed)
+                : '';
+            @if (clock) {
+              <span
+                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                [attr.aria-label]="formatPlaytime(game.hoursPlayed) + ' played'"
+              >
+                {{ clock }}
               </span>
             } @else if (isDlc(game)) {
               <span
