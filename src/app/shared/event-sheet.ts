@@ -50,16 +50,26 @@ export function timeRange(event: Pick<GamingEvent, 'startsAt' | 'durationMinutes
   return `${start}–${TIME.format(event.startsAt + event.durationMinutes * 60_000)}`;
 }
 
-/** Durations to pick from, in minutes. */
-export const DURATIONS: readonly { minutes: number | null; label: string }[] = [
-  { minutes: null, label: 'Not sure' },
-  { minutes: 30, label: '30 min' },
-  { minutes: 45, label: '45 min' },
-  { minutes: 60, label: '1 h' },
-  { minutes: 90, label: '1 h 30' },
-  { minutes: 120, label: '2 h' },
-  { minutes: 180, label: '3 h' },
-];
+/** Minutes as the duration field's "H:MM" ("01:30"); empty for none. */
+export function durationFieldValue(minutes: number | null | undefined): string {
+  if (!minutes) return '';
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+/**
+ * The duration field ("01:30", from the iPhone's hours and minutes wheel) as minutes. Empty or
+ * 0:00 → null. Over 9 hours, or anything else → undefined (invalid).
+ */
+export function fromDurationField(value: string): number | null | undefined {
+  const text = value.trim();
+  if (!text) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(text);
+  if (!m) return undefined;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2]);
+  if (hours > 9 || minutes > 59) return undefined;
+  return hours * 60 + minutes || null;
+}
 
 /** Who's likely holding an event, from its title. Null when it doesn't say. */
 export function guessKind(title: string): EventKind | null {
@@ -224,33 +234,21 @@ export class EventSheet {
                 [value]="dateTimeFieldValue(req.initial.startsAt)"
               />
             </label>
-            <div class="row flex-col items-start! gap-2! py-2.5!">
-              <span id="event-duration-label" class="text-[13px] leading-[18px] text-muted"
-                >Duration</span
-              >
-              <div
-                class="flex flex-wrap gap-2"
-                role="radiogroup"
-                aria-labelledby="event-duration-label"
-              >
-                @for (d of durations; track d.label) {
-                  <button
-                    type="button"
-                    role="radio"
-                    class="rounded-full px-3 py-1 text-[15px] active:opacity-60"
-                    [class]="
-                      duration() === d.minutes
-                        ? 'bg-accent-fill text-white'
-                        : 'bg-pressed text-label'
-                    "
-                    [attr.aria-checked]="duration() === d.minutes"
-                    (click)="duration.set(d.minutes)"
-                  >
-                    {{ d.label }}
-                  </button>
-                }
-              </div>
-            </div>
+            <!-- A time field so the iPhone opens its hours and minutes wheel; read as a length. -->
+            <label class="row">
+              <span class="flex-1">
+                Duration
+                <span class="block text-[13px] leading-[18px] text-muted"
+                  >Hours and minutes, if known</span
+                >
+              </span>
+              <input
+                name="duration"
+                type="time"
+                class="num rounded-[8px] bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
+                [value]="durationFieldValue(req.initial.durationMinutes)"
+              />
+            </label>
             <div class="row flex-col items-start! gap-2! py-2.5!">
               <span id="event-kind-label" class="text-[13px] leading-[18px] text-muted"
                 >Hosted by</span
@@ -360,8 +358,7 @@ export class EventSheet {
 export class EventSheetOutlet {
   protected readonly sheet = inject(EventSheet);
   protected readonly kinds = EVENT_KINDS;
-  protected readonly durations = DURATIONS;
-  protected readonly duration = signal<number | null>(null);
+  protected readonly durationFieldValue = durationFieldValue;
   /** What the pasted announcement time came to, or why it couldn't be read. */
   protected readonly announcedNote = signal<{ ok: boolean; text: string } | null>(null);
   protected readonly kind = signal<EventKind>('other');
@@ -379,7 +376,6 @@ export class EventSheetOutlet {
       const req = this.sheet.request();
       if (req && !el.open) {
         this.kind.set(req.initial.kind);
-        this.duration.set(req.initial.durationMinutes ?? null);
         this.announcedNote.set(null);
         this.archived.set(req.initial.archived);
         this.error.set('');
@@ -436,12 +432,16 @@ export class EventSheetOutlet {
     if (!title) return this.error.set('Give the event a title.');
     const startsAt = fromDateTimeField(field('startsAt'));
     if (startsAt === null) return this.error.set('Pick a date and time.');
+    const durationMinutes = fromDurationField(field('duration'));
+    if (durationMinutes === undefined) {
+      return this.error.set('Duration goes up to 9 hours and 59 minutes.');
+    }
     const link = cleanLink(field('link'));
     if (link === undefined) return this.error.set('The link should be a web address.');
     this.sheet.save({
       title,
       startsAt,
-      durationMinutes: this.duration(),
+      durationMinutes,
       link,
       kind: this.kind(),
       archived: this.archived(),

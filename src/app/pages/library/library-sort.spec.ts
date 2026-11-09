@@ -7,10 +7,9 @@ const today = '2026-11-08';
 
 describe('library sorting', () => {
   it('opens on Completed, with each tab’s own default sort', () => {
-    expect(LIBRARY_TABS).toEqual(['completed', 'wishlist', 'backlog', 'shelved', 'playing']);
+    expect(LIBRARY_TABS).toEqual(['completed', 'wishlist', 'backlog', 'shelved']);
     expect(DEFAULT_SORT).toEqual({
       completed: 'completed',
-      playing: 'recent',
       backlog: 'release',
       wishlist: 'release',
       shelved: 'release',

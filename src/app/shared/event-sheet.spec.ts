@@ -1,4 +1,11 @@
-import { cleanLink, dateTimeFieldValue, fromDateTimeField, guessKind } from './event-sheet';
+import {
+  cleanLink,
+  dateTimeFieldValue,
+  durationFieldValue,
+  fromDateTimeField,
+  fromDurationField,
+  guessKind,
+} from './event-sheet';
 
 describe('event sheet helpers', () => {
   it('guesses who is holding an event from its title', () => {
@@ -22,5 +29,16 @@ describe('event sheet helpers', () => {
     expect(new Date(ms).getHours()).toBe(22);
     expect(dateTimeFieldValue(ms)).toBe('2026-11-12T22:00');
     expect(fromDateTimeField('2026-11-12')).toBeNull();
+  });
+
+  it('reads the duration field as hours and minutes, up to 9 h 59', () => {
+    expect(fromDurationField('01:30')).toBe(90);
+    expect(fromDurationField('00:45')).toBe(45);
+    expect(fromDurationField('')).toBeNull();
+    expect(fromDurationField('00:00')).toBeNull();
+    expect(fromDurationField('10:00')).toBeUndefined();
+    expect(fromDurationField('1:75')).toBeUndefined();
+    expect(durationFieldValue(90)).toBe('01:30');
+    expect(durationFieldValue(null)).toBe('');
   });
 });

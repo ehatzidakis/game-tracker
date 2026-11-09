@@ -63,12 +63,17 @@
       @if (name()) {
         <h1 class="text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance">
           {{ name() }}
+          @if (platinum()) {
+            <span class="ml-1 inline-flex align-[-2px] text-accent" aria-label="Platinum">
+              <svg lucideTrophy [size]="22" [strokeWidth]="2.25"></svg>
+            </span>
+          }
         </h1>
       } @else {
         <div class="h-7 w-40 animate-pulse rounded-md bg-raised"></div>
       }
-      @if (developer(); as dev) {
-        <p class="mt-1 truncate text-[15px] leading-5 text-muted">{{ dev }}</p>
+      @if (makers(); as makers) {
+        <p class="mt-1 line-clamp-2 text-[15px] leading-5 text-muted">{{ makers }}</p>
       }
     </div>
   </header>
@@ -86,11 +91,18 @@
   }
   <!-- Your data at a glance (only what you've filled in), edited in a sheet. -->
   @if (!isDlcPage() && editableFields()) {
-    @if (myData().length) {
-      <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted">
-        @for (item of myData(); track item.label) {
+    <!-- Line 1: how far, when, how long. Line 2: bought on, where, price. -->
+    @for (line of myData(); track $index) {
+      <ul
+        class="flex flex-wrap gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted"
+        [class]="$first ? 'mt-3' : 'mt-1.5'"
+      >
+        @for (item of line; track item.label) {
           <li class="num flex items-center gap-1.5">
             @switch (item.icon) {
+              @case ('level') {
+                <svg lucideFlag [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
               @case ('hours') {
                 <svg lucideClock [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
               }
@@ -266,22 +278,27 @@
           </button>
         }
       </div>
-
-      @if (t.status === 'completed') {
-        <h2 class="group-header">Completion</h2>
-        <div class="segmented" role="radiogroup" aria-label="Completion">
-          @for (c of completions; track c.key) {
+      @if (t.status === 'backlog') {
+        <div class="grouped mt-3">
+          <div class="row">
+            <p id="playing-label" class="flex-1">Playing</p>
             <button
               type="button"
-              role="radio"
-              [attr.aria-checked]="t.completion === c.key"
-              (click)="setCompletion(c.key)"
+              role="switch"
+              class="switch"
+              aria-labelledby="playing-label"
+              [attr.aria-checked]="!!t.playing"
+              (click)="togglePlaying()"
             >
-              {{ c.label }}
+              <span></span>
             </button>
-          }
+          </div>
         </div>
+        <p class="group-footer">Up to {{ maxPlaying }} at a time. They lead your Backlog.</p>
+      }
 
+      @if (t.status === 'completed') {
+        <!-- How far you got is set when completing and changed in "Edit my data". -->
         @let shownRating = ratingPreview() ?? t.rating;
         <h2 class="group-header flex items-baseline gap-3">
           Rating

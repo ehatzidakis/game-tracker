@@ -3,7 +3,12 @@ import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 import { sendNotification, setVapidDetails } from 'web-push';
 import { igdbQuery } from './igdb-client.js';
 import { SYNC_FIELDS, syncedFields, type IgdbSyncGame } from './igdb-sync.js';
-import { DEFAULT_SETTINGS, type TrackedGame, type UserSettings } from './models.js';
+import {
+  DEFAULT_SETTINGS,
+  preorderArrived,
+  type TrackedGame,
+  type UserSettings,
+} from './models.js';
 import { platformLabel } from './platforms.js';
 import { addDays, alertDueAt, daysBetween, todayIn } from './release.js';
 
@@ -72,6 +77,34 @@ function alertTitle(game: TrackedGame, today: string): string {
   if (days <= 0) return `${game.name} is out today`;
   if (days === 1) return `${game.name} is out tomorrow`;
   return `${game.name} is out in ${days} days`;
+}
+
+/**
+ * Moves pre-ordered games from the Wishlist to the Backlog once their release day starts in the
+ * user's time zone. Runs hourly; the app also does it when opened.
+ */
+export async function runPreorderArrivals(db: Firestore, now = Date.now()) {
+  const moved: string[] = [];
+  for (const userRef of await userRefs(db)) {
+    const settings = await settingsOf(userRef);
+    const today = todayIn(settings.timezone, new Date(now));
+    const preorders = await userRef.collection('games').where('preordered', '==', true).get();
+    const batch = db.batch();
+    let writes = 0;
+    for (const doc of preorders.docs) {
+      const game = doc.data() as TrackedGame;
+      if (!preorderArrived(game, today)) continue;
+      batch.update(doc.ref, {
+        status: 'backlog',
+        purchasedAt: game.purchasedAt ?? now,
+        updatedAt: now,
+      });
+      moved.push(game.name);
+      writes++;
+    }
+    if (writes) await batch.commit();
+  }
+  return { moved };
 }
 
 /**

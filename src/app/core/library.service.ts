@@ -11,6 +11,8 @@ import {
 import { syncedFields, type IgdbSyncGame } from '../../../api/_lib/igdb-sync.js';
 import {
   DEFAULT_SETTINGS,
+  normalizeGame,
+  preorderArrived,
   type Completion,
   statusLabel,
   type Status,
@@ -19,6 +21,7 @@ import {
 } from '../../../api/_lib/models.js';
 import { PLATFORMS, type PlatformKey } from '../../../api/_lib/platforms.js';
 import { AuthService } from './auth.service';
+import { today } from './dates';
 import { db } from './db';
 import { ToastService } from './toast.service';
 
@@ -68,7 +71,7 @@ export class LibraryService {
 
       const stopGames = onSnapshot(
         collection(db, 'users', user.uid, 'games'),
-        (snap) => this.gamesState.set(snap.docs.map((d) => d.data() as TrackedGame)),
+        (snap) => this.gamesState.set(snap.docs.map((d) => normalizeGame(d.data() as TrackedGame))),
         (error) => this.onLoadError(error),
       );
       const stopSettings = onSnapshot(
@@ -80,6 +83,14 @@ export class LibraryService {
         stopGames();
         stopSettings();
       });
+    });
+
+    // Pre-orders that came out today move to the Backlog (the hourly job does it too).
+    effect(() => {
+      const day = today();
+      for (const game of this.gamesState() ?? []) {
+        if (preorderArrived(game, day)) this.setStatus(game, 'backlog');
+      }
     });
   }
 
@@ -119,7 +130,7 @@ export class LibraryService {
     this.write(setDoc(this.gameDoc(game.id), tracked), `Added to ${where}`);
   }
 
-  /** For Completed, pass how far you got. */
+  /** For Completed, pass how far you got. Leaving the Backlog stops Playing. */
   setStatus(game: TrackedGame, status: Status, completion?: Completion): void {
     if (game.status === status) return;
     const now = Date.now();
@@ -127,7 +138,24 @@ export class LibraryService {
       updateDoc(this.gameDoc(game.igdbId), {
         status,
         ...(completion ? { completion } : {}),
+        ...(status !== 'backlog' && game.playing ? { playing: false } : {}),
         ...statusStamps(game, status, now),
+        updatedAt: now,
+      }),
+    );
+  }
+
+  /** Marks a Backlog game as being played now, or not. (The caller keeps it to MAX_PLAYING.) */
+  setPlaying(game: TrackedGame, playing: boolean): void {
+    const now = Date.now();
+    this.write(
+      updateDoc(this.gameDoc(game.igdbId), {
+        // Also settles games stored with the old "playing" status.
+        status: 'backlog',
+        playing,
+        ...(playing
+          ? { startedAt: game.startedAt ?? now, purchasedAt: game.purchasedAt ?? now }
+          : {}),
         updatedAt: now,
       }),
     );
@@ -258,8 +286,6 @@ export function statusStamps(
   switch (status) {
     case 'backlog':
       return { purchasedAt: game.purchasedAt ?? now };
-    case 'playing':
-      return { purchasedAt: game.purchasedAt ?? now, startedAt: game.startedAt ?? now };
     case 'shelved':
       return { shelvedAt: now };
     case 'completed':

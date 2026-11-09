@@ -55,26 +55,24 @@
         }
       }
     </p>
-    <!-- Pill buttons, like the segmented control: the same dark fill, blue text. -->
+    <!-- Pill buttons, like the segmented control: the same dark fill, blue text. The pill shows
+         the chosen sort as text, with the real menu laid invisibly on top, so it's exactly as
+         wide as what's chosen (a menu is always as wide as its longest option). -->
     <label
-      class="relative ml-auto flex h-8 shrink-0 items-center rounded-full bg-group text-accent active:bg-pressed"
+      class="relative ml-auto flex h-8 shrink-0 items-center gap-1 rounded-full bg-group pr-3 pl-3.5 text-base text-accent active:bg-pressed"
     >
       <span class="sr-only">Sort by</span>
+      <span aria-hidden="true">{{ sortLabel() }}</span>
+      <svg lucideChevronDown [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
       <!-- 16px or more so iOS doesn't zoom in when it opens. -->
       <select
-        class="h-full appearance-none rounded-full bg-transparent pr-8 pl-3.5 text-right text-base outline-none"
+        class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
         (change)="setSort($event)"
       >
         @for (s of sorts(); track s.key) {
           <option [value]="s.key" [selected]="s.key === sort()">{{ s.label }}</option>
         }
       </select>
-      <svg
-        lucideChevronDown
-        [size]="16"
-        [strokeWidth]="2.5"
-        class="pointer-events-none absolute right-3"
-      ></svg>
     </label>
     <!-- Flips the order: oldest first, lowest rating first, Z–A, … -->
     <button
@@ -91,6 +89,23 @@
     >
       <svg lucideArrowUpDown [size]="17" [strokeWidth]="2.25"></svg>
     </button>
+    @if (filter() === 'completed') {
+      <!-- Only the Platinum games. -->
+      <button
+        type="button"
+        class="grid size-8 shrink-0 place-items-center rounded-full"
+        [class]="
+          platinumOnly()
+            ? 'bg-accent-fill text-white active:brightness-90'
+            : 'bg-group text-accent active:bg-pressed'
+        "
+        aria-label="Only Platinum"
+        [attr.aria-pressed]="platinumOnly()"
+        (click)="togglePlatinum()"
+      >
+        <svg lucideTrophy [size]="16" [strokeWidth]="2.25"></svg>
+      </button>
+    }
   </div>
 
   @if (library.loading()) {
@@ -152,7 +167,12 @@
     @for (game of games; track game.igdbId) {
       <li>
         <a [routerLink]="['/game', game.igdbId]" class="block active:opacity-70">
-          <app-cover [coverId]="game.coverId" [name]="game.name">
+          <!-- Games you're playing get a blue outline. -->
+          <app-cover
+            [coverId]="game.coverId"
+            [name]="game.name"
+            [class.playing-cover]="game.playing && game.status === 'backlog'"
+          >
             @if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
               <span
                 class="absolute top-1.5 right-1.5 grid size-7 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
@@ -212,10 +232,14 @@
                   {{ countdown(game) ?? game.releaseLabel }}
                 }
                 @case ('backlog') {
-                  {{ countdown(game) }}
-                }
-                @case ('playing') {
-                  {{ formatPlaytime(game.hoursPlayed) }}
+                  @if (game.playing) {
+                    <span class="text-accent">Playing</span>
+                    @if (formatPlaytime(game.hoursPlayed); as played) {
+                      · {{ played }}
+                    }
+                  } @else {
+                    {{ countdown(game) }}
+                  }
                 }
               }
             }

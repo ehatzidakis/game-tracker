@@ -1,13 +1,12 @@
 import type { PlatformKey } from './platforms.js';
 
-export type Status = 'wishlist' | 'backlog' | 'playing' | 'shelved' | 'completed';
+export type Status = 'wishlist' | 'backlog' | 'shelved' | 'completed';
 export type Completion = 'main' | 'main_sides' | 'platinum';
 export type ReleasePrecision = 'day' | 'month' | 'quarter' | 'year' | 'tbd';
 
 /** Display order everywhere (Library filters, status pickers). */
 export const STATUSES: readonly { key: Status; label: string; hint: string }[] = [
-  { key: 'playing', label: 'Playing', hint: 'Playing it now' },
-  { key: 'backlog', label: 'Backlog', hint: 'Own it, not started' },
+  { key: 'backlog', label: 'Backlog', hint: 'Own it, not finished' },
   { key: 'wishlist', label: 'Wishlist', hint: 'Upcoming or not bought yet' },
   { key: 'shelved', label: 'Shelved', hint: 'Stopped for now' },
   { key: 'completed', label: 'Completed', hint: 'Finished it' },
@@ -71,6 +70,11 @@ export interface TrackedGame {
   rating: number | null;
   notes: string;
   notify: boolean;
+  /**
+   * You're playing it now: a Backlog game, at most MAX_PLAYING at once. (Before 2026-11-09 this
+   * was a status of its own; old "playing" data reads as Backlog + playing.)
+   */
+  playing?: boolean;
 
   // Pre-order or purchase (optional details). Pre-ordering an upcoming game moves it from
   // Wishlist to Backlog.
@@ -104,6 +108,33 @@ export interface TrackedGame {
 
   /** Set by the alert job: the release date the alert was sent for, so it's sent once. */
   notifiedFor?: string | null;
+}
+
+/**
+ * A pre-order whose day has come: on your Wishlist, pre-ordered, with an exact release day that
+ * is today or past (in your time zone). It moves to your Backlog then: you own it now.
+ */
+export function preorderArrived(
+  game: Pick<TrackedGame, 'status' | 'preordered' | 'releaseDate' | 'releasePrecision'>,
+  today: string,
+): boolean {
+  return (
+    game.status === 'wishlist' &&
+    !!game.preordered &&
+    game.releasePrecision === 'day' &&
+    !!game.releaseDate &&
+    game.releaseDate <= today
+  );
+}
+
+/** How many games can be marked Playing at once. */
+export const MAX_PLAYING = 3;
+
+/** Reads a stored game, turning the old "playing" status into Backlog + playing. */
+export function normalizeGame(game: TrackedGame): TrackedGame {
+  return (game.status as string) === 'playing'
+    ? { ...game, status: 'backlog', playing: true }
+    : game;
 }
 
 /** True for DLC and expansions you track. */

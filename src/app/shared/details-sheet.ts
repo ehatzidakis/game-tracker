@@ -7,7 +7,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import type { TrackedGame } from '../../../api/_lib/models.js';
+import { COMPLETIONS, type Completion, type TrackedGame } from '../../../api/_lib/models.js';
 import { dateFieldValue, fromDateField } from '../core/dates';
 import { parsePlaytime, splitPlaytime } from '../core/playtime';
 import { FitWidth } from './fit-content';
@@ -22,12 +22,14 @@ export interface MyData {
   hoursPlayed: number | null;
   /** Milliseconds. */
   completedAt: number | null;
+  completion: Completion | null;
 }
 
 /** Which fields the sheet asks for. */
 export interface SheetFields {
   purchase: boolean;
   hours: boolean;
+  /** The completed date and how far you got. */
   completed: boolean;
 }
 
@@ -94,6 +96,7 @@ export class DetailsSheet {
         physical: !!game.physical,
         hoursPlayed: game.hoursPlayed,
         completedAt: game.completedAt,
+        completion: game.completion,
       },
       stores,
       today,
@@ -179,6 +182,23 @@ export function parsePrice(text: string): number | null | undefined {
               </div>
             }
             @if (req.fields.completed) {
+              <div class="row flex-col items-stretch! gap-2! py-2.5!">
+                <span id="sheet-completion-label" class="text-[13px] leading-[18px] text-muted"
+                  >How far you got</span
+                >
+                <div class="segmented" role="radiogroup" aria-labelledby="sheet-completion-label">
+                  @for (c of completions; track c.key) {
+                    <button
+                      type="button"
+                      role="radio"
+                      [attr.aria-checked]="completion() === c.key"
+                      (click)="completion.set(c.key)"
+                    >
+                      {{ c.label }}
+                    </button>
+                  }
+                </div>
+              </div>
               <label class="row">
                 <span class="flex-1">Completed on</span>
                 <input
@@ -301,6 +321,8 @@ export class DetailsSheetOutlet {
   /** What's in the store field, so the matching store button shows as picked. */
   protected readonly storeText = signal('');
   protected readonly physical = signal(false);
+  protected readonly completion = signal<Completion | null>(null);
+  protected readonly completions = COMPLETIONS;
   protected readonly dateFieldValue = dateFieldValue;
   protected readonly splitPlaytime = splitPlaytime;
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
@@ -313,6 +335,7 @@ export class DetailsSheetOutlet {
         this.error.set('');
         this.storeText.set(req.initial.boughtFrom ?? '');
         this.physical.set(!!req.initial.physical);
+        this.completion.set(req.initial.completion ?? null);
         el.showModal();
       }
       if (!req && el.open) el.close();
@@ -338,6 +361,7 @@ export class DetailsSheetOutlet {
     if (req.fields.completed) {
       // An emptied date keeps the old one: a completed game always has one.
       data.completedAt = fromDateField(field('completed')) ?? req.initial.completedAt ?? null;
+      data.completion = this.completion() ?? req.initial.completion ?? null;
     }
     if (req.fields.purchase) {
       const price = parsePrice(field('price'));

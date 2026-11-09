@@ -114,8 +114,8 @@ export class CalendarPage {
   /** "Pre-ordered", "Owned" or "Playing" after the date; nothing for a plain wishlist game. */
   protected ownership(game: TrackedGame): string | null {
     if (game.preordered) return 'Pre-ordered';
+    if (game.playing && game.status === 'backlog') return 'Playing';
     if (game.status === 'backlog') return 'Owned';
-    if (game.status === 'playing') return 'Playing';
     return null;
   }
 }

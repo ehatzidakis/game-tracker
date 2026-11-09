@@ -13,15 +13,17 @@ import {
   LucidePencil,
   LucidePlus,
   LucideStore,
+  LucideTrophy,
+  LucideFlag,
 } from '@lucide/angular';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
+  MAX_PLAYING,
+  completionLabel,
   type GamingEvent,
-  COMPLETIONS,
   isDlc,
   statusLabel,
   STATUSES,
-  type Completion,
   type Release,
   type Status,
 } from '../../../../api/_lib/models.js';
@@ -122,6 +124,8 @@ const TIME_TO_BEAT = [
     LucidePencil,
     LucidePlus,
     LucideStore,
+    LucideTrophy,
+    LucideFlag,
   ],
   templateUrl: './game.html',
 })
@@ -177,6 +181,18 @@ export class GamePage {
       this.details.data()?.involved_companies?.find((c) => c.developer)?.company?.name ??
       null,
   );
+  /**
+   * "Santa Monica Studio · Sony Interactive Entertainment". IGDB doesn't mark a main publisher, so
+   * it's the first one that isn't also the developer; a self-published game shows one name.
+   */
+  protected readonly makers = computed(() => {
+    const developer = this.developer();
+    const companies = this.details.data()?.involved_companies ?? [];
+    const publisher = companies.find(
+      (c) => c.publisher && !c.developer && c.company && c.company.name !== developer,
+    )?.company?.name;
+    return [developer, publisher].filter(Boolean).join(' · ') || null;
+  });
   protected readonly heroUrl = computed(() => {
     const d = this.details.data();
     // Screenshots first: IGDB "artworks" are often logos or text.
@@ -247,22 +263,35 @@ export class GamePage {
     const t = this.tracked();
     const fields = this.editableFields();
     if (!t || !fields) return [];
-    const items: { icon: string; label: string }[] = [];
-    const played = formatPlaytime(t.hoursPlayed);
-    if (fields.hours && played) items.push({ icon: 'hours', label: `${played} playtime` });
-    if (fields.completed && t.completedAt) {
-      items.push({ icon: 'completed', label: `Completed ${SHORT_DATE.format(t.completedAt)}` });
+    type Item = { icon: string; label: string };
+    // Line 1: how far you got (Platinum is the trophy by the name), when, how long.
+    const progress: Item[] = [];
+    if (fields.completed && t.completion && t.completion !== 'platinum') {
+      progress.push({ icon: 'level', label: completionLabel(t.completion) ?? '' });
     }
+    if (fields.completed && t.completedAt) {
+      progress.push({ icon: 'completed', label: `Completed ${SHORT_DATE.format(t.completedAt)}` });
+    }
+    const played = formatPlaytime(t.hoursPlayed);
+    if (fields.hours && played) progress.push({ icon: 'hours', label: `${played} playtime` });
+    // Line 2: when, where and for how much you bought it.
+    const purchase: Item[] = [];
     if (fields.purchase) {
-      if (t.pricePaid) items.push({ icon: 'price', label: t.pricePaid.toFixed(2) });
-      if (t.boughtFrom) items.push({ icon: 'store', label: t.boughtFrom });
       if (t.orderedOn) {
         const when = SHORT_DATE.format(new Date(`${t.orderedOn}T12:00:00`));
-        items.push({ icon: 'date', label: `${t.preordered ? 'Preordered' : 'Bought'} ${when}` });
+        purchase.push({ icon: 'date', label: `${t.preordered ? 'Preordered' : 'Bought'} ${when}` });
       }
-      if (t.physical) items.push({ icon: 'physical', label: 'Physical copy' });
+      if (t.boughtFrom) purchase.push({ icon: 'store', label: t.boughtFrom });
+      if (t.pricePaid) purchase.push({ icon: 'price', label: t.pricePaid.toFixed(2) });
+      if (t.physical) purchase.push({ icon: 'physical', label: 'Physical copy' });
     }
-    return items;
+    return [progress, purchase].filter((line) => line.length);
+  });
+
+  /** Platinum: a trophy next to the game's name. */
+  protected readonly platinum = computed(() => {
+    const t = this.tracked();
+    return t?.status === 'completed' && t.completion === 'platinum';
   });
 
   /** Stores you've bought from before, then common ones, as suggestions. */
@@ -424,7 +453,7 @@ export class GamePage {
   });
 
   protected readonly statuses = STATUSES;
-  protected readonly completions = COMPLETIONS;
+  protected readonly maxPlaying = MAX_PLAYING;
   /** The rating under your finger while you slide, shown in the heading. */
   protected readonly ratingPreview = signal<number | null>(null);
   /** The rating bar only moves after you tap Edit. */
@@ -464,6 +493,30 @@ export class GamePage {
     if (choice) this.library.add(d, choice.status, choice.completion);
   }
 
+  /**
+   * Playing on or off. With MAX_PLAYING games already on, asks which one to stop (Cancel leaves
+   * everything as it was).
+   */
+  protected async togglePlaying(): Promise<void> {
+    const t = this.tracked();
+    if (!t) return;
+    if (t.playing) return this.library.setPlaying(t, false);
+    const others = this.library
+      .games()
+      .filter((g) => g.playing && g.status === 'backlog' && g.igdbId !== t.igdbId);
+    if (others.length >= MAX_PLAYING) {
+      const stop = await this.sheet.choose(
+        [`You're playing ${others.length} games. Stop one to play `, t.name, '?'],
+        others.map((g) => ({ key: String(g.igdbId), label: g.name })),
+      );
+      const game = others.find((g) => String(g.igdbId) === stop);
+      if (!game) return;
+      this.library.setPlaying(game, false);
+    }
+    const now = this.tracked();
+    if (now) this.library.setPlaying(now, true);
+  }
+
   protected async setStatus(status: Status): Promise<void> {
     const t = this.tracked();
     if (!t || t.status === status) return;
@@ -488,11 +541,6 @@ export class GamePage {
       const now = this.tracked();
       if (details && now) this.library.edit(now, details);
     }
-  }
-
-  protected setCompletion(completion: Completion): void {
-    const t = this.tracked();
-    if (t && t.completion !== completion) this.library.edit(t, { completion });
   }
 
   /** 1–10 in half points, or null to clear it. */

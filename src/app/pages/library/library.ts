@@ -60,11 +60,12 @@ const SORT_KEY = 'library.sort.v2';
 let currentTab: Status = 'completed';
 /** What's in the search field, kept while the app is open (so coming back from a game keeps it). */
 let currentQuery = '';
+/** Completed tab showing only Platinum games, kept while the app is open. */
+let platinumOnlyNow = false;
 /** Year groups you've folded ("completed:2025"), kept while the app is open. */
 const collapsedGroups = new Set<string>();
 
 const EMPTY: Record<Status, { title: string; text: string }> = {
-  playing: { title: 'Nothing in progress', text: 'Open a game and set it to Playing.' },
   backlog: { title: 'No backlog', text: 'Games you own but haven’t started go here.' },
   wishlist: {
     title: 'Wishlist is empty',
@@ -111,6 +112,9 @@ export class LibraryPage {
     ) as Record<Status, Sort>,
   );
   protected readonly sort = computed(() => this.sortByTab()[this.filter()]);
+  protected readonly sortLabel = computed(
+    () => this.sorts().find((s) => s.key === this.sort())?.label ?? '',
+  );
   /** Each tab remembers whether its order is flipped, too. */
   private readonly reversedTabs = signal<ReadonlySet<Status>>(
     new Set(
@@ -129,11 +133,25 @@ export class LibraryPage {
     return counts;
   });
 
+  /** Completed tab: only the games you got the Platinum trophy in. */
+  protected readonly platinumOnly = signal(platinumOnlyNow);
+  private readonly onlyPlatinum = computed(
+    () => this.filter() === 'completed' && this.platinumOnly(),
+  );
+
   protected readonly shown = computed(() =>
     this.listed()
       .filter((g) => g.status === this.filter())
-      .sort(compareBy(this.sort(), this.filter(), today(), this.reversed())),
+      .filter((g) => !this.onlyPlatinum() || g.completion === 'platinum')
+      .sort(compareBy(this.sort(), this.filter(), today(), this.reversed()))
+      // The games you're playing lead the Backlog.
+      .sort((a, b) => Number(!!b.playing) - Number(!!a.playing)),
   );
+
+  protected togglePlatinum(): void {
+    platinumOnlyNow = !this.platinumOnly();
+    this.platinumOnly.set(platinumOnlyNow);
+  }
 
   /**
    * Completed (by date completed) and Wishlist (by release date) split into years:
@@ -144,8 +162,14 @@ export class LibraryPage {
   );
   private readonly collapsed = signal<ReadonlySet<string>>(new Set(collapsedGroups));
 
-  protected readonly emptyTitle = computed(() => EMPTY[this.filter()].title);
-  protected readonly emptyText = computed(() => EMPTY[this.filter()].text);
+  protected readonly emptyTitle = computed(() =>
+    this.onlyPlatinum() ? 'No Platinum games yet' : EMPTY[this.filter()].title,
+  );
+  protected readonly emptyText = computed(() =>
+    this.onlyPlatinum()
+      ? 'Games you completed with every trophy show here. Tap the trophy to see them all.'
+      : EMPTY[this.filter()].text,
+  );
 
   /** Hours played across a year's completed games, rounded: "4 in 2026 · 120 h". */
   protected groupHours(games: readonly TrackedGame[]): number {

@@ -4,18 +4,11 @@ import { searchable, titleMatcher } from '../../core/title-search';
 export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating' | 'playtime';
 
 /** Library tabs, in your order. */
-export const LIBRARY_TABS: readonly Status[] = [
-  'completed',
-  'wishlist',
-  'backlog',
-  'shelved',
-  'playing',
-];
+export const LIBRARY_TABS: readonly Status[] = ['completed', 'wishlist', 'backlog', 'shelved'];
 
 /** Each tab's sort until you pick another one. */
 export const DEFAULT_SORT: Record<Status, Sort> = {
   completed: 'completed',
-  playing: 'recent',
   backlog: 'release',
   wishlist: 'release',
   shelved: 'release',

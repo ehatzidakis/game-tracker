@@ -90,8 +90,9 @@ async function render(
   game: TrackedGame | null,
   igdb: GameDetails = details,
   openCritic: OpenCriticScore = NO_OPENCRITIC,
+  others: TrackedGame[] = [],
 ) {
-  const games = signal(game ? [game] : []);
+  const games = signal(game ? [game, ...others] : others);
   const edits: unknown[] = [];
   TestBed.configureTestingModule({
     providers: [
@@ -131,6 +132,7 @@ async function render(
           add: (_: unknown, status: string, __: unknown, parent: unknown) =>
             edits.push({ add: status, parent }),
           remove: () => edits.push({ removed: true }),
+          setPlaying: (g: TrackedGame, playing: boolean) => edits.push({ playing, game: g.igdbId }),
           setStatus: (_: TrackedGame, status: unknown, completion?: unknown) =>
             edits.push(completion ? { status, completion } : { status }),
         },
@@ -152,6 +154,39 @@ async function render(
 }
 
 describe('GamePage', () => {
+  it('marks a Backlog game as Playing, asking which to stop when 3 already are', async () => {
+    const playing = [11, 12, 13].map((id) => ({
+      ...tracked({ status: 'backlog', playing: true }),
+      igdbId: id,
+      name: `Game ${id}`,
+    }));
+    const { el, edits, sheet, fixture } = await render(
+      tracked({ status: 'backlog', releaseDate: '2020-01-01' }),
+      details,
+      NO_OPENCRITIC,
+      playing,
+    );
+    const toggle = el.querySelector('button[aria-labelledby=playing-label]') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    toggle.click();
+    await fixture.whenStable();
+    expect(sheet.request()?.choices.map((c) => c.label)).toEqual(['Game 11', 'Game 12', 'Game 13']);
+    sheet.finish('12');
+    await new Promise((r) => setTimeout(r));
+    expect(edits).toEqual([
+      { playing: false, game: 12 },
+      { playing: true, game: 7 },
+    ]);
+  });
+
+  it('only offers Playing on Backlog games', async () => {
+    const { el } = await render(tracked({ status: 'wishlist' }));
+    expect(el.querySelector('button[aria-labelledby=playing-label]')).toBeNull();
+    expect(
+      [...el.querySelectorAll('[aria-label=Status] button')].map((b) => b.textContent!.trim()),
+    ).toEqual(['Backlog', 'Wishlist', 'Shelved', 'Completed']);
+  });
+
   it('links a game to the gaming event it was first shown at', async () => {
     const { el, edits, sheet, fixture } = await render(tracked({ dateAnnouncedEventId: 'old' }));
     const rows = () =>
@@ -192,24 +227,41 @@ describe('GamePage', () => {
     expect(edits).toEqual([{ notify: true }]);
   });
 
-  it('shows completion and rating for a completed game', async () => {
-    const { el, edits } = await render(
+  it('shows how far you got in your data, and a trophy by the name for Platinum', async () => {
+    const main = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main', rating: 8 }),
     );
-    expect(el.textContent).toContain('Completion');
-    expect(el.textContent).toContain('Platinum');
-    expect(el.textContent).toContain('8/10');
-    expect(el.textContent).not.toContain('Release alert');
-    const platinum = [...el.querySelectorAll('button')].find(
-      (b) => b.textContent?.trim() === 'Platinum',
-    )!;
-    platinum.click();
+    expect(main.el.textContent).toContain('Main story');
+    expect(main.el.textContent).toContain('8/10');
+    expect(main.el.textContent).not.toContain('Release alert');
+    // No Completion buttons on the page: it's changed in Edit my data.
+    expect(main.el.querySelector('[aria-label=Completion]')).toBeNull();
+    expect(main.el.querySelector('h1 [aria-label=Platinum]')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const platinum = await render(
+      tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'platinum' }),
+    );
+    expect(platinum.el.querySelector('h1 [aria-label=Platinum]')).not.toBeNull();
+    expect(platinum.el.textContent).not.toContain('Platinum ');
+  });
+
+  it('changes how far you got in Edit my data', async () => {
+    const { el, edits, sheet2 } = await render(
+      tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main' }),
+    );
+    [...el.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Edit my data'))!
+      .click();
+    expect(sheet2.request()?.initial.completion).toBe('main');
+    sheet2.finish({ completion: 'platinum' });
+    await Promise.resolve();
     expect(edits).toEqual([{ completion: 'platinum' }]);
   });
 
   it('asks how far you got when you mark a game Completed', async () => {
     const { el, edits, sheet } = await render(
-      tracked({ status: 'playing', releaseDate: '2020-01-01' }),
+      tracked({ status: 'backlog', playing: true, releaseDate: '2020-01-01' }),
     );
     const button = (label: string) =>
       [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === label)!;
@@ -254,23 +306,22 @@ describe('GamePage', () => {
       tracked({
         status: 'completed',
         releaseDate: '2020-01-01',
+        completion: 'main_sides',
         hoursPlayed: 34.35,
         completedAt: new Date(2026, 2, 4, 12).getTime(),
         pricePaid: 69.9,
         boughtFrom: 'Germanos',
-        orderedOn: null,
+        orderedOn: '2026-01-10',
         physical: true,
       }),
     );
-    const items = [...el.querySelectorAll('header + p + ul li, ul li.num')].map((li) =>
-      li.textContent!.trim(),
-    );
-    expect(items).toEqual([
-      '34h 21m playtime',
-      'Completed 4 Mar 2026',
-      '69.90',
-      'Germanos',
-      'Physical copy',
+    // Two lines: how far, when and how long; then bought on, where and for how much.
+    const lines = [...el.querySelectorAll('ul')]
+      .filter((ul) => ul.querySelector('li.num'))
+      .map((ul) => [...ul.querySelectorAll('li')].map((li) => li.textContent!.trim()));
+    expect(lines.slice(0, 2)).toEqual([
+      ['Main + sides', 'Completed 4 Mar 2026', '34h 21m playtime'],
+      ['Bought 10 Jan 2026', 'Germanos', '69.90', 'Physical copy'],
     ]);
     // The other platforms line is gone.
     expect(el.textContent).not.toContain('On PS5');
