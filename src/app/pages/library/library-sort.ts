@@ -1,6 +1,18 @@
 import type { Status, TrackedGame } from '../../../../api/_lib/models.js';
 import { searchable, titleMatcher } from '../../core/title-search';
 
+/** Which copies a tab shows: everything, only discs, or only downloads. */
+export type CopyFilter = 'all' | 'physical' | 'digital';
+
+/** The owned tabs, where physical or digital means something. */
+export const COPY_TABS: readonly Status[] = ['completed', 'backlog', 'shelved'];
+
+export function matchesCopy(game: TrackedGame, copy: CopyFilter): boolean {
+  if (copy === 'physical') return !!game.physical;
+  if (copy === 'digital') return !game.physical;
+  return true;
+}
+
 export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating' | 'playtime';
 
 /** Library tabs, in your order. */

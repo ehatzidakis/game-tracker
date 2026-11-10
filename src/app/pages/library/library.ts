@@ -5,6 +5,7 @@ import {
   LucideArrowUpDown,
   LucideChevronDown,
   LucideChevronRight,
+  LucideCloudDownload,
   LucideDisc3,
   LucideLibraryBig,
   LucideStar,
@@ -25,6 +26,9 @@ import { Cover } from '../../shared/cover';
 import { SearchField } from '../../shared/search-field';
 import {
   compareBy,
+  COPY_TABS,
+  matchesCopy,
+  type CopyFilter,
   DEFAULT_SORT,
   groupByYear,
   LIBRARY_TABS,
@@ -62,6 +66,14 @@ let currentTab: Status = 'completed';
 let currentQuery = '';
 /** Completed tab showing only Platinum games, kept while the app is open. */
 let platinumOnlyNow = false;
+/** Physical or digital copies only (owned tabs), kept while the app is open. */
+let copyNow: CopyFilter = 'all';
+
+const COPY_OPTIONS: { key: CopyFilter; label: string }[] = [
+  { key: 'all', label: 'Physical and digital' },
+  { key: 'physical', label: 'Physical only' },
+  { key: 'digital', label: 'Digital only' },
+];
 /** Year groups you've folded ("completed:2025"), kept while the app is open. */
 const collapsedGroups = new Set<string>();
 
@@ -85,6 +97,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     LucideArrowUpDown,
     LucideChevronDown,
     LucideChevronRight,
+    LucideCloudDownload,
     LucideDisc3,
     LucideLibraryBig,
     LucideStar,
@@ -139,10 +152,24 @@ export class LibraryPage {
     () => this.filter() === 'completed' && this.platinumOnly(),
   );
 
+  /** Physical or digital only, on the tabs of games you own. */
+  protected readonly copy = signal<CopyFilter>(copyNow);
+  protected readonly copyOptions = COPY_OPTIONS;
+  protected readonly copyShown = computed(() => COPY_TABS.includes(this.filter()));
+  private readonly copyActive = computed<CopyFilter>(() =>
+    this.copyShown() ? this.copy() : 'all',
+  );
+
+  protected setCopy(event: Event): void {
+    copyNow = (event.target as HTMLSelectElement).value as CopyFilter;
+    this.copy.set(copyNow);
+  }
+
   protected readonly shown = computed(() =>
     this.listed()
       .filter((g) => g.status === this.filter())
       .filter((g) => !this.onlyPlatinum() || g.completion === 'platinum')
+      .filter((g) => matchesCopy(g, this.copyActive()))
       .sort(compareBy(this.sort(), this.filter(), today(), this.reversed()))
       // The games you're playing lead the Backlog.
       .sort((a, b) => Number(!!b.playing) - Number(!!a.playing)),
@@ -162,14 +189,22 @@ export class LibraryPage {
   );
   private readonly collapsed = signal<ReadonlySet<string>>(new Set(collapsedGroups));
 
-  protected readonly emptyTitle = computed(() =>
-    this.onlyPlatinum() ? 'No Platinum games yet' : EMPTY[this.filter()].title,
-  );
-  protected readonly emptyText = computed(() =>
-    this.onlyPlatinum()
+  protected readonly emptyTitle = computed(() => {
+    if (this.copyActive() !== 'all') {
+      return this.copyActive() === 'physical'
+        ? 'No physical copies here'
+        : 'No digital copies here';
+    }
+    return this.onlyPlatinum() ? 'No Platinum games yet' : EMPTY[this.filter()].title;
+  });
+  protected readonly emptyText = computed(() => {
+    if (this.copyActive() !== 'all') {
+      return 'Mark a game as a physical copy in Edit my data. The disc button switches back to all.';
+    }
+    return this.onlyPlatinum()
       ? 'Games you completed with every trophy show here. Tap the trophy to see them all.'
-      : EMPTY[this.filter()].text,
-  );
+      : EMPTY[this.filter()].text;
+  });
 
   /** Hours played across a year's completed games, rounded: "4 in 2026 · 120 h". */
   protected groupHours(games: readonly TrackedGame[]): number {

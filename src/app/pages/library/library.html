@@ -106,6 +106,33 @@
         <svg lucideTrophy [size]="16" [strokeWidth]="2.25"></svg>
       </button>
     }
+    @if (copyShown()) {
+      <!-- Physical or digital only: a round button with the real menu laid invisibly on top. -->
+      <label
+        class="relative grid size-8 shrink-0 place-items-center rounded-full"
+        [class]="
+          copy() === 'all'
+            ? 'bg-group text-accent active:bg-pressed'
+            : 'bg-accent-fill text-white active:brightness-90'
+        "
+      >
+        <span class="sr-only">Copies</span>
+        @if (copy() === 'digital') {
+          <svg lucideCloudDownload [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
+        } @else {
+          <svg lucideDisc3 [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
+        }
+        <!-- 16px or more so iOS doesn't zoom in when it opens. -->
+        <select
+          class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
+          (change)="setCopy($event)"
+        >
+          @for (o of copyOptions; track o.key) {
+            <option [value]="o.key" [selected]="o.key === copy()">{{ o.label }}</option>
+          }
+        </select>
+      </label>
+    }
   </div>
 
   @if (library.loading()) {

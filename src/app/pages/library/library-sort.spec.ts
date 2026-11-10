@@ -1,5 +1,13 @@
 import type { TrackedGame } from '../../../../api/_lib/models.js';
-import { compareBy, DEFAULT_SORT, groupByYear, LIBRARY_TABS, searchLibrary } from './library-sort';
+import {
+  compareBy,
+  COPY_TABS,
+  DEFAULT_SORT,
+  groupByYear,
+  LIBRARY_TABS,
+  matchesCopy,
+  searchLibrary,
+} from './library-sort';
 
 const game = (name: string, extra: Partial<TrackedGame>) => ({ name, ...extra }) as TrackedGame;
 const names = (games: TrackedGame[]) => games.map((g) => g.name);
@@ -179,5 +187,16 @@ describe('library search', () => {
     ]);
     expect(find('')).toEqual([]);
     expect(find('zelda')).toEqual([]);
+  });
+});
+
+describe('physical and digital copies', () => {
+  it('filters the owned tabs by disc or download', () => {
+    const disc = { name: 'Disc', physical: true } as TrackedGame;
+    const download = { name: 'Download' } as TrackedGame;
+    expect([disc, download].filter((g) => matchesCopy(g, 'physical'))).toEqual([disc]);
+    expect([disc, download].filter((g) => matchesCopy(g, 'digital'))).toEqual([download]);
+    expect([disc, download].filter((g) => matchesCopy(g, 'all'))).toHaveLength(2);
+    expect(COPY_TABS).toEqual(['completed', 'backlog', 'shelved']);
   });
 });
