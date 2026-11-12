@@ -2,10 +2,19 @@
 import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 import { sendNotification, setVapidDetails } from 'web-push';
 import { igdbQuery } from './igdb-client.js';
-import { SYNC_FIELDS, syncedFields, type IgdbSyncGame } from './igdb-sync.js';
+import { EVENT_FIELDS, igdbEventChanged, igdbEventFields, type IgdbEvent } from './igdb-events.js';
+import {
+  releaseMoved,
+  SYNC_FIELDS,
+  syncedFields,
+  syncUpdate,
+  type IgdbSyncGame,
+} from './igdb-sync.js';
 import {
   DEFAULT_SETTINGS,
+  eventEnd,
   preorderArrived,
+  type GamingEvent,
   type TrackedGame,
   type UserSettings,
 } from './models.js';
@@ -189,12 +198,14 @@ export async function runDailyRefresh(db: Firestore, now = Date.now()) {
         const game = tracked.get(igdbGame.id);
         if (!game) continue;
         const synced = syncedFields(igdbGame, game.myPlatform, now);
-        const dateMoved =
-          synced.releaseDate !== game.releaseDate || synced.releaseLabel !== game.releaseLabel;
+        const dateMoved = releaseMoved(game, synced);
         const otherChange = synced.name !== game.name || synced.coverId !== game.coverId;
         if (!dateMoved && !otherChange) continue;
 
-        batch.update(userRef.collection('games').doc(String(game.igdbId)), { ...synced });
+        // A date that moved also saves the old one in the game's history.
+        batch.update(userRef.collection('games').doc(String(game.igdbId)), {
+          ...syncUpdate(game, synced, now),
+        });
         writes++;
         if (dateMoved) {
           changes.push(`${game.name}: ${game.releaseLabel} → ${synced.releaseLabel}`);
@@ -209,6 +220,42 @@ export async function runDailyRefresh(db: Firestore, now = Date.now()) {
       }
       if (writes) await batch.commit();
     }
+  }
+  return { checked, changes };
+}
+
+/**
+ * Re-reads the IGDB events in everyone's calendar that aren't over yet (IGDB often lists an event
+ * before its time is final), so the Calendar and the iPhone feed follow a time that moved.
+ */
+export async function runEventRefresh(db: Firestore, now = Date.now()) {
+  let checked = 0;
+  const changes: string[] = [];
+  for (const userRef of await userRefs(db)) {
+    const snap = await userRef.collection('events').where('igdbId', '>', 0).get();
+    const current = new Map(
+      snap.docs
+        .map((d) => d.data() as GamingEvent)
+        .filter((e) => eventEnd(e) > now)
+        .map((e) => [e.igdbId!, e]),
+    );
+    if (!current.size) continue;
+    const fresh = await igdbQuery<IgdbEvent[]>(
+      'events',
+      `fields ${EVENT_FIELDS}; where id = (${[...current.keys()].join(',')}); limit 500;`,
+    );
+    checked += fresh.length;
+    const batch = db.batch();
+    let writes = 0;
+    for (const igdbEvent of fresh) {
+      const stored = current.get(igdbEvent.id);
+      const fields = igdbEventFields(igdbEvent);
+      if (!stored || !fields || !igdbEventChanged(stored, fields)) continue;
+      batch.update(userRef.collection('events').doc(stored.id), { ...fields, updatedAt: now });
+      changes.push(fields.title);
+      writes++;
+    }
+    if (writes) await batch.commit();
   }
   return { checked, changes };
 }

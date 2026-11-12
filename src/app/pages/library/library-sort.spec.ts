@@ -116,6 +116,28 @@ describe('library sorting', () => {
     ]);
   });
 
+  it('sorts by OpenCritic score, highest first, games without one last either way', () => {
+    const scores = { 1: 88, 3: 95, 4: 88 };
+    const scored = () => [
+      game('B', { igdbId: 1 }),
+      game('None', { igdbId: 2 }),
+      game('Top', { igdbId: 3 }),
+      game('A', { igdbId: 4 }),
+    ];
+    const sorted = (reversed: boolean) =>
+      names(scored().sort(compareBy('critics', 'backlog', today, reversed, scores)));
+    // The same score: A–Z.
+    expect(sorted(false)).toEqual(['Top', 'A', 'B', 'None']);
+    expect(sorted(true)).toEqual(['A', 'B', 'Top', 'None']);
+    // Before the scores have loaded, it falls back to A–Z.
+    expect(names(scored().sort(compareBy('critics', 'backlog', today)))).toEqual([
+      'A',
+      'B',
+      'None',
+      'Top',
+    ]);
+  });
+
   it('reverses each sort, keeping games without a value last', () => {
     const rated = [
       game('A', { rating: 7 }),

@@ -3,10 +3,21 @@ import { RouterLink } from '@angular/router';
 import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import { LucideCirclePlus, LucideCircleX, LucideLoaderCircle, LucideSearch } from '@lucide/angular';
 import { Cover } from '../../shared/cover';
+import { EventArt } from '../../shared/event-art';
+import { igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
+import { daysBetween } from '../../../../api/_lib/release.js';
+import { EventsService } from '../../core/events.service';
+import { localDate } from '../calendar/calendar-groups';
 import { isDlc, statusLabel, type TrackedGame } from '../../../../api/_lib/models.js';
 import { debounced } from '../../core/debounced';
-import { countdown } from '../../core/dates';
-import { coverUrl, IgdbService, type DiscoverKind, type GameSearchResult } from '../../core/igdb';
+import { countdown, today } from '../../core/dates';
+import {
+  coverUrl,
+  IgdbService,
+  type DiscoverKind,
+  type EventSummary,
+  type GameSearchResult,
+} from '../../core/igdb';
 import { platformIgdbId, platformLabel } from '../../../../api/_lib/platforms.js';
 import { LibraryService } from '../../core/library.service';
 import { ToastService } from '../../core/toast.service';
@@ -21,10 +32,30 @@ const DISCOVER: { kind: DiscoverKind; title: string }[] = [
   { kind: 'recent', title: 'Recently released' },
 ];
 const SHORT_DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
+const EVENT_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+const EVENT_DAY = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+});
+/** How many events a search lists before "Show all". */
+const SHOWN_EVENTS = 4;
 
 @Component({
   selector: 'app-search',
-  imports: [RouterLink, Cover, LucideSearch, LucideCirclePlus, LucideCircleX, LucideLoaderCircle],
+  imports: [
+    RouterLink,
+    Cover,
+    EventArt,
+    LucideSearch,
+    LucideCirclePlus,
+    LucideCircleX,
+    LucideLoaderCircle,
+  ],
   templateUrl: './search.html',
 })
 export class SearchPage {
@@ -32,6 +63,7 @@ export class SearchPage {
   private readonly sheet = inject(ChoiceSheet);
   private readonly toast = inject(ToastService);
   protected readonly library = inject(LibraryService);
+  protected readonly events = inject(EventsService);
 
   protected readonly term = signal('');
   // IGDB allows about 4 requests a second, so wait for a pause in typing.
@@ -48,6 +80,60 @@ export class SearchPage {
     staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
   }));
+
+  /** Gaming events on IGDB whose name has what you typed, newest first, above the games. */
+  private readonly eventResults = injectQuery(() => ({
+    queryKey: ['igdb-event-search', this.searchTerm()],
+    queryFn: () => this.igdb.searchEvents(this.searchTerm()),
+    enabled: !this.tooShort(),
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  }));
+  protected readonly foundEvents = computed(() => this.eventResults.data() ?? []);
+  protected readonly allEvents = signal(false);
+  protected readonly shownEvents = computed(() =>
+    this.allEvents() ? this.foundEvents() : this.foundEvents().slice(0, SHOWN_EVENTS),
+  );
+
+  /** Events coming up on IGDB, as a strip before you type. */
+  private readonly upcomingQuery = injectQuery(() => ({
+    queryKey: ['igdb-events-upcoming'],
+    queryFn: () => this.igdb.upcomingEvents(),
+    staleTime: 60 * 60_000,
+  }));
+  protected readonly upcomingEvents = computed(() => this.upcomingQuery.data() ?? []);
+
+  protected readonly eventDocId = igdbEventDocId;
+  /** "3 Sep 2026" */
+  protected eventDate(event: EventSummary): string {
+    return EVENT_DATE.format(event.startsAt);
+  }
+  /** "Mon 30 Nov · in 18 days" for an event that's coming up. */
+  protected eventWhen(event: EventSummary): string {
+    const days = daysBetween(today(), localDate(event.startsAt));
+    const left = days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `in ${days} days`;
+    return `${EVENT_DAY.format(event.startsAt).replace(',', '')} · ${left}`;
+  }
+
+  /** IDs of events being added (fetching their details from IGDB). */
+  protected readonly addingEvents = signal<ReadonlySet<number>>(new Set());
+
+  protected async addEvent(event: EventSummary): Promise<void> {
+    this.addingEvents.update((ids) => new Set(ids).add(event.id));
+    try {
+      const details = await this.igdb.event(event.id);
+      if (!details) throw new Error(`IGDB has no event ${event.id}`);
+      this.events.addFromIgdb(details);
+    } catch (error) {
+      this.toast.error(`Couldn't add ${event.name}. Check your connection and try again.`, error);
+    } finally {
+      this.addingEvents.update((ids) => {
+        const next = new Set(ids);
+        next.delete(event.id);
+        return next;
+      });
+    }
+  }
 
   /** Strips of games to browse before you type. They refresh at most once an hour. */
   private readonly platform = computed(() => this.library.settings().defaultPlatform);
@@ -87,6 +173,7 @@ export class SearchPage {
 
   protected onInput(event: Event): void {
     this.term.set((event.target as HTMLInputElement).value);
+    this.allEvents.set(false);
   }
 
   protected async add(game: GameSearchResult): Promise<void> {

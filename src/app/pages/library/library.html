@@ -37,8 +37,8 @@
       <button
         type="button"
         role="tab"
-        [attr.aria-selected]="filter() === s.key"
-        class="text-[12.5px]!"
+        [attr.aria-selected]="tab() === s.key"
+        class="px-0! text-[12.5px]!"
         (click)="setFilter(s.key)"
       >
         {{ s.label }}
@@ -46,146 +46,190 @@
     }
   </div>
 
-  <div class="mt-3 flex items-center gap-2 text-[15px] leading-5 text-muted">
-    <p class="num min-w-0 truncate">
-      {{ shown().length }} {{ shown().length === 1 ? 'game' : 'games' }}
-      @if (filter() === 'completed' && shown().length) {
-        @if (!yearGroups()) {
-          · {{ thisYear().count }} in {{ thisYear().year }}
+  @if (showEvents()) {
+    <!-- Gaming events from your calendar that are over, latest first. -->
+    @if (pastEvents().length) {
+      <p class="num mt-3 flex h-8 items-center text-[15px] leading-5 text-muted">
+        {{ pastEvents().length }} {{ pastEvents().length === 1 ? 'event' : 'events' }}
+      </p>
+      <ul class="mt-3 grid grid-cols-3 gap-x-3 gap-y-5">
+        @for (event of pastEvents(); track event.id) {
+          <li>
+            <a [routerLink]="['/event', event.id]" class="block active:opacity-70">
+              <app-event-art
+                class="aspect-[3/4] rounded-[6px]"
+                fit="contain"
+                [logoId]="event.logoId"
+                [kind]="event.kind"
+                [iconSize]="72"
+              />
+              <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
+                {{ event.title }}
+              </p>
+              <p class="num mt-0.5 text-[12px] leading-4 tracking-normal text-muted">
+                {{ eventDate(event) }}
+              </p>
+            </a>
+          </li>
         }
-      }
-    </p>
-    <!-- Pill buttons, like the segmented control: the same dark fill, blue text. The pill shows
+      </ul>
+    } @else {
+      <div class="mx-auto mt-16 max-w-72 text-center">
+        <svg lucideLibraryBig [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
+        <p class="mt-4 text-[20px] leading-6 font-semibold">No past events yet</p>
+        <p class="mt-1.5 text-[15px] leading-5 text-muted">
+          Gaming events in your Calendar move here once they’re over. Find events in Search.
+        </p>
+        <a routerLink="/search" class="mt-4 inline-block text-[17px] text-accent active:opacity-60">
+          Search events
+        </a>
+      </div>
+    }
+  } @else {
+    <div class="mt-3 flex items-center gap-2 text-[15px] leading-5 text-muted">
+      <p class="num min-w-0 truncate">
+        {{ shown().length }} {{ shown().length === 1 ? 'game' : 'games' }}
+        @if (filter() === 'completed' && shown().length) {
+          @if (!yearGroups()) {
+            · {{ thisYear().count }} in {{ thisYear().year }}
+          }
+        }
+      </p>
+      <!-- Pill buttons, like the segmented control: the same dark fill, blue text. The pill shows
          the chosen sort as text, with the real menu laid invisibly on top, so it's exactly as
          wide as what's chosen (a menu is always as wide as its longest option). -->
-    <label
-      class="relative ml-auto flex h-8 shrink-0 items-center gap-1 rounded-full bg-group pr-3 pl-3.5 text-base text-accent active:bg-pressed"
-    >
-      <span class="sr-only">Sort by</span>
-      <span aria-hidden="true">{{ sortLabel() }}</span>
-      <svg lucideChevronDown [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
-      <!-- 16px or more so iOS doesn't zoom in when it opens. -->
-      <select
-        class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
-        (change)="setSort($event)"
+      <label
+        class="relative ml-auto flex h-8 shrink-0 items-center gap-1 rounded-full bg-group pr-3 pl-3.5 text-base text-accent active:bg-pressed"
       >
-        @for (s of sorts(); track s.key) {
-          <option [value]="s.key" [selected]="s.key === sort()">{{ s.label }}</option>
-        }
-      </select>
-    </label>
-    <!-- Flips the order: oldest first, lowest rating first, Z–A, … -->
-    <button
-      type="button"
-      class="grid size-8 shrink-0 place-items-center rounded-full"
-      [class]="
-        reversed()
-          ? 'bg-accent-fill text-white active:brightness-90'
-          : 'bg-group text-accent active:bg-pressed'
-      "
-      aria-label="Reverse order"
-      [attr.aria-pressed]="reversed()"
-      (click)="toggleReversed()"
-    >
-      <svg lucideArrowUpDown [size]="17" [strokeWidth]="2.25"></svg>
-    </button>
-    @if (filter() === 'completed') {
-      <!-- Only the Platinum games. -->
+        <span class="sr-only">Sort by</span>
+        <span aria-hidden="true">{{ sortLabel() }}</span>
+        <svg lucideChevronDown [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
+        <!-- 16px or more so iOS doesn't zoom in when it opens. -->
+        <select
+          class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
+          (change)="setSort($event)"
+        >
+          @for (s of sorts(); track s.key) {
+            <option [value]="s.key" [selected]="s.key === sort()">{{ s.label }}</option>
+          }
+        </select>
+      </label>
+      <!-- Flips the order: oldest first, lowest rating first, Z–A, … -->
       <button
         type="button"
         class="grid size-8 shrink-0 place-items-center rounded-full"
         [class]="
-          platinumOnly()
+          reversed()
             ? 'bg-accent-fill text-white active:brightness-90'
             : 'bg-group text-accent active:bg-pressed'
         "
-        aria-label="Only Platinum"
-        [attr.aria-pressed]="platinumOnly()"
-        (click)="togglePlatinum()"
+        aria-label="Reverse order"
+        [attr.aria-pressed]="reversed()"
+        (click)="toggleReversed()"
       >
-        <svg lucideTrophy [size]="16" [strokeWidth]="2.25"></svg>
+        <svg lucideArrowUpDown [size]="17" [strokeWidth]="2.25"></svg>
       </button>
-    }
-    @if (copyShown()) {
-      <!-- Physical or digital only: a round button with the real menu laid invisibly on top. -->
-      <label
-        class="relative grid size-8 shrink-0 place-items-center rounded-full"
-        [class]="
-          copy() === 'all'
-            ? 'bg-group text-accent active:bg-pressed'
-            : 'bg-accent-fill text-white active:brightness-90'
-        "
-      >
-        <span class="sr-only">Copies</span>
-        @if (copy() === 'digital') {
-          <svg lucideCloudDownload [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
-        } @else {
-          <svg lucideDisc3 [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
-        }
-        <!-- 16px or more so iOS doesn't zoom in when it opens. -->
-        <select
-          class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
-          (change)="setCopy($event)"
+      @if (filter() === 'completed') {
+        <!-- Only the Platinum games. -->
+        <button
+          type="button"
+          class="grid size-8 shrink-0 place-items-center rounded-full"
+          [class]="
+            platinumOnly()
+              ? 'bg-accent-fill text-white active:brightness-90'
+              : 'bg-group text-accent active:bg-pressed'
+          "
+          aria-label="Only Platinum"
+          [attr.aria-pressed]="platinumOnly()"
+          (click)="togglePlatinum()"
         >
-          @for (o of copyOptions; track o.key) {
-            <option [value]="o.key" [selected]="o.key === copy()">{{ o.label }}</option>
+          <svg lucideTrophy [size]="16" [strokeWidth]="2.25"></svg>
+        </button>
+      }
+      @if (copyShown()) {
+        <!-- Physical or digital only: a round button with the real menu laid invisibly on top. -->
+        <label
+          class="relative grid size-8 shrink-0 place-items-center rounded-full"
+          [class]="
+            copy() === 'all'
+              ? 'bg-group text-accent active:bg-pressed'
+              : 'bg-accent-fill text-white active:brightness-90'
+          "
+        >
+          <span class="sr-only">Copies</span>
+          @if (copy() === 'digital') {
+            <svg lucideCloudDownload [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
+          } @else {
+            <svg lucideDisc3 [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
           }
-        </select>
-      </label>
-    }
-  </div>
-
-  @if (library.loading()) {
-    <p class="mt-16 text-center text-[15px] text-muted">Loading…</p>
-  } @else if (shown().length === 0) {
-    <div class="mx-auto mt-16 max-w-72 text-center">
-      <svg lucideLibraryBig [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
-      <p class="mt-4 text-[20px] leading-6 font-semibold">{{ emptyTitle() }}</p>
-      <p class="mt-1.5 text-[15px] leading-5 text-muted">{{ emptyText() }}</p>
-      <a routerLink="/search" class="mt-4 inline-block text-[17px] text-accent active:opacity-60">
-        Search games
-      </a>
-    </div>
-  } @else if (yearGroups(); as groups) {
-    <!-- Split by year: "4 in 2026", that year's games, then the next year. Tap a year to fold it. -->
-    @for (group of groups; track group.key) {
-      @let open = !isCollapsed(group.key);
-      <section [attr.aria-label]="group.title">
-        <h2 class="mt-6 mb-3">
-          <button
-            type="button"
-            class="num flex w-full items-center justify-between gap-3 text-left text-[20px] leading-6 font-semibold active:opacity-60"
-            [attr.aria-expanded]="open"
-            (click)="toggleGroup(group.key)"
+          <!-- 16px or more so iOS doesn't zoom in when it opens. -->
+          <select
+            class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
+            (change)="setCopy($event)"
           >
-            <span class="min-w-0">
-              {{ group.title }}
-              @if (groupHours(group.games); as hours) {
-                <span class="font-normal text-muted">· {{ hours }} h</span>
-              }
-            </span>
-            <!-- Rotates the wrapper: the icon component manages its own classes. -->
-            <span
-              class="shrink-0 text-muted transition-transform duration-200"
-              [class.rotate-90]="open"
-              aria-hidden="true"
-            >
-              <svg lucideChevronRight [size]="20" [strokeWidth]="2.5" class="block"></svg>
-            </span>
-          </button>
-        </h2>
-        @if (open) {
-          <ng-container
-            [ngTemplateOutlet]="grid"
-            [ngTemplateOutletContext]="{ $implicit: group.games }"
-          />
-        }
-      </section>
-    }
-  } @else {
-    <div class="mt-3">
-      <ng-container [ngTemplateOutlet]="grid" [ngTemplateOutletContext]="{ $implicit: shown() }" />
+            @for (o of copyOptions; track o.key) {
+              <option [value]="o.key" [selected]="o.key === copy()">{{ o.label }}</option>
+            }
+          </select>
+        </label>
+      }
     </div>
+
+    @if (library.loading()) {
+      <p class="mt-16 text-center text-[15px] text-muted">Loading…</p>
+    } @else if (shown().length === 0) {
+      <div class="mx-auto mt-16 max-w-72 text-center">
+        <svg lucideLibraryBig [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
+        <p class="mt-4 text-[20px] leading-6 font-semibold">{{ emptyTitle() }}</p>
+        <p class="mt-1.5 text-[15px] leading-5 text-muted">{{ emptyText() }}</p>
+        <a routerLink="/search" class="mt-4 inline-block text-[17px] text-accent active:opacity-60">
+          Search games
+        </a>
+      </div>
+    } @else if (yearGroups(); as groups) {
+      <!-- Split by year: "4 in 2026", that year's games, then the next year. Tap a year to fold it. -->
+      @for (group of groups; track group.key) {
+        @let open = !isCollapsed(group.key);
+        <section [attr.aria-label]="group.title">
+          <h2 class="mt-6 mb-3">
+            <button
+              type="button"
+              class="num flex w-full items-center justify-between gap-3 text-left text-[20px] leading-6 font-semibold active:opacity-60"
+              [attr.aria-expanded]="open"
+              (click)="toggleGroup(group.key)"
+            >
+              <span class="min-w-0">
+                {{ group.title }}
+                @if (groupHours(group.games); as hours) {
+                  <span class="font-normal text-muted">· {{ hours }} h</span>
+                }
+              </span>
+              <!-- Rotates the wrapper: the icon component manages its own classes. -->
+              <span
+                class="shrink-0 text-muted transition-transform duration-200"
+                [class.rotate-90]="open"
+                aria-hidden="true"
+              >
+                <svg lucideChevronRight [size]="20" [strokeWidth]="2.5" class="block"></svg>
+              </span>
+            </button>
+          </h2>
+          @if (open) {
+            <ng-container
+              [ngTemplateOutlet]="grid"
+              [ngTemplateOutletContext]="{ $implicit: group.games }"
+            />
+          }
+        </section>
+      }
+    } @else {
+      <div class="mt-3">
+        <ng-container
+          [ngTemplateOutlet]="grid"
+          [ngTemplateOutletContext]="{ $implicit: shown() }"
+        />
+      </div>
+    }
   }
 }
 
@@ -208,14 +252,23 @@
                 <svg lucideDisc3 [size]="17" [strokeWidth]="2"></svg>
               </span>
             }
+            <!-- Top left: OpenCritic's Top Critic Average, in a ring filled as far as the score. -->
+            @let score = scores()[game.igdbId];
+            @if (score != null) {
+              <span class="absolute top-1.5 left-1.5 rounded-full ring-[0.5px] ring-white/20">
+                <app-score-ring [score]="score" />
+              </span>
+            }
+            <!-- Bottom right: the Platinum trophy, under the disc. -->
             @if (game.status === 'completed' && game.completion === 'platinum') {
               <span
-                class="absolute top-1.5 left-1.5 grid size-7 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                class="absolute right-1.5 bottom-1.5 grid size-7 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
                 aria-label="Platinum"
               >
                 <svg lucideTrophy [size]="15" [strokeWidth]="2"></svg>
               </span>
             }
+            <!-- Bottom left: time played (or DLC / Pre-ordered). -->
             @let clock =
               game.status === 'completed' || game.status === 'shelved'
                 ? formatPlaytimeClock(game.hoursPlayed)

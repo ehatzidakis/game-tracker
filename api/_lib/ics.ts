@@ -1,5 +1,5 @@
 // Builds the calendar feed (iCalendar, RFC 5545) for /api/calendar.ics. No dependencies.
-import type { GamingEvent, TrackedGame } from './models.js';
+import { eventEnd, type GamingEvent, type TrackedGame } from './models.js';
 import { platformLabel } from './platforms.js';
 import { addDays } from './release.js';
 
@@ -37,9 +37,6 @@ function stamp(ms: number): string {
     .replace(/[-:]/g, '')
     .replace(/\.\d{3}/, '');
 }
-
-/** Events without a duration show as an hour. */
-const DEFAULT_EVENT_MINUTES = 60;
 
 /**
  * One all-day event per game with an exact release day. Vague dates ("Q3 2027") are left out
@@ -87,14 +84,13 @@ export function buildCalendar(
   }
 
   for (const event of [...events].sort((a, b) => a.startsAt - b.startsAt)) {
-    const minutes = event.durationMinutes || DEFAULT_EVENT_MINUTES;
     lines.push(
       'BEGIN:VEVENT',
       `UID:event-${event.id}@game-tracker`,
       `DTSTAMP:${stamp(now)}`,
       `LAST-MODIFIED:${stamp(event.updatedAt || now)}`,
       `DTSTART:${stamp(event.startsAt)}`,
-      `DTEND:${stamp(event.startsAt + minutes * 60_000)}`,
+      `DTEND:${stamp(eventEnd(event))}`,
       `SUMMARY:${escapeText(`📣 ${event.title}`)}`,
       ...(event.link ? [`DESCRIPTION:${escapeText(event.link)}`, `URL:${event.link}`] : []),
       'TRANSP:TRANSPARENT',

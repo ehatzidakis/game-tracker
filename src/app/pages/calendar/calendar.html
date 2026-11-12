@@ -1,7 +1,7 @@
 <!-- Subscribing to the iPhone Calendar is a one-time thing, so it lives in Settings. -->
 <div class="flex items-center justify-between gap-3">
   <h1 class="large-title">Calendar</h1>
-  <!-- Adds a gaming event (State of Play, Nintendo Direct…) to the calendar. -->
+  <!-- Adds a gaming event of your own. Events IGDB lists are added from Search. -->
   <button
     type="button"
     class="grid size-9 shrink-0 place-items-center rounded-full bg-group text-accent active:bg-pressed"
@@ -44,7 +44,7 @@
           @if (item.type === 'event') {
             @let event = item.event;
             <li class="row p-0!">
-              <button type="button" class="row py-2! text-left" (click)="editEvent(event)">
+              <a [routerLink]="['/event', event.id]" class="row py-2!">
                 <app-event-icon [kind]="event.kind" [size]="40" class="h-[53px]! w-10!" />
                 <div class="min-w-0 flex-1">
                   <p class="flex items-center gap-1.5">
@@ -64,7 +64,7 @@
                   [strokeWidth]="2.25"
                   class="-mr-1 shrink-0 text-faint"
                 ></svg>
-              </button>
+              </a>
             </li>
           } @else {
             @let game = item.game;

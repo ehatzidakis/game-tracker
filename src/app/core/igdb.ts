@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { AuthService } from './auth.service';
 
 import { PLATFORMS } from '../../../api/_lib/platforms.js';
+import { EVENT_FIELDS, type IgdbEvent } from '../../../api/_lib/igdb-events.js';
 import { SYNC_FIELDS, type IgdbSyncGame } from '../../../api/_lib/igdb-sync.js';
 
 export { PLATFORMS, type PlatformKey } from '../../../api/_lib/platforms.js';
@@ -166,7 +167,7 @@ export function toSearchResult(game: IgdbGame): GameSearchResult {
 }
 
 export type ImageSize =
-  'cover_small' | 'cover_big' | 'screenshot_med' | 'screenshot_big' | '720p' | '1080p';
+  'cover_small' | 'cover_big' | 'logo_med' | 'screenshot_med' | 'screenshot_big' | '720p' | '1080p';
 
 export function coverUrl(imageId: string, size: ImageSize = 'cover_big'): string {
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
@@ -179,7 +180,9 @@ export interface GameDetails extends IgdbSyncGame {
   screenshots?: { image_id: string }[];
   platforms?: { id: number; abbreviation?: string; name: string }[];
   game_type?: number;
-  parent_game?: { id: number; name: string };
+  /** The main game of a DLC, or the original of a remake or remaster. */
+  parent_game?: { id: number; name: string; first_release_date?: number };
+  game_engines?: { name: string }[];
   dlcs?: GameSummary[];
   expansions?: GameSummary[];
   /** Players' score out of 100 on IGDB, and how many ratings. (OpenCritic has no player scores.) */
@@ -204,13 +207,85 @@ export interface GameSummary {
 /** A DLC or expansion as listed on its main game's page. */
 export type DlcSummary = GameSummary;
 
-/** Time to finish in seconds, from IGDB players: main story, main + sides, everything. */
-export interface TimeToBeat {
-  hastily?: number;
-  normally?: number;
-  completely?: number;
-  /** How many players it's based on. */
-  count?: number;
+/** IGDB game types that are a new version of an older game (its parent_game). */
+const REMADE_TYPES: Record<number, string> = { 8: 'Remake', 9: 'Remaster' };
+
+/** For a remake or remaster: the original game, to link to. "Remake of Silent Hill 2 (2001)". */
+export function remakeOf(
+  details: Pick<GameDetails, 'game_type' | 'parent_game'>,
+): { id: number; label: string } | null {
+  const kind = REMADE_TYPES[details.game_type ?? -1];
+  const original = details.parent_game;
+  if (!kind || !original) return null;
+  const year = original.first_release_date
+    ? ` (${new Date(original.first_release_date * 1000).getUTCFullYear()})`
+    : '';
+  return { id: original.id, label: `${kind} of ${original.name}${year}` };
+}
+
+/** A gaming event on IGDB, as Search and a game's page list it. */
+export interface EventSummary {
+  id: number;
+  name: string;
+  logoId: string | null;
+  /** When it starts (ms). */
+  startsAt: number;
+}
+
+/** An event's own page: IGDB's details and the games shown at it. */
+export interface EventDetails extends IgdbEvent {
+  games?: GameSummary[];
+}
+
+function toEventSummary(event: IgdbEvent): EventSummary | null {
+  if (!event.start_time) return null;
+  return {
+    id: event.id,
+    name: event.name,
+    logoId: event.event_logo?.image_id ?? null,
+    startsAt: event.start_time * 1000,
+  };
+}
+
+const EVENT_SUMMARY_FIELDS = 'fields name, event_logo.image_id, start_time;';
+
+/** Events whose name has what you typed, newest first. (IGDB can't text-search events.) */
+export function buildEventSearchQuery(term: string): string {
+  return [
+    EVENT_SUMMARY_FIELDS,
+    `where name ~ *"${escapeTerm(term)}"* & start_time != null;`,
+    'sort start_time desc;',
+    'limit 20;',
+  ].join(' ');
+}
+
+/** Events that haven't ended yet, soonest first. */
+export function buildUpcomingEventsQuery(now: number): string {
+  const t = Math.floor(now / 1000);
+  return [
+    EVENT_SUMMARY_FIELDS,
+    `where end_time > ${t} | start_time > ${t};`,
+    'sort start_time asc;',
+    'limit 15;',
+  ].join(' ');
+}
+
+/** The events a game was shown at, earliest first: the first one is where it was revealed. */
+export function buildGameEventsQuery(gameId: number): string {
+  return [
+    EVENT_SUMMARY_FIELDS,
+    `where games = (${Math.trunc(gameId)}) & start_time != null;`,
+    'sort start_time asc;',
+    'limit 50;',
+  ].join(' ');
+}
+
+export function buildEventQuery(id: number): string {
+  return [
+    `fields ${EVENT_FIELDS}, games.name, games.cover.image_id, games.first_release_date;`,
+    `where id = ${Math.trunc(id)};`,
+    'limit 1;',
+  ].join(' ');
 }
 
 /** Undated (upcoming) first, then newest first. */
@@ -275,7 +350,8 @@ export function buildDetailsQuery(id: number): string {
   return [
     `fields ${SYNC_FIELDS}, platforms.abbreviation, platforms.name, first_release_date,`,
     'artworks.image_id, screenshots.image_id,',
-    'game_type, parent_game.name, dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,',
+    'game_type, parent_game.name, parent_game.first_release_date, game_engines.name,',
+    'dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,',
     'expansions.name, expansions.cover.image_id, expansions.first_release_date,',
     'rating, rating_count,',
     'collections.name, collections.games.name, collections.games.game_type,',
@@ -338,12 +414,28 @@ export class IgdbService {
     return games[0] ?? null;
   }
 
-  async timeToBeat(id: number): Promise<TimeToBeat | null> {
-    const rows = await this.query<TimeToBeat[]>(
-      'game_time_to_beats',
-      `fields hastily, normally, completely, count; where game_id = ${Math.trunc(id)}; limit 1;`,
-    );
-    return rows[0] ?? null;
+  /** IGDB's events whose name has the term, newest first. */
+  async searchEvents(term: string): Promise<EventSummary[]> {
+    return this.eventSummaries(buildEventSearchQuery(term));
+  }
+
+  async upcomingEvents(): Promise<EventSummary[]> {
+    return this.eventSummaries(buildUpcomingEventsQuery(Date.now()));
+  }
+
+  /** The events a game was shown at. */
+  async eventsOf(gameId: number): Promise<EventSummary[]> {
+    return this.eventSummaries(buildGameEventsQuery(gameId));
+  }
+
+  async event(id: number): Promise<EventDetails | null> {
+    const events = await this.query<EventDetails[]>('events', buildEventQuery(id));
+    return events[0] ?? null;
+  }
+
+  private async eventSummaries(query: string): Promise<EventSummary[]> {
+    const events = await this.query<IgdbEvent[]>('events', query);
+    return events.map(toEventSummary).filter((e) => e !== null);
   }
 
   async discover(kind: DiscoverKind, platformId: number): Promise<GameSearchResult[]> {

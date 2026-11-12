@@ -13,7 +13,7 @@ export function matchesCopy(game: TrackedGame, copy: CopyFilter): boolean {
   return true;
 }
 
-export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating' | 'playtime';
+export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating' | 'playtime' | 'critics';
 
 /** Library tabs, in your order. */
 export const LIBRARY_TABS: readonly Status[] = ['completed', 'wishlist', 'backlog', 'shelved'];
@@ -47,9 +47,10 @@ function byValue<T extends number | string>(
 
 /**
  * Each sort's usual order, or the opposite when `reversed`. Games missing the value (no date,
- * no rating, no playtime) stay last either way.
+ * no rating, no playtime, no OpenCritic score) stay last either way.
  * - Recent: last changed first. Name: A–Z. Date completed: latest first. Rating: highest first.
- *   Playtime: most played first. Release date: newest first.
+ *   Playtime: most played first. Release date: newest first. OpenCritic: highest Top Critic
+ *   Average first, from `scores` (by IGDB id).
  * - On the Wishlist, release date means what's coming soonest: upcoming games nearest first, then
  *   games without a date, then ones already out (newest first). Reversed, that whole order flips.
  */
@@ -58,9 +59,12 @@ export function compareBy(
   tab: Status,
   today: string,
   reversed = false,
+  scores: Readonly<Record<string, number>> = {},
 ): (a: TrackedGame, b: TrackedGame) => number {
   const dir = reversed ? -1 : 1;
   switch (sort) {
+    case 'critics':
+      return byValue((g) => scores[g.igdbId], dir);
     case 'name':
       return (a, b) => dir * byName(a, b);
     case 'completed':

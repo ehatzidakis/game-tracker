@@ -1,4 +1,4 @@
-import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
+import { eventEnd, type GamingEvent, type TrackedGame } from '../../../../api/_lib/models.js';
 import { addDays } from '../../../../api/_lib/release.js';
 
 /** A row in the Calendar: a game coming out, or a gaming event. */
@@ -33,14 +33,15 @@ const gameItem = (game: TrackedGame): CalendarItem => ({
 /**
  * Upcoming games in calendar order: just released, then exact dates by month, then vague dates
  * by year ("Later in 2027"), then TBA. Completed and shelved games are left out.
- * Gaming events join the months from the day they're on (archived ones are left out), each
- * before that day's games.
+ * Gaming events join the months on the day they start, each before that day's games, until
+ * they're over (they move to the Library's Events tab then). Archived ones are left out.
  */
 export function calendarGroups(
   games: readonly TrackedGame[],
   today: string,
   events: readonly GamingEvent[] = [],
   dateOf: (ms: number) => string = localDate,
+  now = Date.now(),
 ): CalendarGroup[] {
   const relevant = games.filter((g) => g.status !== 'completed' && g.status !== 'shelved');
   const byDate = (a: TrackedGame, b: TrackedGame) =>
@@ -65,9 +66,8 @@ export function calendarGroups(
   // Exact days, games and events together: by day, events first (by time), then games by name.
   const dated: { date: string; order: number; item: CalendarItem }[] = [
     ...events
-      .filter((e) => !e.archived)
+      .filter((e) => !e.archived && eventEnd(e) > now)
       .map((e) => ({ event: e, date: dateOf(e.startsAt) }))
-      .filter(({ date }) => date >= today)
       .map(({ event, date }) => ({
         date,
         order: event.startsAt,

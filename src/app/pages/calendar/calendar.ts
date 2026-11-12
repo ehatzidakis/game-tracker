@@ -107,10 +107,6 @@ export class CalendarPage {
     void this.eventSheet.create();
   }
 
-  protected editEvent(event: GamingEvent): void {
-    void this.eventSheet.edit(event);
-  }
-
   /** "Pre-ordered", "Owned" or "Playing" after the date; nothing for a plain wishlist game. */
   protected ownership(game: TrackedGame): string | null {
     if (game.preordered) return 'Pre-ordered';

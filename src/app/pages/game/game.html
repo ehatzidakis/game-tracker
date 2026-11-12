@@ -88,6 +88,29 @@
         <span class="text-muted"> · {{ platformLabel(t.myPlatform) }}</span>
       }
     </p>
+    <!-- The dates it had before, saved each time the date moved. Latest change first. -->
+    @if (earlierDates().length) {
+      <ul class="mt-1 text-[13px] leading-[18px] text-muted" aria-label="Earlier release dates">
+        @for (was of earlierDates(); track was.key) {
+          <li class="num">
+            Was {{ was.label }}
+            @if (was.moved) {
+              · {{ was.moved }}
+            }
+            · changed {{ was.changed }}
+          </li>
+        }
+      </ul>
+    }
+  }
+  @if (remake(); as original) {
+    <a
+      [routerLink]="['/game', original.id]"
+      class="mt-2 flex items-center gap-0.5 text-[15px] leading-5 text-accent active:opacity-60"
+    >
+      {{ original.label }}
+      <svg lucideChevronRight [size]="16" [strokeWidth]="2.25" class="shrink-0"></svg>
+    </a>
   }
   <!-- Your data at a glance (only what you've filled in), edited in a sheet. -->
   @if (!isDlcPage() && editableFields()) {
@@ -393,31 +416,6 @@
           </div>
         </div>
       }
-
-      <!-- Which of your gaming events it was first shown at, and dated at. -->
-      <h2 class="group-header">Gaming events</h2>
-      <div class="grouped">
-        @for (field of eventFields; track field.key) {
-          @let linked = linkedEvent(field);
-          <button type="button" class="row text-left" (click)="pickEvent(field)">
-            <span class="shrink-0">{{ field.label }}</span>
-            <span class="flex min-w-0 flex-1 items-center justify-end gap-2">
-              @if (linked) {
-                <app-event-icon class="rounded-[6px]!" [kind]="linked.kind" [size]="22" />
-                <span class="truncate text-muted">{{ linked.title }}</span>
-              } @else {
-                <span class="text-muted">None</span>
-              }
-            </span>
-            <svg
-              lucideChevronRight
-              [size]="18"
-              [strokeWidth]="2.25"
-              class="-mr-1 shrink-0 text-faint"
-            ></svg>
-          </button>
-        }
-      </div>
     </section>
   } @else if (details.data()) {
     <button type="button" class="button-primary mt-6" (click)="add()">
@@ -425,6 +423,44 @@
       Add to Library
     </button>
     <ng-container [ngTemplateOutlet]="dlcList" />
+  }
+
+  @if (shownAt().length) {
+    <section aria-label="Shown at">
+      <h2 class="group-header">Shown at</h2>
+      <ul class="grouped" style="--sep-inset: 99px">
+        @for (event of listedShownAt(); track event.id) {
+          <li class="row p-0!">
+            <a [routerLink]="['/event', event.id]" class="row py-2!">
+              <app-event-art
+                class="h-10 w-[71px] shrink-0 rounded-[5px]"
+                [logoId]="event.logoId"
+                [iconSize]="40"
+              />
+              <div class="min-w-0 flex-1">
+                <p class="truncate">{{ event.name }}</p>
+                <p class="num text-[15px] leading-5 text-muted">{{ event.date }}</p>
+              </div>
+              <svg
+                lucideChevronRight
+                [size]="18"
+                [strokeWidth]="2.25"
+                class="-mr-1 shrink-0 text-faint"
+              ></svg>
+            </a>
+          </li>
+        }
+      </ul>
+      @if (shownAt().length > listedShownAt().length) {
+        <button
+          type="button"
+          class="group-footer text-accent! active:opacity-60"
+          (click)="allShownAt.set(true)"
+        >
+          Show all {{ shownAt().length }}
+        </button>
+      }
+    </section>
   }
 
   @if (openCritic(); as oc) {
@@ -469,28 +505,12 @@
     <section aria-label="Time to beat">
       <h2 class="group-header">Time to beat</h2>
       <div class="grouped">
-        @for (row of timeToBeat() ?? []; track row.label) {
-          <div class="row">
-            <span class="flex-1" [class.font-semibold]="row.yours">{{ row.label }}</span>
-            <span class="row-value num">{{ row.hours }} h</span>
-          </div>
-        }
         <!-- HowLongToBeat has no API, so we link to its search for this game. -->
         <a [href]="hltbUrl()" target="_blank" rel="noopener" class="row text-accent">
           <span class="flex-1">Search on HowLongToBeat</span>
           <svg lucideExternalLink [size]="16" [strokeWidth]="2" class="shrink-0 text-faint"></svg>
         </a>
       </div>
-      @if (timeToBeat() || formatPlaytime(tracked()?.hoursPlayed)) {
-        <p class="group-footer">
-          @if (timeToBeat()) {
-            Average from {{ ttbPlayers() }} players on IGDB.
-          }
-          @if (formatPlaytime(tracked()?.hoursPlayed); as played) {
-            You've played {{ played }}.
-          }
-        </p>
-      }
     </section>
   }
 

@@ -268,7 +268,7 @@ Flat by default, with depth carried by tone: black page, group grey lists, raise
 
 ## Shapes
 
-Gently rounded, continuous iOS geometry. Corners grow with the size of the object: list thumbnails 5px, covers 6px, segments 7px, inline fields 8px, segmented tracks 9px, grouped lists and media 10px, primary buttons 12px, action sheets 14px, switches and toasts fully round. Covers are always 3:4 and carry a 0.5px inner white hairline (15% white) so dark box art doesn't melt into black. The game screen's hero is the only 16:9 image. Game covers also badge a physical copy with a small round disc icon, top right. Lines are always hairlines (0.5px).
+Gently rounded, continuous iOS geometry. Corners grow with the size of the object: list thumbnails 5px, covers 6px, segments 7px, inline fields 8px, segmented tracks 9px, grouped lists and media 10px, primary buttons 12px, action sheets 14px, switches and toasts fully round. Covers are always 3:4 and carry a 0.5px inner white hairline (15% white) so dark box art doesn't melt into black. The game screen's hero and gaming events' logos are the only 16:9 images. Game covers also badge a physical copy with a small round disc icon, top right. Lines are always hairlines (0.5px).
 
 ## Components
 
@@ -310,7 +310,9 @@ The backbone of every screen, as in iOS Settings.
 iOS action sheet from the bottom: choices in one 14px-rounded raised group (94% Raised Grey with blur), Cancel in its own group below, 57px rows, Sheet Blue text, a muted 13px heading with the game's name in semibold. Slides up over 280ms; the backdrop dims to 50% black and dismisses on tap.
 
 ### Cover
-The signature element: 3:4 box art, 6px radius (5px at list size), hairline inner edge, Raised Grey placeholder that shows the game's name when IGDB has none. In the Library grid it may carry one small blurred black badge at its bottom-left (completion level or Pre-ordered).
+The signature element: 3:4 box art, 6px radius (5px at list size), hairline inner edge, Raised Grey placeholder that shows the game's name when IGDB has none. In the Library grid it carries small blurred black badges: OpenCritic's Top Critic Average top left, as a number in a white ring filled as far as the score; a disc top right for a physical copy; the playtime (or DLC / Pre-ordered) bottom left; and a round trophy bottom right for Platinum, the same size as the disc above it.
+
+Gaming events use IGDB's logo, which is wide (16:9): filling a wide frame in lists (71 by 40px), strips and the event's page, and shown whole over a blurred copy of itself in the Library's 3:4 event cards. An event you made yourself has its host's icon on the host's colour instead.
 
 ### Toast
 A rounded pill of raised grey with blur and a floating shadow, just above the tab bar: a check (Tint Blue) or alert (System Red) icon and a 15px message. Rises in over 220ms; tap to dismiss.

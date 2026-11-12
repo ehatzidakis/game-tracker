@@ -7,10 +7,13 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { guessKind } from '../../../api/_lib/igdb-events.js';
 import { EVENT_KINDS, type EventKind, type GamingEvent } from '../../../api/_lib/models.js';
 import { readAnnouncedTime } from '../core/announced-time';
 import { EventsService, type EventFields } from '../core/events.service';
 import { EventIcon } from './event-icon';
+
+export { guessKind };
 
 interface EventRequest {
   /** Null for a new event. */
@@ -69,18 +72,6 @@ export function fromDurationField(value: string): number | null | undefined {
   const minutes = Number(m[2]);
   if (hours > 9 || minutes > 59) return undefined;
   return hours * 60 + minutes || null;
-}
-
-/** Who's likely holding an event, from its title. Null when it doesn't say. */
-export function guessKind(title: string): EventKind | null {
-  const t = title.toLowerCase();
-  if (/state of play|playstation|sony/.test(t)) return 'playstation';
-  if (/xbox|microsoft|bethesda/.test(t)) return 'xbox';
-  if (/nintendo|direct/.test(t)) return 'nintendo';
-  if (/game awards|summer game fest|gamescom|opening night|showcase|keighley/.test(t)) {
-    return 'showcase';
-  }
-  return null;
 }
 
 /** Ok for a link: an http(s) address. "store.playstation.com" gets https:// added. */
@@ -293,7 +284,7 @@ export class EventSheet {
                 <div class="min-w-0 flex-1">
                   <p id="event-archived-label">Archived</p>
                   <p class="text-[13px] leading-[18px] text-muted">
-                    Off the Calendar and out of the lists you pick events from.
+                    Hidden from the Calendar and the Library. Still listed in Settings.
                   </p>
                 </div>
                 <button

@@ -2,13 +2,8 @@ import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
-import {
-  DEFAULT_SETTINGS,
-  type GamingEvent,
-  type TrackedGame,
-} from '../../../../api/_lib/models.js';
-import { EventsService } from '../../core/events.service';
-import { IgdbService, type GameDetails } from '../../core/igdb';
+import { DEFAULT_SETTINGS, type TrackedGame } from '../../../../api/_lib/models.js';
+import { IgdbService, type EventSummary, type GameDetails } from '../../core/igdb';
 import { OpenCriticService } from '../../core/opencritic';
 import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
 import { LibraryService } from '../../core/library.service';
@@ -63,34 +58,12 @@ function tracked(overrides: Partial<TrackedGame>): TrackedGame {
 
 const NO_OPENCRITIC: OpenCriticScore = { status: 'none' };
 
-const EVENTS: GamingEvent[] = [
-  {
-    id: 'sop',
-    title: 'State of Play',
-    startsAt: Date.parse('2026-02-12T21:00:00Z'),
-    link: null,
-    kind: 'playstation',
-    archived: false,
-    createdAt: 0,
-    updatedAt: 0,
-  },
-  {
-    id: 'old',
-    title: 'E3 2019',
-    startsAt: Date.parse('2019-06-10T18:00:00Z'),
-    link: null,
-    kind: 'showcase',
-    archived: true,
-    createdAt: 0,
-    updatedAt: 0,
-  },
-];
-
 async function render(
   game: TrackedGame | null,
   igdb: GameDetails = details,
   openCritic: OpenCriticScore = NO_OPENCRITIC,
   others: TrackedGame[] = [],
+  shownAt: EventSummary[] = [],
 ) {
   const games = signal(game ? [game, ...others] : others);
   const edits: unknown[] = [];
@@ -102,23 +75,10 @@ async function render(
         provide: IgdbService,
         useValue: {
           game: async () => igdb,
-          timeToBeat: async () => ({
-            hastily: 36000,
-            normally: 72000,
-            completely: 144000,
-            count: 12,
-          }),
+          eventsOf: async () => shownAt,
         },
       },
       { provide: OpenCriticService, useValue: { score: async () => openCritic } },
-      {
-        provide: EventsService,
-        useValue: {
-          events: signal(EVENTS),
-          byId: signal(new Map(EVENTS.map((e) => [e.id, e]))),
-          available: signal(EVENTS.filter((e) => !e.archived)),
-        },
-      },
       { provide: PushService, useValue: { enabledHere: () => false } },
       {
         provide: LibraryService,
@@ -187,27 +147,96 @@ describe('GamePage', () => {
     ).toEqual(['Backlog', 'Wishlist', 'Shelved', 'Completed']);
   });
 
-  it('links a game to the gaming event it was first shown at', async () => {
-    const { el, edits, sheet, fixture } = await render(tracked({ dateAnnouncedEventId: 'old' }));
-    const rows = () =>
-      [...el.querySelectorAll('button.row')].filter((b) =>
-        /First shown|Release date announced/.test(b.textContent!),
-      ) as HTMLButtonElement[];
-    // An archived event stays on the games that use it.
-    expect(rows().map((r) => r.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
-      'First shownNone',
-      'Release date announcedE3 2019',
+  it('lists the events the game was shown at, each opening its page', async () => {
+    const { el } = await render(
+      tracked({}),
+      details,
+      NO_OPENCRITIC,
+      [],
+      [
+        {
+          id: 481,
+          name: 'Xbox E3 2019 Briefing',
+          logoId: 'el1',
+          startsAt: Date.parse('2019-06-09T20:00:00Z'),
+        },
+        {
+          id: 753,
+          name: 'The Game Awards 2021',
+          logoId: null,
+          startsAt: Date.parse('2021-12-10T01:00:00Z'),
+        },
+      ],
+    );
+    const rows = [...el.querySelectorAll('[aria-label="Shown at"] a')] as HTMLAnchorElement[];
+    expect(rows.map((r) => r.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
+      'Xbox E3 2019 Briefing9 Jun 2019',
+      'The Game Awards 202110 Dec 2021',
     ]);
-    rows()[0].click();
-    await fixture.whenStable();
-    // Only events that aren't archived can be picked, plus making a new one.
-    expect(sheet.request()?.choices.map((c) => c.label)).toEqual([
-      'New gaming event…',
-      'State of Play',
+    expect(rows.map((r) => r.getAttribute('href'))).toEqual(['/event/igdb-481', '/event/igdb-753']);
+    // Picking events by hand is gone.
+    expect(el.textContent).not.toContain('First shown');
+  });
+
+  it('hides Shown at when IGDB lists no events for the game', async () => {
+    const { el } = await render(tracked({}));
+    expect(el.querySelector('[aria-label="Shown at"]')).toBeNull();
+  });
+
+  it('lists the release dates the game had before, latest change first', async () => {
+    const { el } = await render(
+      tracked({
+        releaseHistory: [
+          {
+            date: '2098-12-31',
+            precision: 'year',
+            label: '2098',
+            changedAt: Date.parse('2026-03-02T10:00:00Z'),
+          },
+          {
+            date: '2098-09-05',
+            precision: 'day',
+            label: '5 Sep 2098',
+            changedAt: Date.parse('2026-06-10T10:00:00Z'),
+          },
+        ],
+      }),
+    );
+    const rows = [...el.querySelectorAll('[aria-label="Earlier release dates"] li')].map((li) =>
+      li.textContent!.replace(/\s+/g, ' ').trim(),
+    );
+    // Two exact days say how far it moved; a vague date ("2098") just says what it was.
+    expect(rows).toEqual([
+      'Was 5 Sep 2098 · delayed 177 days · changed 10 Jun 2026',
+      'Was 2098 · changed 2 Mar 2026',
     ]);
-    sheet.finish('sop');
-    await new Promise((r) => setTimeout(r));
-    expect(edits).toEqual([{ firstShownEventId: 'sop' }]);
+  });
+
+  it('shows no earlier dates for a game whose date never moved', async () => {
+    const { el } = await render(tracked({}));
+    expect(el.querySelector('[aria-label="Earlier release dates"]')).toBeNull();
+  });
+
+  it('links a remake to the original', async () => {
+    const { el } = await render(null, {
+      ...details,
+      game_type: 8,
+      parent_game: {
+        id: 481,
+        name: 'Silent Hill 2',
+        first_release_date: Date.parse('2001-09-24') / 1000,
+      },
+    });
+    const remake = [...el.querySelectorAll('a')].find((a) => a.textContent!.includes('Remake of'));
+    expect(remake?.textContent?.trim()).toBe('Remake of Silent Hill 2 (2001)');
+    expect(remake?.getAttribute('href')).toBe('/game/481');
+  });
+
+  it('shows no remake link on an ordinary game', async () => {
+    const { el } = await render(null);
+    expect([...el.querySelectorAll('a')].some((a) => a.textContent!.includes('Remake of'))).toBe(
+      false,
+    );
   });
 
   it('offers to add a game that is not in the library', async () => {
@@ -392,7 +421,7 @@ describe('GamePage', () => {
     expect(dlc.edits).toEqual([{ add: 'wishlist', parent: { id: 1, name: 'Test Game' } }]);
   });
 
-  it('shows time to beat with your completion level, OpenCritic, details and links', async () => {
+  it('shows OpenCritic, the HowLongToBeat link, details and links', async () => {
     const { el, fixture } = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main_sides' }),
       {
@@ -400,6 +429,7 @@ describe('GamePage', () => {
         rating: 93.4,
         rating_count: 2333,
         themes: [{ name: 'Fantasy' }],
+        game_engines: [{ name: 'Dantelion' }],
         age_ratings: [{ organization: { name: 'PEGI' }, rating_category: { rating: '16' } }],
         websites: [{ url: 'https://store.playstation.com/x', type: { type: 'Playstation' } }],
       },
@@ -417,22 +447,14 @@ describe('GamePage', () => {
     const timeToBeat = [...el.querySelectorAll('[aria-label="Time to beat"] .row')].map((r) =>
       r.textContent!.replace(/\s+/g, ' ').trim(),
     );
-    expect(timeToBeat).toEqual([
-      'Main story10 h',
-      'Main + sides20 h',
-      'Completionist40 h',
-      'Search on HowLongToBeat',
-    ]);
+    // IGDB's hours are gone: only the link to HowLongToBeat is left.
+    expect(timeToBeat).toEqual(['Search on HowLongToBeat']);
     expect(el.querySelector('[aria-label="Time to beat"] a')?.getAttribute('href')).toBe(
       'https://howlongtobeat.com/?q=Test%20Game',
     );
     // Time to beat comes after the OpenCritic scores.
     const sections = [...el.querySelectorAll('section')].map((x) => x.getAttribute('aria-label'));
     expect(sections.indexOf('Time to beat')).toBe(sections.indexOf('OpenCritic') + 1);
-    // Your completion level (Main + sides) is in bold.
-    expect(
-      el.querySelector('[aria-label="Time to beat"] .font-semibold')?.textContent?.trim(),
-    ).toBe('Main + sides');
     const openCritic = [...el.querySelectorAll('[aria-label=OpenCritic] .row')].map((r) =>
       r.textContent!.replace(/\s+/g, ' ').trim(),
     );
@@ -451,6 +473,7 @@ describe('GamePage', () => {
     await fixture.whenStable();
     const opened = el.textContent!.replace(/\s+/g, ' ');
     expect(opened).toContain('PEGI 16');
+    expect(opened).toContain('EngineDantelion');
     expect(opened).toContain('PlayStation Store');
   });
 

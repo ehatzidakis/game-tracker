@@ -16,11 +16,11 @@ import {
   LucideTrophy,
   LucideFlag,
 } from '@lucide/angular';
+import { igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
   MAX_PLAYING,
   completionLabel,
-  type GamingEvent,
   isDlc,
   statusLabel,
   STATUSES,
@@ -33,7 +33,7 @@ import {
   platformLabel,
   type PlatformKey,
 } from '../../../../api/_lib/platforms.js';
-import { pickRelease } from '../../../../api/_lib/release.js';
+import { daysBetween, pickRelease } from '../../../../api/_lib/release.js';
 import { countdown, dateFieldValue, fromDateField, isReleased, today } from '../../core/dates';
 import { formatPlaytime } from '../../core/playtime';
 import {
@@ -42,13 +42,12 @@ import {
   dlcsOf,
   IgdbService,
   linksOf,
+  remakeOf,
   seriesOf,
   type GameSummary,
 } from '../../core/igdb';
 import { OpenCriticService } from '../../core/opencritic';
-import { EventsService } from '../../core/events.service';
-import { EventIcon } from '../../shared/event-icon';
-import { EventSheet } from '../../shared/event-sheet';
+import { EventArt } from '../../shared/event-art';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
@@ -63,32 +62,6 @@ import { FitWidth, Grow } from '../../shared/fit-content';
 const SHOWN_DLCS = 6;
 const COUNT = new Intl.NumberFormat('en-GB');
 
-const EVENT_DATE = new Intl.DateTimeFormat('en-GB', {
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
-const NEW_EVENT = '__new';
-const NO_EVENT = '__none';
-
-interface EventField {
-  key: 'firstShownEventId' | 'dateAnnouncedEventId';
-  label: string;
-  question: (name: string) => readonly [string, string, string];
-}
-const EVENT_FIELDS: readonly EventField[] = [
-  {
-    key: 'firstShownEventId',
-    label: 'First shown',
-    question: (name) => ['Where was ', name, ' first shown?'],
-  },
-  {
-    key: 'dateAnnouncedEventId',
-    label: 'Release date announced',
-    question: (name) => ['Where was the release date of ', name, ' announced?'],
-  },
-];
 const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -96,13 +69,6 @@ const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
 });
 
 const COMMON_STORES = ['PlayStation Store', 'Amazon'];
-
-/** IGDB's time to beat, in your completion levels. */
-const TIME_TO_BEAT = [
-  { field: 'hastily', label: 'Main story', completion: 'main' },
-  { field: 'normally', label: 'Main + sides', completion: 'main_sides' },
-  { field: 'completely', label: 'Completionist', completion: 'platinum' },
-] as const;
 
 @Component({
   selector: 'app-game',
@@ -112,7 +78,7 @@ const TIME_TO_BEAT = [
     NgTemplateOutlet,
     RouterLink,
     FitWidth,
-    EventIcon,
+    EventArt,
     Grow,
     LucideCalendarCheck,
     LucideChevronRight,
@@ -135,8 +101,6 @@ export class GamePage {
 
   private readonly igdb = inject(IgdbService);
   private readonly openCriticService = inject(OpenCriticService);
-  private readonly events = inject(EventsService);
-  private readonly eventSheet = inject(EventSheet);
   private readonly sheet = inject(ChoiceSheet);
   private readonly detailsSheet = inject(DetailsSheet);
   private readonly toast = inject(ToastService);
@@ -152,11 +116,12 @@ export class GamePage {
     staleTime: 60 * 60_000,
   }));
 
-  private readonly ttb = injectQuery(() => ({
-    queryKey: ['igdb-time-to-beat', this.gameId()],
-    queryFn: () => this.igdb.timeToBeat(this.gameId()),
+  /** The gaming events IGDB says the game was shown at. */
+  private readonly eventsQuery = injectQuery(() => ({
+    queryKey: ['igdb-game-events', this.gameId()],
+    queryFn: () => this.igdb.eventsOf(this.gameId()),
     enabled: Number.isInteger(this.gameId()),
-    staleTime: 24 * 60 * 60_000,
+    staleTime: 6 * 60 * 60_000,
   }));
 
   /** OpenCritic's verdict. The server keeps it fresh, so it's fine to keep for a few hours here. */
@@ -216,6 +181,30 @@ export class GamePage {
   protected readonly released = computed(() =>
     isReleased({ releaseDate: this.release().date, releasePrecision: this.release().precision }),
   );
+
+  /**
+   * The release dates the game had before, latest change first: "Was 26 May 2026 · delayed 177
+   * days · changed 3 Sep 2026". Only moves seen since the app started saving them.
+   */
+  protected readonly earlierDates = computed(() => {
+    const t = this.tracked();
+    const history = t?.releaseHistory ?? [];
+    const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
+    return history
+      .map((was, i) => {
+        // What it changed to: the next entry, or the date the game has now.
+        const next = history[i + 1] ?? { date: t!.releaseDate, precision: t!.releasePrecision };
+        const exact = was.precision === 'day' && next.precision === 'day';
+        const moved = exact && was.date && next.date ? daysBetween(was.date, next.date) : 0;
+        return {
+          key: was.changedAt,
+          label: was.label,
+          moved: moved > 0 ? `delayed ${days(moved)}` : moved < 0 ? `${days(-moved)} earlier` : '',
+          changed: SHORT_DATE.format(was.changedAt),
+        };
+      })
+      .reverse();
+  });
 
   /** Our four platforms this game is on; all four if IGDB doesn't say. */
   protected readonly ourPlatforms = computed(() => {
@@ -331,59 +320,33 @@ export class GamePage {
     this.allDlcs() ? this.dlcs() : this.dlcs().slice(0, SHOWN_DLCS),
   );
 
-  /** "Main story 46 h", with your completion level in bold. Null when IGDB has no numbers. */
-  protected readonly timeToBeat = computed(() => {
-    const t = this.ttb.data();
-    if (!t) return null;
-    const yours = this.tracked()?.completion;
-    const rows = TIME_TO_BEAT.flatMap((row) => {
-      const seconds = t[row.field];
-      return seconds
-        ? [{ label: row.label, hours: Math.round(seconds / 3600), yours: yours === row.completion }]
-        : [];
-    });
-    return rows.length ? rows : null;
+  /**
+   * Every event the game was shown at, earliest first (so the first is where it was revealed),
+   * each opening the event's page. The first few unless you ask for all.
+   */
+  protected readonly shownAt = computed(() =>
+    (this.eventsQuery.data() ?? []).map((e) => ({
+      id: igdbEventDocId(e.id),
+      name: e.name,
+      logoId: e.logoId,
+      date: SHORT_DATE.format(e.startsAt),
+    })),
+  );
+  protected readonly allShownAt = signal(false);
+  protected readonly listedShownAt = computed(() =>
+    this.allShownAt() ? this.shownAt() : this.shownAt().slice(0, SHOWN_DLCS),
+  );
+
+  /** For a remake or remaster: the original, to link to. */
+  protected readonly remake = computed(() => {
+    const d = this.details.data();
+    return d ? remakeOf(d) : null;
   });
-  /** The two gaming events a game can point to. */
-  protected readonly eventFields = EVENT_FIELDS;
-
-  /** The event linked in one of the fields, if it still exists. */
-  protected linkedEvent(field: EventField): GamingEvent | null {
-    const id = this.tracked()?.[field.key];
-    return id ? (this.events.byId().get(id) ?? null) : null;
-  }
-
-  /** Picks the event for a field from your events (not archived), or adds a new one. */
-  protected async pickEvent(field: EventField): Promise<void> {
-    const t = this.tracked();
-    if (!t) return;
-    const current = t[field.key] ?? null;
-    const choices = [
-      { key: NEW_EVENT, label: 'New gaming event…' },
-      ...this.events.available().map((e) => ({
-        key: e.id,
-        label: e.title,
-        hint: `${EVENT_DATE.format(e.startsAt).replace(',', '')}${e.id === current ? ' · Selected' : ''}`,
-      })),
-      ...(current ? [{ key: NO_EVENT, label: 'None', hint: 'Unlink the event' }] : []),
-    ];
-    const picked = await this.sheet.choose(field.question(t.name), choices);
-    if (picked === null) return;
-    let id: string | null = picked === NO_EVENT ? null : picked;
-    if (picked === NEW_EVENT) {
-      const created = await this.eventSheet.create();
-      if (!created) return;
-      id = created.id;
-    }
-    const now = this.tracked();
-    if (now && id !== current) this.library.edit(now, { [field.key]: id });
-  }
 
   /** HowLongToBeat's search for this game (it has no API to ask directly). */
   protected readonly hltbUrl = computed(
     () => `https://howlongtobeat.com/?q=${encodeURIComponent(this.name())}`,
   );
-  protected readonly ttbPlayers = computed(() => COUNT.format(this.ttb.data()?.count ?? 0));
 
   /**
    * OpenCritic's Top Critic Average with a link to the reviews, and the players' score from IGDB
@@ -429,7 +392,7 @@ export class GamePage {
     return this.allSeries() ? games : games.slice(0, SHOWN_DLCS);
   });
 
-  /** Genres, themes, modes, publisher and age rating. */
+  /** Genres, themes, modes, publisher, engine and age rating. */
   protected readonly facts = computed(() => {
     const d = this.details.data();
     const list = (items?: { name: string }[]) => (items ?? []).map((i) => i.name).join(', ');
@@ -442,6 +405,10 @@ export class GamePage {
       { label: 'Themes', value: list(d?.themes) },
       { label: 'Modes', value: list(d?.game_modes) },
       { label: publishers.length > 1 ? 'Publishers' : 'Publisher', value: publishers.join(', ') },
+      {
+        label: (d?.game_engines?.length ?? 0) > 1 ? 'Engines' : 'Engine',
+        value: list(d?.game_engines),
+      },
       { label: 'Age rating', value: pegi ? `PEGI ${pegi.rating}` : '' },
     ].filter((f) => f.value);
   });
@@ -474,6 +441,7 @@ export class GamePage {
       this.gameId();
       this.allDlcs.set(false);
       this.allSeries.set(false);
+      this.allShownAt.set(false);
       this.opened.set(new Set());
       this.editingRating.set(false);
     });

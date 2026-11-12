@@ -6,7 +6,7 @@ This file is the source of truth for the plan. Claude ticks steps off and update
 
 **Status:** Steps 1–5 built and live on Vercel, plus your follow-ups from using the app (DLC, pre-orders on the Wishlist, completed dates, library sorts, auto-update). Pushed 2026-11-08. Notes and answers are in [REVIEW.md](REVIEW.md).
 
-**Run it locally:** `npm start`, then open http://localhost:4200. This runs the app and the `/api` functions together (through `tsx`), reading secrets from `.env`. Checks: `npm test` (app and shared logic) and `npm run typecheck` (server functions).
+**Run it locally:** `npm start`, then open http://localhost:4300 (its own port, so it doesn't clash with other projects on 4200). This runs the app and the `/api` functions (port 3001) together (through `tsx`), reading secrets from `.env`. `ng serve` alone starts only the app, so every `/api` call fails. On a phone on the same Wi-Fi, open the "Network" address it prints (http://your-PC's-address:4300); notifications and installing to the home screen need the real site (https). Checks: `npm test` (app and shared logic) and `npm run typecheck` (server functions).
 
 ---
 
@@ -156,8 +156,16 @@ users/{uid}/games/{igdbId}        one record per game you track
   addedAt, purchasedAt, startedAt, shelvedAt, completedAt, updatedAt   (milliseconds)
   notifiedFor        set by the alert job: the release date it already alerted for
 
+users/{uid}/events/{id}           a gaming event in your calendar
+  title, startsAt (ms), durationMinutes, link, kind ("playstation" | "xbox" | "nintendo" | "showcase" | "other")
+  archived           hidden from the Calendar and the Library
+  igdbId, logoId     only for events added from IGDB; their id is "igdb-{igdbId}"
+  createdAt, updatedAt
+
 users/{uid}/pushSubscriptions/{id}
   endpoint, keys, device label    one per device with alerts on
+
+opencritic/{igdbId}               OpenCritic score per game, shared; only the server reads and writes it
 ```
 
 - **Completion:** shown as **Main story**, **Main + sides** or **Platinum**. You pick it when you mark a game Completed, and you can raise it later (e.g. Main story → Platinum). Library cards show it as a badge.
@@ -181,8 +189,8 @@ users/{uid}/pushSubscriptions/{id}
 
 - **`/api/igdb`:** holds the Twitch secret, caches the access token, passes queries to IGDB. Signed-in users only.
 - **`/api/calendar.ics?key=…`:** reads your games with the Firebase Admin SDK and returns the calendar feed. The key in the link is the only protection (calendar apps can't sign in).
-- **`/api/opencritic?igdb=…`:** a game's OpenCritic tier, Top Critic Average, % recommended and link. Signed-in users only. Serves the stored copy; asks OpenCritic only when it's missing or due.
-- **`/api/cron/daily`:** refreshes release dates from IGDB, sends due alerts, then updates OpenCritic scores. Vercel Cron at 11:00 UTC. Needs `CRON_SECRET`.
+- **`/api/opencritic?igdb=…`:** a game's OpenCritic tier, Top Critic Average, % recommended and link. Signed-in users only. Serves the stored copy; asks OpenCritic only when it's missing or due. A **POST** with `{ ids: [...] }` returns the stored Top Critic Average of each of those games (for the rings on Library covers); it never asks OpenCritic, so it costs none of the daily quota.
+- **`/api/cron/daily`:** refreshes release dates from IGDB, sends due alerts, re-reads the IGDB events in your calendar that aren't over (a time that moved), then updates OpenCritic scores. Vercel Cron at 11:00 UTC. Needs `CRON_SECRET`.
 - **`/api/cron/notify`:** sends alerts whose time has come. Called hourly by the Cloudflare Worker in [worker/](worker/). Needs `CRON_SECRET`.
 - **`/api/push-test`:** sends a test notification to your devices (Settings). Signed-in users only.
 
@@ -216,6 +224,19 @@ All eight steps built, tested and checked in the browser. The one-off conversion
 8. **Playing becomes a flag, not a tab.** Library tabs: Completed, Wishlist, Backlog, Shelved. "Playing" is a switch on Backlog games, at most 3 at once (a 4th asks which one to stop). Playing games get a blue outline and come first in Backlog; completing or shelving a game turns it off. Calendar still says "Playing". Existing Playing games (both accounts) are converted once to Backlog + Playing.
 
 **Answered:** Search → "Recently released" (last 60 days) is sorted by hype (how many people followed it on IGDB before release), not by date. Can switch to newest first if preferred.
+
+## Changelog of 2026-11-12 (built)
+
+1. **IGDB events in Search.** The same search also finds gaming events on IGDB (by name, newest first, above the games; IGDB has no text search for events, so it matches the words in the name). **+** adds one to your calendar with its logo, time, length and stream link. Before you type, an "Upcoming events" strip shows what IGDB has coming. Making an event by hand (+ in the Calendar) stays, because IGDB usually lists an event only a few weeks ahead (on 2026-11-12 it had one upcoming event, and The Game Awards 2026 wasn't there yet).
+2. **An event's own page** (`/event/…`): logo, name, start and end in your time, when IGDB listed it, description, stream and website links, and the games shown at it (yours first). IGDB events are added or removed there; your own events are edited there. Events from IGDB follow IGDB: the page and the daily job update the time if it moves.
+3. **"Shown at" on the game page** replaces the hand-picked "First shown" and "Release date announced": every IGDB event the game was shown at, earliest first, each opening the event's page. The old fields are no longer read (the stored values on games are left alone).
+4. **Library → Events tab** (fifth tab): events from your calendar once they're over, latest first, as cards like the games. The Calendar now keeps an event until it ends (not until the end of its day). Archived events stay out of both.
+5. **Time to beat:** IGDB's hours are gone (too few players behind them). The section keeps only the "Search on HowLongToBeat" link.
+6. **Remakes and remasters** link to the original under the release date ("Remake of Silent Hill 2 (2001)").
+7. **Engine** in Details. (A list of every release date per platform was built and then removed on request: IGDB keeps the current date per platform and region, not a history of earlier announced dates.)
+8. **Library covers:** OpenCritic's Top Critic Average top left, in a ring filled as far as the score (50 = half, 94 = nearly full). Playtime stays bottom left, the disc top right, and the Platinum trophy sits bottom right. An "OpenCritic" sort on every tab ranks by that score, highest first; games without a score come last, and the reverse button flips it. Scores come from what the server already has (the daily job fills them in), in one request for the whole library.
+
+**Answered:** IGDB "lists" are lists made by people on the IGDB website ("My top 10 RPGs"). The API doesn't have them (there is no `lists` endpoint), so they can't be used. The closest things the API does have are already in use: series (collections) and franchises.
 
 ## Log
 
@@ -260,3 +281,4 @@ All eight steps built, tested and checked in the browser. The one-off conversion
 - **2026-11-08:** Top bar like iOS 26: a round frosted back button (white chevron, the tab bar's glass) on every back screen, a bold centred title once scrolled, and a soft dark fade into the page instead of a solid bar with a line. Gaming events list text mentions the iPhone Calendar. 84 tests pass. Committed and pushed with the event feed, duration and announcement times.
 - **2026-11-09:** Changelog built: sort pill fits its label; Developer · Publisher under the title; My data in two lines (completion level, completed on, playtime / bought on, from, price, physical); Completion moved into Edit my data with a trophy by the name for Platinum; Platinum filter on Completed; event duration as an hours:minutes field (iPhone wheel, up to 9 h 59); pre-orders move to Backlog on release day (hourly job and on opening the app); Playing is a flag on Backlog games (max 3 per account, asks which to stop, outlined and first in Backlog; the Playing tab is gone; old data reads as Backlog + playing). 90 tests pass. Committed and pushed; the one old Playing game converted.
 - **2026-11-10:** Library: physical / digital filter on Completed, Backlog and Shelved (round disc button with a menu: physical and digital, physical only, digital only; solid blue when on, a download icon for digital). Kept while the app is open. 91 tests pass. Committed and pushed.
+- **2026-11-12:** IGDB events: found in Search (same field, above the games, plus an "Upcoming events" strip), added to your calendar with their logo, each with its own page (times, links, games shown). Game page: "Shown at" lists every IGDB event of the game (the hand-picked First shown / Release date announced are gone), remakes link to the original, engine in Details, IGDB's time-to-beat hours removed (the HowLongToBeat link stays). Library: Events tab for events that are over; covers show the OpenCritic score in a ring (top left) and the Platinum trophy bottom right; an OpenCritic sort on every tab. The daily job also keeps IGDB events' times current. `npm start` serves on port 4300 (not 4200) and to phones on the same Wi-Fi. 110 tests pass. Not committed yet.

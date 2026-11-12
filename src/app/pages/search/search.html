@@ -11,8 +11,8 @@
   <input
     #searchInput
     type="search"
-    placeholder="Games"
-    aria-label="Search games"
+    placeholder="Games and events"
+    aria-label="Search games and events"
     autocomplete="off"
     enterkeyhint="search"
     class="search-field h-9 w-full rounded-[10px] bg-fill pr-9 pl-8 text-[17px] outline-none"
@@ -76,57 +76,144 @@
         </ul>
       </section>
     }
-    <p class="group-footer mt-4">Search: newest games come first.</p>
-  } @else if (results.isError()) {
-    <p class="group-footer text-danger!" role="alert">
-      Search failed. Check your connection and try again.
-    </p>
-  } @else if (results.isPending()) {
-    <p class="group-footer">Searching…</p>
-  } @else if (results.data()?.length === 0) {
-    <p class="group-footer">No games found.</p>
-  } @else {
-    <ul
-      class="grouped mt-3 transition-opacity"
-      style="--sep-inset: 68px"
-      [class.opacity-60]="results.isPlaceholderData()"
-    >
-      @for (game of results.data(); track game.id) {
-        @let tracked = library.byId().get(game.id);
-        <li class="row py-0! pr-2! pl-0!">
-          <a [routerLink]="['/game', game.id]" class="row min-w-0 flex-1 py-2! pr-0!">
-            <app-cover class="w-10 shrink-0 rounded-[5px]!" [coverId]="game.coverId" [name]="''" />
-            <div class="min-w-0">
-              <p class="truncate">{{ game.name }}</p>
-              <p class="num truncate text-[15px] leading-5 text-muted">
-                @if (game.dlcOf) {
-                  DLC ·
-                }
-                {{ game.year ?? 'TBA' }}
-                @if (game.platforms.length) {
-                  · {{ game.platforms.join(', ') }}
-                }
-              </p>
-            </div>
-          </a>
-          @if (tracked) {
-            <span class="shrink-0 pr-2 text-[15px] text-muted">{{ trackedLabel(tracked) }}</span>
-          } @else if (adding().has(game.id)) {
-            <span class="grid size-11 shrink-0 place-items-center text-muted" aria-label="Adding">
-              <svg lucideLoaderCircle [size]="22" class="animate-spin"></svg>
-            </span>
-          } @else {
-            <button
-              type="button"
-              class="grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
-              [attr.aria-label]="(game.dlcOf ? 'Add to Wishlist: ' : 'Add ') + game.name"
-              (click)="add(game)"
-            >
-              <svg lucideCirclePlus [size]="26" [strokeWidth]="1.75"></svg>
-            </button>
+    @if (upcomingEvents().length) {
+      <section aria-label="Upcoming events">
+        <h2 class="mt-6 mb-2 text-[20px] leading-6 font-semibold">Upcoming events</h2>
+        <ul class="shots -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
+          @for (event of upcomingEvents(); track event.id) {
+            <li class="w-[176px] shrink-0 snap-start">
+              <a [routerLink]="['/event', eventDocId(event.id)]" class="block active:opacity-70">
+                <app-event-art class="aspect-video rounded-[8px]" [logoId]="event.logoId" />
+                <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
+                  {{ event.name }}
+                </p>
+                <p class="num mt-0.5 text-[12px] leading-4 tracking-normal text-muted">
+                  {{ eventWhen(event) }}
+                  @if (events.byId().has(eventDocId(event.id))) {
+                    · Added
+                  }
+                </p>
+              </a>
+            </li>
           }
-        </li>
+        </ul>
+      </section>
+    }
+    <p class="group-footer mt-4">Search: newest games come first.</p>
+  } @else {
+    <!-- Gaming events that match, newest first, above the games. -->
+    @if (shownEvents().length) {
+      <section aria-label="Events">
+        <h2 class="group-header">Events</h2>
+        <ul class="grouped" style="--sep-inset: 99px">
+          @for (event of shownEvents(); track event.id) {
+            @let docId = eventDocId(event.id);
+            <li class="row py-0! pr-2! pl-0!">
+              <a [routerLink]="['/event', docId]" class="row min-w-0 flex-1 py-2! pr-0!">
+                <app-event-art
+                  class="h-10 w-[71px] shrink-0 rounded-[5px]"
+                  [logoId]="event.logoId"
+                  [iconSize]="40"
+                />
+                <div class="min-w-0">
+                  <p class="truncate">{{ event.name }}</p>
+                  <p class="num truncate text-[15px] leading-5 text-muted">
+                    {{ eventDate(event) }}
+                  </p>
+                </div>
+              </a>
+              @if (events.byId().has(docId)) {
+                <span class="shrink-0 pr-2 text-[15px] text-muted">Added</span>
+              } @else if (addingEvents().has(event.id)) {
+                <span
+                  class="grid size-11 shrink-0 place-items-center text-muted"
+                  aria-label="Adding"
+                >
+                  <svg lucideLoaderCircle [size]="22" class="animate-spin"></svg>
+                </span>
+              } @else {
+                <button
+                  type="button"
+                  class="grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
+                  [attr.aria-label]="'Add event: ' + event.name"
+                  (click)="addEvent(event)"
+                >
+                  <svg lucideCirclePlus [size]="26" [strokeWidth]="1.75"></svg>
+                </button>
+              }
+            </li>
+          }
+        </ul>
+        @if (foundEvents().length > shownEvents().length) {
+          <button
+            type="button"
+            class="group-footer text-accent! active:opacity-60"
+            (click)="allEvents.set(true)"
+          >
+            Show all {{ foundEvents().length }}
+          </button>
+        }
+      </section>
+    }
+    @if (results.isError()) {
+      <p class="group-footer text-danger!" role="alert">
+        Search failed. Check your connection and try again.
+      </p>
+    } @else if (results.isPending()) {
+      <p class="group-footer">Searching…</p>
+    } @else if (results.data()?.length === 0) {
+      <p class="group-footer">No games found.</p>
+    } @else {
+      @if (shownEvents().length) {
+        <h2 class="group-header">Games</h2>
       }
-    </ul>
+      <ul
+        class="grouped transition-opacity"
+        [class.mt-3]="!shownEvents().length"
+        style="--sep-inset: 68px"
+        [class.opacity-60]="results.isPlaceholderData()"
+      >
+        @for (game of results.data(); track game.id) {
+          @let tracked = library.byId().get(game.id);
+          <li class="row py-0! pr-2! pl-0!">
+            <a [routerLink]="['/game', game.id]" class="row min-w-0 flex-1 py-2! pr-0!">
+              <app-cover
+                class="w-10 shrink-0 rounded-[5px]!"
+                [coverId]="game.coverId"
+                [name]="''"
+              />
+              <div class="min-w-0">
+                <p class="truncate">{{ game.name }}</p>
+                <p class="num truncate text-[15px] leading-5 text-muted">
+                  @if (game.dlcOf) {
+                    DLC ·
+                  }
+                  {{ game.year ?? 'TBA' }}
+                  @if (game.platforms.length) {
+                    · {{ game.platforms.join(', ') }}
+                  }
+                </p>
+              </div>
+            </a>
+            @if (tracked) {
+              <span class="shrink-0 pr-2 text-[15px] text-muted">{{ trackedLabel(tracked) }}</span>
+            } @else if (adding().has(game.id)) {
+              <span class="grid size-11 shrink-0 place-items-center text-muted" aria-label="Adding">
+                <svg lucideLoaderCircle [size]="22" class="animate-spin"></svg>
+              </span>
+            } @else {
+              <button
+                type="button"
+                class="grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
+                [attr.aria-label]="(game.dlcOf ? 'Add to Wishlist: ' : 'Add ') + game.name"
+                (click)="add(game)"
+              >
+                <svg lucideCirclePlus [size]="26" [strokeWidth]="1.75"></svg>
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    }
   }
 </div>

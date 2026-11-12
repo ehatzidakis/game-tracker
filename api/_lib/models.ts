@@ -46,6 +46,12 @@ export interface Release {
   label: string;
 }
 
+/** A release date a game had before it moved, and when we saw it change. */
+export interface ReleaseChange extends Release {
+  /** When the date changed to the next one (ms). */
+  changedAt: number;
+}
+
 /** A game in the library: users/{uid}/games/{igdbId}. */
 export interface TrackedGame {
   igdbId: number;
@@ -61,6 +67,11 @@ export interface TrackedGame {
   releasePrecision: ReleasePrecision;
   releaseLabel: string;
   igdbSyncedAt: number;
+  /**
+   * The dates it had before, oldest first, kept from 2026-11-12 on: IGDB only has the current
+   * date, so each move is saved when the daily job (or opening the game) sees it.
+   */
+  releaseHistory?: ReleaseChange[];
 
   // Yours.
   status: Status;
@@ -91,12 +102,6 @@ export interface TrackedGame {
   // wishlist shows in Wishlist and the Calendar; owned DLC shows only on the main game's page.
   parentId?: number | null;
   parentName?: string | null;
-
-  // Gaming events (users/{uid}/events) linked to the game, by event id.
-  /** The event where the game was first shown. */
-  firstShownEventId?: string | null;
-  /** The event where its release date was announced. */
-  dateAnnouncedEventId?: string | null;
 
   // Milliseconds since 1970, or null.
   addedAt: number;
@@ -159,9 +164,9 @@ export const EVENT_KINDS: readonly { key: EventKind; label: string }[] = [
 ];
 
 /**
- * users/{uid}/events/{id}: a gaming event you added (State of Play, Nintendo Direct, Summer Game
- * Fest…). Shows in the Calendar tab and the calendar feed; games can say they were first shown
- * or dated at one.
+ * users/{uid}/events/{id}: a gaming event in your calendar (State of Play, Nintendo Direct,
+ * Summer Game Fest…), added from IGDB or made by hand. Shows in the Calendar tab until it's over,
+ * then in the Library's Events tab, and always in the calendar feed.
  */
 export interface GamingEvent {
   id: string;
@@ -172,10 +177,22 @@ export interface GamingEvent {
   durationMinutes?: number | null;
   link: string | null;
   kind: EventKind;
-  /** Done with: hidden from the Calendar and from the lists you pick events from. Games keep it. */
+  /** Done with: hidden from the Calendar and the Library. Still listed in Settings. */
   archived: boolean;
+  /** For an event added from IGDB: its id there. It follows IGDB (time, name) and isn't edited. */
+  igdbId?: number | null;
+  /** IGDB image id of its logo. */
+  logoId?: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** Events without a duration count as an hour long. */
+export const DEFAULT_EVENT_MINUTES = 60;
+
+/** When an event is over (ms). */
+export function eventEnd(event: Pick<GamingEvent, 'startsAt' | 'durationMinutes'>): number {
+  return event.startsAt + (event.durationMinutes || DEFAULT_EVENT_MINUTES) * 60_000;
 }
 
 /** users/{uid} */

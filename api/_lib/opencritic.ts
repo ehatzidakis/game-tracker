@@ -117,6 +117,25 @@ export async function openCriticFor(
   }
 }
 
+/**
+ * The stored Top Critic Average of each game that has one, by IGDB id. Only reads what's stored
+ * (no OpenCritic calls), so the Library can show scores on every cover.
+ */
+export async function storedScores(
+  db: Firestore,
+  igdbIds: readonly number[],
+): Promise<Record<string, number>> {
+  const scores: Record<string, number> = {};
+  const refs = igdbIds.map((id) => entryRef(db, id));
+  for (let i = 0; i < refs.length; i += 300) {
+    for (const snap of await db.getAll(...refs.slice(i, i + 300))) {
+      const score = snap.exists ? (snap.data() as OpenCriticEntry).topCriticScore : null;
+      if (score != null) scores[snap.id] = score;
+    }
+  }
+  return scores;
+}
+
 /** Searches and requests kept back for opening game pages during the day. */
 const KEEP_SEARCHES = 5;
 const KEEP_REQUESTS = 30;

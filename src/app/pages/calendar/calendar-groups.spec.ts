@@ -49,7 +49,7 @@ describe('calendarGroups', () => {
     ]);
   });
 
-  it('puts events in their month, before that day’s games, leaving out past and archived ones', () => {
+  it('puts events in their month, before that day’s games, leaving out finished and archived ones', () => {
     const dateOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
     const groups = calendarGroups(
       [game(4, '2026-11-19', 'day'), game(3, '2027-01-10', 'day')],
@@ -58,12 +58,17 @@ describe('calendarGroups', () => {
         event('sop', '2026-11-19T20:00:00Z'),
         event('direct', '2026-12-05T14:00:00Z'),
         event('old', '2026-11-01T20:00:00Z'),
+        // Started 40 minutes ago: still on (an hour long without a duration).
+        event('live', '2026-11-07T09:20:00Z'),
+        // Earlier today, over by now.
+        event('over', '2026-11-07T08:00:00Z'),
         event('done', '2026-11-20T20:00:00Z', true),
       ],
       dateOf,
+      Date.parse('2026-11-07T10:00:00Z'),
     );
     expect(ids(groups)).toEqual([
-      ['November 2026', ['sop', 4]],
+      ['November 2026', ['live', 'sop', 4]],
       ['December 2026', ['direct']],
       ['January 2027', [3]],
     ]);

@@ -1,4 +1,9 @@
 import {
+  buildEventQuery,
+  buildEventSearchQuery,
+  buildGameEventsQuery,
+  buildUpcomingEventsQuery,
+  remakeOf,
   buildDiscoverQuery,
   linksOf,
   seriesOf,
@@ -220,5 +225,52 @@ describe('game page extras', () => {
     expect(buildDiscoverQuery('anticipated', 167, now)).toContain('sort hypes desc');
     expect(buildDiscoverQuery('soon', 167, now)).toContain('sort first_release_date asc');
     expect(buildDiscoverQuery('recent', 48, now)).toContain('platforms = (48)');
+  });
+});
+
+describe('remakeOf', () => {
+  const original = { id: 481, name: 'Silent Hill 2', first_release_date: 1_001_289_600 };
+
+  it('names the original of a remake or remaster, with its year', () => {
+    expect(remakeOf({ game_type: 8, parent_game: original })).toEqual({
+      id: 481,
+      label: 'Remake of Silent Hill 2 (2001)',
+    });
+    expect(remakeOf({ game_type: 9, parent_game: { id: 1, name: 'Old' } })).toEqual({
+      id: 1,
+      label: 'Remaster of Old',
+    });
+  });
+
+  it('is nothing for main games and DLC, which also have a parent game', () => {
+    expect(remakeOf({ game_type: 0 })).toBeNull();
+    expect(remakeOf({ game_type: 1, parent_game: original })).toBeNull();
+    expect(remakeOf({ game_type: 8 })).toBeNull();
+  });
+});
+
+describe('event queries', () => {
+  it('searches events by name, newest first, escaping the term', () => {
+    const query = buildEventSearchQuery(' state of "play" ');
+    expect(query).toContain('where name ~ *"state of \\"play\\""* & start_time != null;');
+    expect(query).toContain('sort start_time desc;');
+  });
+
+  it('asks for events that are not over, soonest first', () => {
+    const query = buildUpcomingEventsQuery(1_794_441_600_000);
+    expect(query).toContain('where end_time > 1794441600 | start_time > 1794441600;');
+    expect(query).toContain('sort start_time asc;');
+  });
+
+  it('asks for the events a game was shown at, earliest first', () => {
+    const query = buildGameEventsQuery(119133.9);
+    expect(query).toContain('where games = (119133) & start_time != null;');
+    expect(query).toContain('sort start_time asc;');
+  });
+
+  it('asks for one event with the games shown at it', () => {
+    const query = buildEventQuery(1170);
+    expect(query).toContain('games.name, games.cover.image_id');
+    expect(query).toContain('where id = 1170;');
   });
 });

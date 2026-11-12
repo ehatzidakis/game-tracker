@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import {
   LucideArrowUpDown,
   LucideChevronDown,
@@ -12,6 +13,8 @@ import {
   LucideTrophy,
 } from '@lucide/angular';
 import {
+  eventEnd,
+  type GamingEvent,
   isDlc,
   shownInLibrary,
   statusLabel,
@@ -20,9 +23,13 @@ import {
 } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
 import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
+import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
+import { OpenCriticService } from '../../core/opencritic';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
+import { EventArt } from '../../shared/event-art';
+import { ScoreRing } from '../../shared/score-ring';
 import { SearchField } from '../../shared/search-field';
 import {
   compareBy,
@@ -40,6 +47,7 @@ const SORTS: { key: Sort; label: string }[] = [
   { key: 'recent', label: 'Recent' },
   { key: 'name', label: 'Name' },
   { key: 'release', label: 'Release date' },
+  { key: 'critics', label: 'OpenCritic' },
 ];
 const PLAYTIME = { key: 'playtime', label: 'Playtime' } as const;
 /** Extra sorts where they make sense: Completed also by when you finished (its default). */
@@ -54,6 +62,15 @@ const TAB_SORTS: Partial<Record<Status, { key: Sort; label: string }[]>> = {
 };
 const sortsFor = (tab: Status) => TAB_SORTS[tab] ?? SORTS;
 
+/** The four game tabs, plus the gaming events that are over. */
+type Tab = Status | 'events';
+
+const EVENT_DATE = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+
 /** Bump to reset everyone's remembered sorts to the defaults (2: per-tab defaults, 2026-11-08). */
 const SORT_KEY = 'library.sort.v2';
 
@@ -61,7 +78,7 @@ const SORT_KEY = 'library.sort.v2';
  * The tab you're on, kept while the app is open (so coming back from a game keeps it).
  * The app always opens on Completed.
  */
-let currentTab: Status = 'completed';
+let currentTab: Tab = 'completed';
 /** What's in the search field, kept while the app is open (so coming back from a game keeps it). */
 let currentQuery = '';
 /** Completed tab showing only Platinum games, kept while the app is open. */
@@ -93,6 +110,8 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     RouterLink,
     NgTemplateOutlet,
     Cover,
+    EventArt,
+    ScoreRing,
     SearchField,
     LucideArrowUpDown,
     LucideChevronDown,
@@ -107,8 +126,30 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
 })
 export class LibraryPage {
   protected readonly library = inject(LibraryService);
-  protected readonly tabs = LIBRARY_TABS.map((key) => ({ key, label: statusLabel(key) }));
-  protected readonly filter = signal<Status>(currentTab);
+  private readonly events = inject(EventsService);
+  private readonly openCritic = inject(OpenCriticService);
+  protected readonly tabs: { key: Tab; label: string }[] = [
+    ...LIBRARY_TABS.map((key) => ({ key, label: statusLabel(key) })),
+    { key: 'events', label: 'Events' },
+  ];
+  protected readonly tab = signal<Tab>(currentTab);
+  /** The Events tab lists gaming events instead of games. */
+  protected readonly showEvents = computed(() => this.tab() === 'events');
+  /** The game tab you're on (Completed while you're on Events, where it isn't used). */
+  protected readonly filter = computed<Status>(() => {
+    const tab = this.tab();
+    return tab === 'events' ? 'completed' : tab;
+  });
+
+  /** Gaming events from your calendar that are over, latest first. */
+  protected readonly pastEvents = computed(() => {
+    const now = Date.now();
+    return this.events.events().filter((e) => !e.archived && eventEnd(e) <= now);
+  });
+  /** "3 Sep 2026" */
+  protected eventDate(event: GamingEvent): string {
+    return EVENT_DATE.format(event.startsAt);
+  }
   protected readonly statusLabel = statusLabel;
   /** Searching looks through the whole library, every tab, by title. */
   protected readonly query = signal(currentQuery);
@@ -140,6 +181,25 @@ export class LibraryPage {
   /** Games and wishlisted DLC; owned DLC shows on its main game's page instead. */
   private readonly listed = computed(() => this.library.games().filter(shownInLibrary));
 
+  /**
+   * OpenCritic's Top Critic Average for the games that have one, by IGDB id: the ring on each
+   * cover. One request for the whole library, read from what the server already has.
+   */
+  private readonly scoreIds = computed(() =>
+    this.listed()
+      .map((g) => g.igdbId)
+      .sort((a, b) => a - b),
+  );
+  private readonly scoresQuery = injectQuery(() => ({
+    queryKey: ['opencritic-scores', this.scoreIds().join(',')],
+    queryFn: () => this.openCritic.scores(this.scoreIds()),
+    enabled: this.scoreIds().length > 0,
+    staleTime: 6 * 60 * 60_000,
+    retry: false,
+    placeholderData: keepPreviousData,
+  }));
+  protected readonly scores = computed<Record<string, number>>(() => this.scoresQuery.data() ?? {});
+
   protected readonly counts = computed(() => {
     const counts = new Map<Status, number>();
     for (const g of this.listed()) counts.set(g.status, (counts.get(g.status) ?? 0) + 1);
@@ -170,7 +230,7 @@ export class LibraryPage {
       .filter((g) => g.status === this.filter())
       .filter((g) => !this.onlyPlatinum() || g.completion === 'platinum')
       .filter((g) => matchesCopy(g, this.copyActive()))
-      .sort(compareBy(this.sort(), this.filter(), today(), this.reversed()))
+      .sort(compareBy(this.sort(), this.filter(), today(), this.reversed(), this.scores()))
       // The games you're playing lead the Backlog.
       .sort((a, b) => Number(!!b.playing) - Number(!!a.playing)),
   );
@@ -241,9 +301,9 @@ export class LibraryPage {
     currentQuery = query;
   }
 
-  protected setFilter(status: Status): void {
-    this.filter.set(status);
-    currentTab = status;
+  protected setFilter(tab: Tab): void {
+    this.tab.set(tab);
+    currentTab = tab;
   }
 
   protected setSort(event: Event): void {

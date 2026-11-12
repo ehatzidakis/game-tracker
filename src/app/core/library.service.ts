@@ -8,7 +8,12 @@ import {
   updateDoc,
   type FirestoreError,
 } from 'firebase/firestore';
-import { syncedFields, type IgdbSyncGame } from '../../../api/_lib/igdb-sync.js';
+import {
+  releaseMoved,
+  syncedFields,
+  syncUpdate,
+  type IgdbSyncGame,
+} from '../../../api/_lib/igdb-sync.js';
 import {
   DEFAULT_SETTINGS,
   normalizeGame,
@@ -40,8 +45,6 @@ export type GameEdits = Partial<
     | 'orderedOn'
     | 'completedAt'
     | 'physical'
-    | 'firstShownEventId'
-    | 'dateAnnouncedEventId'
   >
 >;
 
@@ -178,7 +181,10 @@ export class LibraryService {
     this.write(updateDoc(this.gameDoc(game.igdbId), { ...edits, updatedAt: Date.now() }));
   }
 
-  /** Changes your platform and re-picks the release date for it. */
+  /**
+   * Changes your platform and re-picks the release date for it. (Not a delay, so nothing is added
+   * to the game's date history.)
+   */
   setPlatform(game: TrackedGame, details: IgdbSyncGame, myPlatform: PlatformKey): void {
     const now = Date.now();
     this.write(
@@ -194,11 +200,9 @@ export class LibraryService {
   refresh(game: TrackedGame, details: IgdbSyncGame): void {
     const fresh = syncedFields(details, game.myPlatform);
     const changed =
-      fresh.name !== game.name ||
-      fresh.coverId !== game.coverId ||
-      fresh.releaseDate !== game.releaseDate ||
-      fresh.releaseLabel !== game.releaseLabel;
-    if (changed) this.write(updateDoc(this.gameDoc(game.igdbId), { ...fresh }));
+      fresh.name !== game.name || fresh.coverId !== game.coverId || releaseMoved(game, fresh);
+    // A date that moved also saves the old one in the game's history.
+    if (changed) this.write(updateDoc(this.gameDoc(game.igdbId), { ...syncUpdate(game, fresh) }));
   }
 
   remove(game: TrackedGame): void {
