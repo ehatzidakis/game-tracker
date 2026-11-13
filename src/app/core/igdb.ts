@@ -173,6 +173,14 @@ export function coverUrl(imageId: string, size: ImageSize = 'cover_big'): string
   return `https://images.igdb.com/igdb/image/upload/t_${size}/${imageId}.jpg`;
 }
 
+/**
+ * A company logo, as a PNG: most are drawn on a see-through background, which a JPG fills with
+ * black (a black logo on black).
+ */
+export function logoUrl(imageId: string): string {
+  return `https://images.igdb.com/igdb/image/upload/t_logo_med/${imageId}.png`;
+}
+
 /** Everything the game screen shows, plus the fields copied into the library. */
 export interface GameDetails extends IgdbSyncGame {
   first_release_date?: number;
@@ -190,7 +198,11 @@ export interface GameDetails extends IgdbSyncGame {
   rating_count?: number;
   /** The series ("God of War") with its games. */
   collections?: { name: string; games?: (GameSummary & { game_type?: number })[] }[];
-  involved_companies?: { company?: { name: string }; developer?: boolean; publisher?: boolean }[];
+  involved_companies?: {
+    company?: { id?: number; name: string };
+    developer?: boolean;
+    publisher?: boolean;
+  }[];
   age_ratings?: { organization?: { name: string }; rating_category?: { rating: string } }[];
   game_modes?: { name: string }[];
   themes?: { name: string }[];
@@ -259,6 +271,78 @@ export function buildEventSearchQuery(term: string): string {
   ].join(' ');
 }
 
+/** A developer or publisher as Search lists it. */
+export interface CompanySummary {
+  id: number;
+  name: string;
+  logoId: string | null;
+  /** ISO 3166-1 numeric. */
+  country: number | null;
+  /** "Developer", "Publisher" or "Developer and publisher". */
+  role: string;
+}
+
+interface IgdbCompanyHit {
+  id: number;
+  name: string;
+  logo?: { image_id: string };
+  country?: number;
+  /** Game ids only, to tell big companies from tiny ones. */
+  developed?: number[];
+  published?: number[];
+}
+
+/**
+ * Companies whose name has what you typed and that made or published at least one game. (IGDB
+ * can't text-search companies, so it's a name match; rankCompanies orders them.)
+ */
+export function buildCompanySearchQuery(term: string): string {
+  return [
+    'fields name, logo.image_id, country, developed, published;',
+    `where name ~ *"${escapeTerm(term)}"* & (developed != null | published != null);`,
+    // IGDB doesn't order these, so ask for plenty and rank them here.
+    'limit 100;',
+  ].join(' ');
+}
+
+const SHOWN_COMPANIES = 20;
+
+/**
+ * Names starting with what you typed first, then a word in the name starting with it, then the
+ * rest; within each, the companies with the most games first (the well-known ones). IGDB has
+ * some companies twice under the same name: only the bigger one is kept.
+ */
+export function rankCompanies(term: string, hits: readonly IgdbCompanyHit[]): CompanySummary[] {
+  const phrase = normalize(term);
+  const tier = (name: string) => {
+    const n = normalize(name);
+    if (n.startsWith(phrase)) return 0;
+    return ` ${n}`.includes(` ${phrase}`) ? 1 : 2;
+  };
+  const size = (c: IgdbCompanyHit) => (c.developed?.length ?? 0) + (c.published?.length ?? 0);
+  const names = new Set<string>();
+  return [...hits]
+    .sort((a, b) => tier(a.name) - tier(b.name) || size(b) - size(a))
+    .filter((c) => !names.has(normalize(c.name)) && !!names.add(normalize(c.name)))
+    .slice(0, SHOWN_COMPANIES)
+    .map((c) => {
+      const developer = !!c.developed?.length;
+      const publisher = !!c.published?.length;
+      return {
+        id: c.id,
+        name: c.name,
+        logoId: c.logo?.image_id ?? null,
+        country: c.country ?? null,
+        role:
+          developer && publisher
+            ? 'Developer and publisher'
+            : developer
+              ? 'Developer'
+              : 'Publisher',
+      };
+    });
+}
+
 /** Events that haven't ended yet, soonest first. */
 export function buildUpcomingEventsQuery(now: number): string {
   const t = Math.floor(now / 1000);
@@ -294,6 +378,137 @@ function newestFirst(a: GameSummary, b: GameSummary): number {
     (b.first_release_date ?? Number.MAX_SAFE_INTEGER) -
     (a.first_release_date ?? Number.MAX_SAFE_INTEGER)
   );
+}
+
+/** A game as listed on a company's page. */
+export interface CompanyGame extends GameSummary {
+  game_type?: number;
+  version_parent?: number;
+  game_status?: number;
+}
+
+/** A developer or publisher on IGDB, with the games it developed and published. */
+export interface CompanyDetails {
+  id: number;
+  name: string;
+  description?: string;
+  logo?: { image_id: string };
+  /** ISO 3166-1 numeric country code (392 is Japan). */
+  country?: number;
+  /** Founded (unix seconds), as exact as start_date_format says (like a release date's format). */
+  start_date?: number;
+  start_date_format?: number;
+  company_size?: { name: string };
+  status?: { name: string };
+  parent?: { id: number; name: string };
+  /** The company's page on IGDB. */
+  url?: string;
+  websites?: { url: string; type?: { type: string } }[];
+  developed?: CompanyGame[];
+  published?: CompanyGame[];
+}
+
+const GAME_FIELDS =
+  'name, cover.image_id, first_release_date, game_type, version_parent, game_status';
+
+export function buildCompanyQuery(id: number): string {
+  const each = (list: string) =>
+    GAME_FIELDS.split(', ')
+      .map((f) => `${list}.${f}`)
+      .join(', ');
+  return [
+    'fields name, description, logo.image_id, country, start_date, start_date_format,',
+    'company_size.name, status.name, parent.name, url, websites.url, websites.type.type,',
+    `${each('developed')}, ${each('published')};`,
+    `where id = ${Math.trunc(id)};`,
+    'limit 1;',
+  ].join(' ');
+}
+
+/** A game a company ported or helped make (IGDB keeps these on the game's involved companies). */
+export interface CompanyCredit {
+  porting?: boolean;
+  supporting?: boolean;
+  game?: CompanyGame;
+}
+
+/** The games a company ported or supported. */
+export function buildCompanyCreditsQuery(id: number): string {
+  const fields = GAME_FIELDS.split(', ')
+    .map((f) => `game.${f}`)
+    .join(', ');
+  return [
+    `fields porting, supporting, ${fields};`,
+    `where company = ${Math.trunc(id)} & (porting = true | supporting = true);`,
+    'limit 500;',
+  ].join(' ');
+}
+
+/** IGDB game types. */
+const MAIN_TYPES = [0, 4, 8, 9, 10]; // main game, standalone expansion, remake, remaster, expanded
+const DLC_TYPES = [1, 2]; // DLC, expansion
+const EPISODE = 6;
+const SEASON = 7;
+/** Never listed: bundles, mods, forks, packs and updates. */
+const UNLISTED_TYPES = [3, 5, 12, 13, 14];
+const CANCELLED_STATUS = 6;
+
+/** One list on a company's page. The ones past Developed and Published start folded. */
+export interface CompanySection {
+  key: string;
+  title: string;
+  games: CompanyGame[];
+  folded: boolean;
+}
+
+/** Each game once, without other editions of the same game, newest first (upcoming on top). */
+function listed(
+  games: readonly CompanyGame[],
+  keep: (game: CompanyGame) => boolean,
+): CompanyGame[] {
+  const seen = new Set<number>();
+  return games
+    .filter((g) => !g.version_parent && keep(g) && !seen.has(g.id) && !!seen.add(g.id))
+    .sort(newestFirst);
+}
+
+/**
+ * The lists on a company's page, empty ones left out: Developed and Published (main games,
+ * remakes, remasters and the like), then, folded, Ported, Supported, DLC and expansions,
+ * Episodes, Seasons and Cancelled.
+ */
+export function companySections(
+  company: Pick<CompanyDetails, 'developed' | 'published'>,
+  credits: readonly CompanyCredit[] = [],
+): CompanySection[] {
+  const type = (g: CompanyGame) => g.game_type ?? 0;
+  const live = (types: number[]) => (g: CompanyGame) =>
+    types.includes(type(g)) && g.game_status !== CANCELLED_STATUS;
+  const anyLive = (g: CompanyGame) =>
+    !UNLISTED_TYPES.includes(type(g)) && g.game_status !== CANCELLED_STATUS;
+  const credited = (kind: 'porting' | 'supporting') =>
+    credits.filter((c) => c[kind] && c.game).map((c) => c.game!);
+  const made = [...(company.developed ?? []), ...(company.published ?? [])];
+  const all = [...made, ...credited('porting'), ...credited('supporting')];
+
+  const sections: [string, string, CompanyGame[], boolean][] = [
+    ['developed', 'Developed', listed(company.developed ?? [], live(MAIN_TYPES)), false],
+    ['published', 'Published', listed(company.published ?? [], live(MAIN_TYPES)), false],
+    ['ported', 'Ported', listed(credited('porting'), anyLive), true],
+    ['supported', 'Supported', listed(credited('supporting'), anyLive), true],
+    ['dlcs', 'DLC and expansions', listed(made, live(DLC_TYPES)), true],
+    ['episodes', 'Episodes', listed(made, live([EPISODE])), true],
+    ['seasons', 'Seasons', listed(made, live([SEASON])), true],
+    [
+      'cancelled',
+      'Cancelled',
+      listed(all, (g) => !UNLISTED_TYPES.includes(type(g)) && g.game_status === CANCELLED_STATUS),
+      true,
+    ],
+  ];
+  return sections
+    .map(([key, title, games, folded]) => ({ key, title, games, folded }))
+    .filter((s) => s.games.length);
 }
 
 /** The main game's DLC and expansions, expansions first, each group newest first. */
@@ -356,7 +571,7 @@ export function buildDetailsQuery(id: number): string {
     'rating, rating_count,',
     'collections.name, collections.games.name, collections.games.game_type,',
     'collections.games.cover.image_id, collections.games.first_release_date,',
-    'involved_companies.publisher, age_ratings.organization.name,',
+    'involved_companies.publisher, involved_companies.company.id, age_ratings.organization.name,',
     'age_ratings.rating_category.rating, game_modes.name, themes.name,',
     'websites.url, websites.type.type;',
     `where id = ${Math.trunc(id)};`,
@@ -419,6 +634,12 @@ export class IgdbService {
     return this.eventSummaries(buildEventSearchQuery(term));
   }
 
+  /** Developers and publishers whose name has the term, the best-known first. */
+  async searchCompanies(term: string): Promise<CompanySummary[]> {
+    const hits = await this.query<IgdbCompanyHit[]>('companies', buildCompanySearchQuery(term));
+    return rankCompanies(term, hits);
+  }
+
   async upcomingEvents(): Promise<EventSummary[]> {
     return this.eventSummaries(buildUpcomingEventsQuery(Date.now()));
   }
@@ -426,6 +647,16 @@ export class IgdbService {
   /** The events a game was shown at. */
   async eventsOf(gameId: number): Promise<EventSummary[]> {
     return this.eventSummaries(buildGameEventsQuery(gameId));
+  }
+
+  async company(id: number): Promise<CompanyDetails | null> {
+    const companies = await this.query<CompanyDetails[]>('companies', buildCompanyQuery(id));
+    return companies[0] ?? null;
+  }
+
+  /** The games a company ported or supported. */
+  async companyCredits(id: number): Promise<CompanyCredit[]> {
+    return this.query<CompanyCredit[]>('involved_companies', buildCompanyCreditsQuery(id));
   }
 
   async event(id: number): Promise<EventDetails | null> {

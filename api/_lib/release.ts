@@ -74,10 +74,18 @@ export function pickRelease(dates: readonly ReleaseDateInfo[], platformIgdbId: n
       (a.date ?? Infinity) - (b.date ?? Infinity),
   )[0];
 
-  const precision = precisionOf(best);
-  if (precision === 'tbd' || best.date === null) return TBA;
+  return describeRelease(best);
+}
 
-  const d = new Date(best.date * 1000);
+/**
+ * One IGDB date as we show it: "19 Nov 2026", "Nov 2026", "Q3 2027", "2027" or "TBA". Also used
+ * for other IGDB dates in the same format, like when a company was founded.
+ */
+export function describeRelease(rd: ReleaseDateInfo): Release {
+  const precision = precisionOf(rd);
+  if (precision === 'tbd' || rd.date === null) return TBA;
+
+  const d = new Date(rd.date * 1000);
   const year = d.getUTCFullYear();
   const month = MONTHS[d.getUTCMonth()];
   const label =
@@ -86,7 +94,7 @@ export function pickRelease(dates: readonly ReleaseDateInfo[], platformIgdbId: n
       : precision === 'month'
         ? `${month} ${year}`
         : precision === 'quarter'
-          ? `Q${best.format - 2} ${year}`
+          ? `Q${rd.format - 2} ${year}`
           : `${year}`;
 
   return { date: d.toISOString().slice(0, 10), precision, label };

@@ -1,7 +1,15 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
-import { LucideCirclePlus, LucideCircleX, LucideLoaderCircle, LucideSearch } from '@lucide/angular';
+import {
+  LucideBuilding2,
+  LucideChevronRight,
+  LucideCirclePlus,
+  LucideCircleX,
+  LucideLoaderCircle,
+  LucideSearch,
+} from '@lucide/angular';
+import { countryName } from '../../core/countries';
 import { Cover } from '../../shared/cover';
 import { EventArt } from '../../shared/event-art';
 import { igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
@@ -14,6 +22,8 @@ import { countdown, today } from '../../core/dates';
 import {
   coverUrl,
   IgdbService,
+  logoUrl,
+  type CompanySummary,
   type DiscoverKind,
   type EventSummary,
   type GameSearchResult,
@@ -42,8 +52,9 @@ const EVENT_DAY = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
 });
-/** How many events a search lists before "Show all". */
+/** How many events, and companies, a search lists before "Show all". */
 const SHOWN_EVENTS = 4;
+const SHOWN_COMPANIES = 4;
 
 @Component({
   selector: 'app-search',
@@ -51,6 +62,8 @@ const SHOWN_EVENTS = 4;
     RouterLink,
     Cover,
     EventArt,
+    LucideBuilding2,
+    LucideChevronRight,
     LucideSearch,
     LucideCirclePlus,
     LucideCircleX,
@@ -81,7 +94,9 @@ export class SearchPage {
     placeholderData: keepPreviousData,
   }));
 
-  /** Gaming events on IGDB whose name has what you typed, newest first, above the games. */
+  // Results come in this order: games, then gaming events, then companies.
+
+  /** Gaming events on IGDB whose name has what you typed, newest first, after the games. */
   private readonly eventResults = injectQuery(() => ({
     queryKey: ['igdb-event-search', this.searchTerm()],
     queryFn: () => this.igdb.searchEvents(this.searchTerm()),
@@ -94,6 +109,25 @@ export class SearchPage {
   protected readonly shownEvents = computed(() =>
     this.allEvents() ? this.foundEvents() : this.foundEvents().slice(0, SHOWN_EVENTS),
   );
+
+  /** Developers and publishers whose name has what you typed, the best-known first, last. */
+  private readonly companyResults = injectQuery(() => ({
+    queryKey: ['igdb-company-search', this.searchTerm()],
+    queryFn: () => this.igdb.searchCompanies(this.searchTerm()),
+    enabled: !this.tooShort(),
+    staleTime: 5 * 60_000,
+    placeholderData: keepPreviousData,
+  }));
+  protected readonly foundCompanies = computed(() => this.companyResults.data() ?? []);
+  protected readonly allCompanies = signal(false);
+  protected readonly shownCompanies = computed(() =>
+    this.allCompanies() ? this.foundCompanies() : this.foundCompanies().slice(0, SHOWN_COMPANIES),
+  );
+  protected readonly logoUrl = logoUrl;
+  /** "Japan · Developer and publisher" */
+  protected companyLine(company: CompanySummary): string {
+    return [countryName(company.country), company.role].filter(Boolean).join(' · ');
+  }
 
   /** Events coming up on IGDB, as a strip before you type. */
   private readonly upcomingQuery = injectQuery(() => ({
@@ -174,6 +208,7 @@ export class SearchPage {
   protected onInput(event: Event): void {
     this.term.set((event.target as HTMLInputElement).value);
     this.allEvents.set(false);
+    this.allCompanies.set(false);
   }
 
   protected async add(game: GameSearchResult): Promise<void> {

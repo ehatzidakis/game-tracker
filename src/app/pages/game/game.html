@@ -72,8 +72,24 @@
       } @else {
         <div class="h-7 w-40 animate-pulse rounded-md bg-raised"></div>
       }
-      @if (makers(); as makers) {
-        <p class="mt-1 line-clamp-2 text-[15px] leading-5 text-muted">{{ makers }}</p>
+      <!-- Developer · Publisher, each opening the company's page. -->
+      @if (makers().length) {
+        <p class="mt-1 line-clamp-2 text-[15px] leading-5 text-muted">
+          @for (maker of makers(); track maker.name) {
+            @if (!$first) {
+              ·
+            }
+            @if (maker.id) {
+              <a
+                [routerLink]="['/company', maker.id]"
+                class="underline decoration-muted/40 underline-offset-[3px] active:opacity-60"
+                >{{ maker.name }}</a
+              >
+            } @else {
+              {{ maker.name }}
+            }
+          }
+        </p>
       }
     </div>
   </header>

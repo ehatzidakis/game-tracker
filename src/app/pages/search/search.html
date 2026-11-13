@@ -101,7 +101,68 @@
     }
     <p class="group-footer mt-4">Search: newest games come first.</p>
   } @else {
-    <!-- Gaming events that match, newest first, above the games. -->
+    @if (results.isError()) {
+      <p class="group-footer text-danger!" role="alert">
+        Search failed. Check your connection and try again.
+      </p>
+    } @else if (results.isPending()) {
+      <p class="group-footer">Searching…</p>
+    } @else if (results.data()?.length === 0) {
+      <p class="group-footer">No games found.</p>
+    } @else {
+      <!-- Named only when events or companies are listed too. -->
+      @if (shownEvents().length || shownCompanies().length) {
+        <h2 class="group-header">Games</h2>
+      }
+      <ul
+        class="grouped transition-opacity"
+        [class.mt-3]="!shownEvents().length && !shownCompanies().length"
+        style="--sep-inset: 68px"
+        [class.opacity-60]="results.isPlaceholderData()"
+      >
+        @for (game of results.data(); track game.id) {
+          @let tracked = library.byId().get(game.id);
+          <li class="row py-0! pr-2! pl-0!">
+            <a [routerLink]="['/game', game.id]" class="row min-w-0 flex-1 py-2! pr-0!">
+              <app-cover
+                class="w-10 shrink-0 rounded-[5px]!"
+                [coverId]="game.coverId"
+                [name]="''"
+              />
+              <div class="min-w-0">
+                <p class="truncate">{{ game.name }}</p>
+                <p class="num truncate text-[15px] leading-5 text-muted">
+                  @if (game.dlcOf) {
+                    DLC ·
+                  }
+                  {{ game.year ?? 'TBA' }}
+                  @if (game.platforms.length) {
+                    · {{ game.platforms.join(', ') }}
+                  }
+                </p>
+              </div>
+            </a>
+            @if (tracked) {
+              <span class="shrink-0 pr-2 text-[15px] text-muted">{{ trackedLabel(tracked) }}</span>
+            } @else if (adding().has(game.id)) {
+              <span class="grid size-11 shrink-0 place-items-center text-muted" aria-label="Adding">
+                <svg lucideLoaderCircle [size]="22" class="animate-spin"></svg>
+              </span>
+            } @else {
+              <button
+                type="button"
+                class="grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
+                [attr.aria-label]="(game.dlcOf ? 'Add to Wishlist: ' : 'Add ') + game.name"
+                (click)="add(game)"
+              >
+                <svg lucideCirclePlus [size]="26" [strokeWidth]="1.75"></svg>
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    }
+    <!-- Then gaming events that match, newest first. -->
     @if (shownEvents().length) {
       <section aria-label="Events">
         <h2 class="group-header">Events</h2>
@@ -155,65 +216,57 @@
         }
       </section>
     }
-    @if (results.isError()) {
-      <p class="group-footer text-danger!" role="alert">
-        Search failed. Check your connection and try again.
-      </p>
-    } @else if (results.isPending()) {
-      <p class="group-footer">Searching…</p>
-    } @else if (results.data()?.length === 0) {
-      <p class="group-footer">No games found.</p>
-    } @else {
-      @if (shownEvents().length) {
-        <h2 class="group-header">Games</h2>
-      }
-      <ul
-        class="grouped transition-opacity"
-        [class.mt-3]="!shownEvents().length"
-        style="--sep-inset: 68px"
-        [class.opacity-60]="results.isPlaceholderData()"
-      >
-        @for (game of results.data(); track game.id) {
-          @let tracked = library.byId().get(game.id);
-          <li class="row py-0! pr-2! pl-0!">
-            <a [routerLink]="['/game', game.id]" class="row min-w-0 flex-1 py-2! pr-0!">
-              <app-cover
-                class="w-10 shrink-0 rounded-[5px]!"
-                [coverId]="game.coverId"
-                [name]="''"
-              />
-              <div class="min-w-0">
-                <p class="truncate">{{ game.name }}</p>
-                <p class="num truncate text-[15px] leading-5 text-muted">
-                  @if (game.dlcOf) {
-                    DLC ·
-                  }
-                  {{ game.year ?? 'TBA' }}
-                  @if (game.platforms.length) {
-                    · {{ game.platforms.join(', ') }}
-                  }
-                </p>
-              </div>
-            </a>
-            @if (tracked) {
-              <span class="shrink-0 pr-2 text-[15px] text-muted">{{ trackedLabel(tracked) }}</span>
-            } @else if (adding().has(game.id)) {
-              <span class="grid size-11 shrink-0 place-items-center text-muted" aria-label="Adding">
-                <svg lucideLoaderCircle [size]="22" class="animate-spin"></svg>
-              </span>
-            } @else {
-              <button
-                type="button"
-                class="grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
-                [attr.aria-label]="(game.dlcOf ? 'Add to Wishlist: ' : 'Add ') + game.name"
-                (click)="add(game)"
-              >
-                <svg lucideCirclePlus [size]="26" [strokeWidth]="1.75"></svg>
-              </button>
-            }
-          </li>
+    <!-- Then developers and publishers whose name matches, the best-known first. -->
+    @if (shownCompanies().length) {
+      <section aria-label="Companies">
+        <h2 class="group-header">Companies</h2>
+        <ul class="grouped" style="--sep-inset: 68px">
+          @for (company of shownCompanies(); track company.id) {
+            <li class="row p-0!">
+              <a [routerLink]="['/company', company.id]" class="row py-2!">
+                <!-- Logos are dark on see-through backgrounds, like on the company page. -->
+                @if (company.logoId) {
+                  <span class="size-10 shrink-0 overflow-hidden rounded-[5px] bg-white p-1">
+                    <img
+                      [src]="logoUrl(company.logoId)"
+                      alt=""
+                      loading="lazy"
+                      class="block size-full object-contain"
+                    />
+                  </span>
+                } @else {
+                  <span
+                    class="grid size-10 shrink-0 place-items-center rounded-[5px] bg-raised text-muted"
+                  >
+                    <svg lucideBuilding2 [size]="20" [strokeWidth]="1.75"></svg>
+                  </span>
+                }
+                <div class="min-w-0 flex-1">
+                  <p class="truncate">{{ company.name }}</p>
+                  <p class="truncate text-[15px] leading-5 text-muted">
+                    {{ companyLine(company) }}
+                  </p>
+                </div>
+                <svg
+                  lucideChevronRight
+                  [size]="18"
+                  [strokeWidth]="2.25"
+                  class="-mr-1 shrink-0 text-faint"
+                ></svg>
+              </a>
+            </li>
+          }
+        </ul>
+        @if (foundCompanies().length > shownCompanies().length) {
+          <button
+            type="button"
+            class="group-footer text-accent! active:opacity-60"
+            (click)="allCompanies.set(true)"
+          >
+            Show all {{ foundCompanies().length }}
+          </button>
         }
-      </ul>
+      </section>
     }
   }
 </div>

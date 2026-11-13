@@ -1,4 +1,6 @@
 import {
+  buildCompanySearchQuery,
+  rankCompanies,
   buildEventQuery,
   buildEventSearchQuery,
   buildGameEventsQuery,
@@ -272,5 +274,37 @@ describe('event queries', () => {
     const query = buildEventQuery(1170);
     expect(query).toContain('games.name, games.cover.image_id');
     expect(query).toContain('where id = 1170;');
+  });
+});
+
+describe('company search', () => {
+  it('matches the name, only companies with games, escaping the term', () => {
+    const query = buildCompanySearchQuery(' from "soft" ');
+    expect(query).toContain(
+      'where name ~ *"from \\"soft\\""* & (developed != null | published != null);',
+    );
+  });
+
+  it('puts names starting with the term first, then the biggest companies, once per name', () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => i);
+    const ranked = rankCompanies('santa monica', [
+      { id: 1, name: 'SCE Santa Monica Studio', developed: ids(30) },
+      { id: 2, name: 'Santa Monica Studio', developed: ids(2) },
+      { id: 3, name: 'Santa Monica Studio', developed: ids(20), published: ids(1), country: 840 },
+      { id: 4, name: 'Santa Monica Indie', published: ids(1), logo: { image_id: 'cl9' } },
+    ]);
+    expect(ranked.map((c) => c.id)).toEqual([3, 4, 1]);
+    expect(ranked[0]).toEqual({
+      id: 3,
+      name: 'Santa Monica Studio',
+      logoId: null,
+      country: 840,
+      role: 'Developer and publisher',
+    });
+    expect(ranked.map((c) => c.role)).toEqual([
+      'Developer and publisher',
+      'Publisher',
+      'Developer',
+    ]);
   });
 });

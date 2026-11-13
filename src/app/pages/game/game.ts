@@ -168,16 +168,22 @@ export class GamePage {
       null,
   );
   /**
-   * "Santa Monica Studio · Sony Interactive Entertainment". IGDB doesn't mark a main publisher, so
-   * it's the first one that isn't also the developer; a self-published game shows one name.
+   * "Santa Monica Studio · Sony Interactive Entertainment", each opening its company page once
+   * IGDB's details are in (id null until then). IGDB doesn't mark a main publisher, so it's the
+   * first one that isn't also the developer; a self-published game shows one name.
    */
   protected readonly makers = computed(() => {
     const developer = this.developer();
     const companies = this.details.data()?.involved_companies ?? [];
+    const developerId = companies.find((c) => c.developer && c.company?.name === developer)?.company
+      ?.id;
     const publisher = companies.find(
       (c) => c.publisher && !c.developer && c.company && c.company.name !== developer,
-    )?.company?.name;
-    return [developer, publisher].filter(Boolean).join(' · ') || null;
+    )?.company;
+    return [
+      developer ? { id: developerId ?? null, name: developer } : null,
+      publisher ? { id: publisher.id ?? null, name: publisher.name } : null,
+    ].filter((m) => m !== null);
   });
   protected readonly heroUrl = computed(() => {
     const d = this.details.data();

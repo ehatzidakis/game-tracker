@@ -40,6 +40,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/game/game').then((m) => m.GamePage),
       },
       {
+        path: 'company/:id',
+        title: 'Company · Game Tracker',
+        data: { back: true },
+        loadComponent: () => import('./pages/company/company').then((m) => m.CompanyPage),
+      },
+      {
         path: 'event/:id',
         title: 'Event · Game Tracker',
         data: { back: true },
