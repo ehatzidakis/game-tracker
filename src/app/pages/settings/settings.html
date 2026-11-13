@@ -138,6 +138,79 @@
   }
 </section>
 
+<!-- PlayStation: your Online ID, so playtime and trophies can come from your profile. -->
+<section aria-labelledby="psn-title">
+  <h2 id="psn-title" class="group-header">PlayStation</h2>
+  @if (s.psn; as psn) {
+    <div class="grouped">
+      <div class="row">
+        <span class="flex-1">Online ID</span>
+        <span class="row-value">{{ psn.onlineId }}</span>
+      </div>
+      <a routerLink="/playstation" class="row">
+        <span class="flex-1">Games</span>
+        <span class="row-value num">
+          {{ psnGames.matched().length }} matched
+          @if (psnGames.unmatched().length) {
+            · {{ psnGames.unmatched().length }} not in library
+          }
+        </span>
+        <svg
+          lucideChevronRight
+          [size]="18"
+          [strokeWidth]="2.25"
+          class="-mr-1 shrink-0 text-faint"
+        ></svg>
+      </a>
+      <button type="button" class="row text-danger" [disabled]="psnBusy()" (click)="unlinkPsn()">
+        Disconnect
+      </button>
+    </div>
+    <p class="group-footer">
+      @if (psn.games && psn.trophies) {
+        Your games, playtime and trophies can be read.
+      } @else if (psn.trophies) {
+        Your trophies can be read, but not the games you’ve played (and their playtime): in your
+        PlayStation privacy settings, let others see your gaming history.
+      } @else if (psn.games) {
+        Your games and playtime can be read, but not your trophies: in your PlayStation privacy
+        settings, let others see your trophies.
+      } @else {
+        Your profile is hidden: in your PlayStation privacy settings, let others see your trophies
+        and gaming history.
+      }
+    </p>
+  } @else {
+    <!-- 17px: 16px or more stops iOS zooming in on focus. -->
+    <form class="grouped" (submit)="linkPsn($event, onlineId)">
+      <label class="row">
+        <span class="sr-only">PlayStation Online ID</span>
+        <input
+          #onlineId
+          type="text"
+          placeholder="Online ID, like Tatius94"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          enterkeyhint="go"
+          maxlength="16"
+          class="min-w-0 flex-1 bg-transparent text-[17px] outline-none"
+        />
+        <button
+          type="submit"
+          class="shrink-0 text-[17px] text-accent active:opacity-60 disabled:opacity-40"
+          [disabled]="psnBusy()"
+        >
+          {{ psnBusy() ? 'Checking…' : 'Connect' }}
+        </button>
+      </label>
+    </form>
+    <p class="group-footer">
+      Your PlayStation name, not your email. Playtime and trophies then come from your profile.
+    </p>
+  }
+</section>
+
 <!-- Gaming events: all of them, including past and archived ones. -->
 <section aria-labelledby="events-title">
   <h2 id="events-title" class="group-header">Gaming events</h2>

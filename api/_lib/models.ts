@@ -195,6 +195,41 @@ export function eventEnd(event: Pick<GamingEvent, 'startsAt' | 'durationMinutes'
   return event.startsAt + (event.durationMinutes || DEFAULT_EVENT_MINUTES) * 60_000;
 }
 
+/**
+ * Your PlayStation account, linked in Settings (written by the server after checking it with
+ * PlayStation). The sync reads its games and trophies.
+ */
+export interface PsnLink {
+  /** The public PlayStation name, as PlayStation writes it ("Tatius94"). */
+  onlineId: string;
+  accountId: string;
+  /** Whether the played games (with playtime) and the trophies could be read when it was linked. */
+  games: boolean;
+  trophies: boolean;
+  linkedAt: number;
+}
+
+/**
+ * users/{uid}/psnGames/{conceptId}: a game on your PlayStation as the sync last read it (demos
+ * and apps left out, PS4 and PS5 versions together), and which library game it is. Written by
+ * the server; you can change igdbId in the app (matchedBy becomes 'manual', and stays).
+ */
+export interface PsnGameRecord {
+  conceptId: number;
+  name: string;
+  titleIds: string[];
+  /** Over all versions, in seconds. */
+  playSeconds: number;
+  /** ms */
+  firstPlayedAt: number | null;
+  lastPlayedAt: number | null;
+  /** The library game, or null when it isn't in your library. */
+  igdbId: number | null;
+  matchedBy: 'store' | 'name' | 'manual' | null;
+  /** When the sync last read it (ms). */
+  seenAt: number;
+}
+
 /** users/{uid} */
 export interface UserSettings {
   calendarKey: string | null;
@@ -203,6 +238,7 @@ export interface UserSettings {
   notifyTime: string;
   notifyDaysBefore: number;
   defaultPlatform: PlatformKey;
+  psn?: PsnLink | null;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {

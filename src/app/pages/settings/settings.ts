@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   LucideCalendarPlus,
@@ -11,6 +11,7 @@ import { PLATFORMS, type PlatformKey } from '../../../../api/_lib/platforms.js';
 import { AuthService } from '../../core/auth.service';
 import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
+import { PsnService } from '../../core/psn.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
 
@@ -34,6 +35,38 @@ export class SettingsPage {
   protected readonly eventCount = computed(() => this.events.events().length);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly psn = inject(PsnService);
+  protected readonly psnGames = this.psn;
+  /** Checking or removing the PlayStation link. */
+  protected readonly psnBusy = signal(false);
+
+  protected async linkPsn(event: Event, field: HTMLInputElement): Promise<void> {
+    event.preventDefault();
+    const onlineId = field.value.trim();
+    if (!onlineId || this.psnBusy()) return;
+    this.psnBusy.set(true);
+    try {
+      const link = await this.psn.link(onlineId);
+      this.toast.show(`Connected ${link.onlineId}`);
+    } catch (error) {
+      this.toast.error((error as Error).message, error);
+    } finally {
+      this.psnBusy.set(false);
+    }
+  }
+
+  protected async unlinkPsn(): Promise<void> {
+    if (this.psnBusy() || !confirm('Disconnect your PlayStation account?')) return;
+    this.psnBusy.set(true);
+    try {
+      await this.psn.unlink();
+      this.toast.show('PlayStation disconnected');
+    } catch (error) {
+      this.toast.error((error as Error).message, error);
+    } finally {
+      this.psnBusy.set(false);
+    }
+  }
 
   protected readonly platforms = PLATFORMS;
   protected readonly dayOptions = [0, 1, 2, 3, 5, 7];

@@ -52,6 +52,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/event/event').then((m) => m.EventPage),
       },
       {
+        path: 'playstation',
+        title: 'PlayStation games · Game Tracker',
+        data: { title: 'PlayStation games', back: true },
+        loadComponent: () =>
+          import('./pages/playstation/playstation').then((m) => m.PlaystationPage),
+      },
+      {
         path: 'events',
         title: 'Gaming events · Game Tracker',
         data: { title: 'Gaming events', back: true },

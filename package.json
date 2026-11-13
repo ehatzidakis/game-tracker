@@ -23,6 +23,7 @@
     "firebase": "^12.19.0",
     "firebase-admin": "^14.5.0",
     "jose": "^6.2.15",
+    "psn-api": "^2.18.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "web-push": "^4.0.0",
