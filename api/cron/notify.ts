@@ -1,15 +1,28 @@
-// Hourly: moves pre-orders that came out today to the Backlog, then sends release alerts that
-// are due. Called by the hourly trigger with CRON_SECRET.
+// Hourly: moves pre-orders that came out today to the Backlog, sends release alerts that are
+// due, then fills in OpenCritic scores with whatever is left of its allowance. Called by the
+// hourly trigger with CRON_SECRET.
 import { adminDb } from '../_lib/admin.js';
 import { isCron, json } from '../_lib/auth.js';
 import { runNotify, runPreorderArrivals } from '../_lib/jobs.js';
+import { runOpenCriticRefresh } from '../_lib/opencritic.js';
+
+/** OpenCritic calls per hourly run: room for the day's searches, and quick to finish. */
+const HOURLY_OPENCRITIC_CALLS = 50;
 
 export async function GET(request: Request): Promise<Response> {
   if (!isCron(request)) return json({ error: 'Forbidden' }, 403);
   try {
     const db = adminDb();
     const arrivals = await runPreorderArrivals(db);
-    return json({ ...(await runNotify(db)), arrivals });
+    const notify = await runNotify(db);
+    // Last, and on its own: an OpenCritic problem never holds up alerts.
+    const opencritic = await runOpenCriticRefresh(db, Date.now(), HOURLY_OPENCRITIC_CALLS).catch(
+      (error: unknown) => {
+        console.error(error);
+        return { error: 'OpenCritic refresh failed' };
+      },
+    );
+    return json({ ...notify, arrivals, opencritic });
   } catch (error) {
     console.error(error);
     return json({ error: 'Notify failed' }, 500);

@@ -1,6 +1,7 @@
 import {
   entryFrom,
   isStale,
+  lookupRank,
   matchCandidates,
   maxAgeDays,
   sameYear,
@@ -80,7 +81,35 @@ describe('OpenCritic matching', () => {
       percentRecommended: null,
     });
     expect(toScore(entryFrom(1, null, null, 0))).toEqual({ status: 'none' });
-    expect(toScore(null)).toEqual({ status: 'later' });
+    expect(toScore(null)).toEqual({ status: 'later', limit: false, retryAt: null });
+    expect(toScore(null, { limit: true, retryAt: 123 })).toEqual({
+      status: 'later',
+      limit: true,
+      retryAt: 123,
+    });
+  });
+});
+
+describe('lookupRank', () => {
+  it('looks up Completed first, then Backlog, Shelved, Wishlist, and owned DLC last', () => {
+    const order = [
+      { name: 'dlc owned', status: 'completed', parentId: 1 },
+      { name: 'wishlist', status: 'wishlist' },
+      { name: 'dlc wished', status: 'wishlist', parentId: 1 },
+      { name: 'shelved', status: 'shelved' },
+      { name: 'completed', status: 'completed' },
+      { name: 'backlog', status: 'backlog' },
+    ]
+      .sort((a, b) => lookupRank(a) - lookupRank(b))
+      .map((g) => g.name);
+    expect(order).toEqual([
+      'completed',
+      'backlog',
+      'shelved',
+      'wishlist',
+      'dlc wished',
+      'dlc owned',
+    ]);
   });
 });
 

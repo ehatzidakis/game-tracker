@@ -28,7 +28,8 @@ export async function GET(request: Request): Promise<Response> {
   if (!Number.isInteger(igdbId) || igdbId <= 0) return json({ error: 'Bad request' }, 400);
 
   try {
-    return json(toScore(await openCriticFor(adminDb(), igdbId)));
+    const { entry, limit, retryAt } = await openCriticFor(adminDb(), igdbId);
+    return json(toScore(entry, { limit, retryAt }));
   } catch (error) {
     console.error(error);
     return json({ error: 'OpenCritic is unreachable' }, 502);

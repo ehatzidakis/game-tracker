@@ -1,7 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
+import { injectQuery } from '@tanstack/angular-query-experimental';
 import {
   LucideArrowUpDown,
   LucideChevronDown,
@@ -196,7 +196,10 @@ export class LibraryPage {
     enabled: this.scoreIds().length > 0,
     staleTime: 6 * 60 * 60_000,
     retry: false,
-    placeholderData: keepPreviousData,
+    // While asking, the last scores (or, on opening the app, the ones kept on this phone), so the
+    // rings and the OpenCritic sort are there at once.
+    placeholderData: (previous?: Record<string, number>) =>
+      previous ?? this.openCritic.cachedScores(),
   }));
   protected readonly scores = computed<Record<string, number>>(() => this.scoresQuery.data() ?? {});
 

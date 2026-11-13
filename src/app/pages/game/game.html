@@ -499,6 +499,22 @@
         }
       </div>
     </section>
+  } @else if (openCriticLimit(); as limit) {
+    <!-- Not looked up yet, and OpenCritic's daily allowance is used up. -->
+    <section aria-label="OpenCritic">
+      <h2 class="group-header">OpenCritic</h2>
+      <div class="grouped">
+        <div class="row">
+          <div class="min-w-0 flex-1">
+            <p>Daily limit reached</p>
+            <p class="text-[13px] leading-[18px] text-muted">
+              The score can be looked up again {{ limit.when }}. Open the game then, or it fills in
+              by itself.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   }
 
   @if (name()) {

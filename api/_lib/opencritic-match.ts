@@ -53,11 +53,17 @@ export type OpenCriticScore =
     }
   /** OpenCritic has no page for this game. */
   | { status: 'none' }
-  /** Out of OpenCritic requests for today; try again later. */
-  | { status: 'later' };
+  /**
+   * Not looked up yet and OpenCritic can't be asked right now: `limit` when today's allowance is
+   * used up (it comes back at `retryAt`, ms, if known), otherwise OpenCritic didn't answer.
+   */
+  | { status: 'later'; limit: boolean; retryAt: number | null };
 
-export function toScore(entry: OpenCriticEntry | null): OpenCriticScore {
-  if (!entry) return { status: 'later' };
+export function toScore(
+  entry: OpenCriticEntry | null,
+  later: { limit: boolean; retryAt: number | null } = { limit: false, retryAt: null },
+): OpenCriticScore {
+  if (!entry) return { status: 'later', ...later };
   if (!entry.ocId) return { status: 'none' };
   return {
     status: 'found',
@@ -68,6 +74,16 @@ export function toScore(entry: OpenCriticEntry | null): OpenCriticScore {
     numReviews: entry.numReviews,
     numTopCriticReviews: entry.numTopCriticReviews,
   };
+}
+
+/**
+ * Which games the job looks up first: Completed, then Backlog, then Shelved, then the Wishlist
+ * (wishlisted DLC after the games), and owned DLC last (it never shows as a Library cover).
+ */
+export function lookupRank(game: { status: string; parentId?: number | null }): number {
+  const dlc = game.parentId != null;
+  if (dlc) return game.status === 'wishlist' ? 4 : 5;
+  return { completed: 0, backlog: 1, shelved: 2, wishlist: 3 }[game.status] ?? 3;
 }
 
 /** "Marvel's Spider-Man™ 2" → "marvels spider man 2"; "Ragnarök" → "ragnarok". */

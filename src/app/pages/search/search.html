@@ -28,7 +28,7 @@
       (pointerdown)="$event.preventDefault()"
       (click)="term.set(''); searchInput.focus()"
     >
-      <svg lucideCircleX [size]="18" class="fill-current [&>*]:stroke-group"></svg>
+      <svg lucideCircleX [size]="18" class="fill-current *:stroke-group"></svg>
     </button>
   }
 </div>
@@ -46,19 +46,19 @@
         <ul class="shots -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
           @if (section.loading) {
             @for (i of [1, 2, 3, 4]; track i) {
-              <li class="w-[104px] shrink-0">
-                <div class="aspect-[3/4] animate-pulse rounded-[6px] bg-group"></div>
+              <li class="w-26 shrink-0">
+                <div class="aspect-3/4 animate-pulse rounded-md bg-group"></div>
               </li>
             }
           }
           @for (game of section.games; track game.id) {
             @let tracked = library.byId().get(game.id);
-            <li class="w-[104px] shrink-0 snap-start">
+            <li class="w-26 shrink-0 snap-start">
               <a [routerLink]="['/game', game.id]" class="block active:opacity-70">
                 <app-cover [coverId]="game.coverId" [name]="game.name">
                   @if (tracked) {
                     <span
-                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
                     >
                       {{ trackedLabel(tracked) }}
                     </span>
@@ -81,9 +81,9 @@
         <h2 class="mt-6 mb-2 text-[20px] leading-6 font-semibold">Upcoming events</h2>
         <ul class="shots -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
           @for (event of upcomingEvents(); track event.id) {
-            <li class="w-[176px] shrink-0 snap-start">
+            <li class="w-44 shrink-0 snap-start">
               <a [routerLink]="['/event', eventDocId(event.id)]" class="block active:opacity-70">
-                <app-event-art class="aspect-video rounded-[8px]" [logoId]="event.logoId" />
+                <app-event-art class="aspect-video rounded-lg" [logoId]="event.logoId" />
                 <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
                   {{ event.name }}
                 </p>
@@ -111,7 +111,7 @@
             <li class="row py-0! pr-2! pl-0!">
               <a [routerLink]="['/event', docId]" class="row min-w-0 flex-1 py-2! pr-0!">
                 <app-event-art
-                  class="h-10 w-[71px] shrink-0 rounded-[5px]"
+                  class="h-10 w-17.75 shrink-0 rounded-[5px]"
                   [logoId]="event.logoId"
                   [iconSize]="40"
                 />

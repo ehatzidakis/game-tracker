@@ -2,11 +2,15 @@
 // most 4 a second; past the limit calls fail, nothing is charged). The key is RAPIDAPI_KEY.
 // A game is matched once by name (a search), then refreshed by its OpenCritic id (a request).
 // Results are shared by all users in opencritic/{igdbId}; the app can't read that collection.
+// The allowance doesn't reset at midnight: it's a 24-hour window (it reset at 18:57 UTC in
+// November 2026). So the backfill runs every hour, using what's left whenever it is, and what's
+// left is kept in meta/opencriticQuota so a fresh function knows without spending a call.
 import type { Firestore } from 'firebase-admin/firestore';
 import { igdbQuery } from './igdb-client.js';
 import {
   entryFrom,
   isStale,
+  lookupRank,
   matchCandidates,
   maxAgeDays,
   sameYear,
@@ -17,11 +21,38 @@ import {
 
 const HOST = 'opencritic-api.p.rapidapi.com';
 
-/** What's left today, from the last reply's headers (null until the first call). */
-export const remaining: { requests: number | null; searches: number | null } = {
+/** What's left in the current window, from the last reply's headers (null until known). */
+export const remaining: {
+  requests: number | null;
+  searches: number | null;
+  /** When the window ends and the allowance is full again (ms). */
+  resetAt: number | null;
+} = {
   requests: null,
   searches: null,
+  resetAt: null,
 };
+
+/** True when at most `keep` of that allowance is left and it hasn't reset since. */
+function lowOn(kind: 'requests' | 'searches', keep: number, now = Date.now()): boolean {
+  const left = remaining[kind];
+  if (left === null) return false;
+  if (remaining.resetAt !== null && now >= remaining.resetAt) return false;
+  return left <= keep;
+}
+
+const quotaRef = (db: Firestore) => db.collection('meta').doc('opencriticQuota');
+
+/** Reads what's left from the last function that asked, unless this one already knows. */
+async function loadQuota(db: Firestore, now: number): Promise<void> {
+  if (remaining.resetAt !== null && now < remaining.resetAt) return;
+  const saved = (await quotaRef(db).get()).data() as typeof remaining | undefined;
+  if (saved?.resetAt && now < saved.resetAt) Object.assign(remaining, saved);
+}
+
+async function saveQuota(db: Firestore): Promise<void> {
+  if (remaining.resetAt !== null) await quotaRef(db).set({ ...remaining });
+}
 
 /** Out of today's requests or searches (or no key): try again tomorrow. */
 export class OutOfQuota extends Error {}
@@ -45,6 +76,8 @@ async function call<T>(path: string): Promise<T> {
   };
   remaining.requests = header('x-ratelimit-requests-remaining') ?? remaining.requests;
   remaining.searches = header('x-ratelimit-searches-remaining') ?? remaining.searches;
+  const resetIn = header('x-ratelimit-searches-reset') ?? header('x-ratelimit-requests-reset');
+  if (resetIn !== null) remaining.resetAt = Date.now() + resetIn * 1000;
   if (res.status === 429) throw new OutOfQuota(`OpenCritic limit reached (${path})`);
   if (!res.ok) throw new Error(`OpenCritic ${path} failed with ${res.status}`);
   return (await res.json()) as T;
@@ -97,23 +130,31 @@ const entryRef = (db: Firestore, igdbId: number) => db.collection('opencritic').
 
 /**
  * The stored score for a game, refreshed first when it's due. Falls back to the stored one (or
- * null, if there's none) when OpenCritic can't be asked right now.
+ * null, if there's none) when OpenCritic can't be asked right now; `limit` says that's because
+ * the allowance is used up, and `retryAt` when it comes back.
  */
 export async function openCriticFor(
   db: Firestore,
   igdbId: number,
   now = Date.now(),
-): Promise<OpenCriticEntry | null> {
+): Promise<{ entry: OpenCriticEntry | null; limit: boolean; retryAt: number | null }> {
   const snap = await entryRef(db, igdbId).get();
   const stored = snap.exists ? (snap.data() as OpenCriticEntry) : null;
-  if (stored && !isStale(stored, now)) return stored;
+  if (stored && !isStale(stored, now)) return { entry: stored, limit: false, retryAt: null };
+  await loadQuota(db, now);
+  // A game matched before needs a request; a new one a search.
+  const limited = () => ({ entry: stored, limit: true, retryAt: remaining.resetAt });
+  if (lowOn(stored?.ocId ? 'requests' : 'searches', 0, now)) return limited();
   try {
     const entry = await lookUp(igdbId, stored, now);
     await entryRef(db, igdbId).set(entry);
-    return entry;
+    return { entry, limit: false, retryAt: null };
   } catch (error) {
-    if (!(error instanceof OutOfQuota)) console.error(error);
-    return stored;
+    if (error instanceof OutOfQuota) return limited();
+    console.error(error);
+    return { entry: stored, limit: false, retryAt: null };
+  } finally {
+    await saveQuota(db).catch((error: unknown) => console.error(error));
   }
 }
 
@@ -143,15 +184,23 @@ const KEEP_REQUESTS = 30;
 const MAX_CALLS = 100;
 
 /**
- * Daily: refreshes due scores for every game in anyone's library (games around release first),
- * then matches games not looked up yet, as far as today's searches allow. A big library gets
- * matched over a few days.
+ * Refreshes due scores for every game in anyone's library (games around release first), then
+ * looks up games not looked up yet (Completed, then Backlog, Shelved, Wishlist, owned DLC last),
+ * as far as the allowance goes. Runs every hour, so a big library fills in as soon as the
+ * allowance comes back. Keeps a few searches and requests for opening game pages.
  */
-export async function runOpenCriticRefresh(db: Firestore, now = Date.now()) {
-  const ids = new Set<number>();
+export async function runOpenCriticRefresh(db: Firestore, now = Date.now(), maxCalls = MAX_CALLS) {
+  // Each game's most important status across everyone who has it.
+  const rank = new Map<number, number>();
   for (const user of await db.collection('users').listDocuments()) {
-    for (const doc of await user.collection('games').listDocuments()) ids.add(Number(doc.id));
+    for (const doc of (await user.collection('games').get()).docs) {
+      const id = Number(doc.id);
+      const r = lookupRank(doc.data() as { status: string; parentId?: number | null });
+      rank.set(id, Math.min(rank.get(id) ?? r, r));
+    }
   }
+  const ids = new Set(rank.keys());
+  await loadQuota(db, now);
 
   const refs = [...ids].map((id) => entryRef(db, id));
   const stored = new Map<number, OpenCriticEntry>();
@@ -169,14 +218,14 @@ export async function runOpenCriticRefresh(db: Firestore, now = Date.now()) {
   const refreshes = due
     .filter((id) => stored.get(id)?.ocId)
     .sort((a, b) => maxAgeDays(stored.get(a)!, now) - maxAgeDays(stored.get(b)!, now));
-  const searches = due.filter((id) => !stored.get(id)?.ocId);
+  const searches = due
+    .filter((id) => !stored.get(id)?.ocId)
+    .sort((a, b) => rank.get(a)! - rank.get(b)!);
 
   let refreshed = 0;
   let matched = 0;
   let notFound = 0;
   let calls = 0;
-  const lowOn = (kind: 'requests' | 'searches', keep: number) =>
-    remaining[kind] !== null && remaining[kind] <= keep;
 
   let failed = 0;
   // One game failing (a bad reply) doesn't stop the rest; running out of quota does.
@@ -195,13 +244,13 @@ export async function runOpenCriticRefresh(db: Firestore, now = Date.now()) {
 
   try {
     for (const id of refreshes) {
-      if (calls >= MAX_CALLS || lowOn('requests', KEEP_REQUESTS)) break;
+      if (calls >= maxCalls || lowOn('requests', KEEP_REQUESTS, now)) break;
       calls++;
       if (await update(id)) refreshed++;
     }
     for (const id of searches) {
-      if (calls >= MAX_CALLS || lowOn('requests', KEEP_REQUESTS)) break;
-      if (lowOn('searches', KEEP_SEARCHES)) break;
+      if (calls >= maxCalls || lowOn('requests', KEEP_REQUESTS, now)) break;
+      if (lowOn('searches', KEEP_SEARCHES, now)) break;
       calls += 2;
       const entry = await update(id);
       if (entry?.ocId) matched++;
@@ -209,6 +258,8 @@ export async function runOpenCriticRefresh(db: Firestore, now = Date.now()) {
     }
   } catch (error) {
     if (!(error instanceof OutOfQuota)) throw error;
+  } finally {
+    await saveQuota(db).catch((error: unknown) => console.error(error));
   }
 
   return {

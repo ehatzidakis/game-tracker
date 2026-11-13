@@ -47,6 +47,7 @@ import {
   type GameSummary,
 } from '../../core/igdb';
 import { OpenCriticService } from '../../core/opencritic';
+import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
 import { EventArt } from '../../shared/event-art';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
@@ -124,14 +125,34 @@ export class GamePage {
     staleTime: 6 * 60 * 60_000,
   }));
 
-  /** OpenCritic's verdict. The server keeps it fresh, so it's fine to keep for a few hours here. */
+  /**
+   * OpenCritic's verdict. The server keeps it fresh, so it's fine to keep for a few hours here;
+   * "can't ask right now" is asked again on the next visit. While asking, the last answer on this
+   * phone shows, so the section doesn't pop in late.
+   */
   private readonly openCriticQuery = injectQuery(() => ({
     queryKey: ['opencritic', this.gameId()],
     queryFn: () => this.openCriticService.score(this.gameId()),
     enabled: Number.isInteger(this.gameId()),
-    staleTime: 6 * 60 * 60_000,
+    staleTime: (query: { state: { data?: OpenCriticScore } }) =>
+      query.state.data?.status === 'later' ? 0 : 6 * 60 * 60_000,
     retry: false,
+    placeholderData: () => this.openCriticService.cachedScore(this.gameId()),
   }));
+
+  /**
+   * OpenCritic's daily allowance is used up and this game hasn't been looked up yet: "Back in
+   * about 5 hours". Null otherwise.
+   */
+  protected readonly openCriticLimit = computed(() => {
+    const score = this.openCriticQuery.data();
+    if (score?.status !== 'later' || !score.limit) return null;
+    if (!score.retryAt) return { when: 'tomorrow' };
+    const hours = Math.ceil((score.retryAt - Date.now()) / 3_600_000);
+    return {
+      when: hours <= 1 ? 'within the hour' : `in about ${hours} hours`,
+    };
+  });
 
   /** Your copy, if the game is in your library. Works offline. */
   protected readonly tracked = computed(() => this.library.byId().get(this.gameId()));

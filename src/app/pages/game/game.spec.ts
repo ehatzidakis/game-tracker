@@ -78,7 +78,10 @@ async function render(
           eventsOf: async () => shownAt,
         },
       },
-      { provide: OpenCriticService, useValue: { score: async () => openCritic } },
+      {
+        provide: OpenCriticService,
+        useValue: { score: async () => openCritic, cachedScore: () => undefined },
+      },
       { provide: PushService, useValue: { enabledHere: () => false } },
       {
         provide: LibraryService,
@@ -176,6 +179,26 @@ describe('GamePage', () => {
     expect(rows.map((r) => r.getAttribute('href'))).toEqual(['/event/igdb-481', '/event/igdb-753']);
     // Picking events by hand is gone.
     expect(el.textContent).not.toContain('First shown');
+  });
+
+  it('says when OpenCritic’s daily limit is reached for a game not looked up yet', async () => {
+    const { el } = await render(tracked({}), details, {
+      status: 'later',
+      limit: true,
+      retryAt: Date.now() + 4.5 * 3_600_000,
+    });
+    const text = el.querySelector('[aria-label=OpenCritic]')?.textContent?.replace(/\s+/g, ' ');
+    expect(text).toContain('Daily limit reached');
+    expect(text).toContain('in about 5 hours');
+  });
+
+  it('shows nothing for OpenCritic when it just could not be reached', async () => {
+    const { el } = await render(tracked({}), details, {
+      status: 'later',
+      limit: false,
+      retryAt: null,
+    });
+    expect(el.querySelector('[aria-label=OpenCritic]')).toBeNull();
   });
 
   it('hides Shown at when IGDB lists no events for the game', async () => {
