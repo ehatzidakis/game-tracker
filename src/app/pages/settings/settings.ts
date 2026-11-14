@@ -84,8 +84,10 @@ export class SettingsPage {
     try {
       const state = await this.psn.syncNow();
       const n = state.changed ?? 0;
+      const p = state.platinums ?? 0;
+      const platinums = p ? ` · ${p} ${p === 1 ? 'Platinum' : 'Platinums'} completed` : '';
       this.toast.show(
-        n ? `Synced: ${n} ${n === 1 ? 'game' : 'games'} updated` : 'Synced: up to date',
+        n ? `Synced: ${n} ${n === 1 ? 'game' : 'games'} updated${platinums}` : 'Synced: up to date',
       );
     } catch (error) {
       this.toast.error((error as Error).message, error);

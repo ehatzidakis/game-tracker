@@ -379,6 +379,75 @@ describe('GamePage', () => {
     expect(el.textContent).not.toContain('On PS5');
   });
 
+  it('shows PlayStation’s playtime, last played and trophies, and keeps the hours out of the sheet', async () => {
+    const { el, sheet2 } = await render(
+      tracked({
+        status: 'completed',
+        releaseDate: '2020-01-01',
+        completion: 'main',
+        hoursPlayed: 45.5,
+        playstation: {
+          playSeconds: 45.5 * 3600,
+          firstPlayedAt: Date.UTC(2026, 9, 1),
+          lastPlayedAt: Date.UTC(2026, 10, 3, 12),
+          trophies: {
+            earned: { bronze: 30, silver: 6, gold: 1, platinum: 0 },
+            defined: { bronze: 40, silver: 10, gold: 3, platinum: 1 },
+            progress: 72,
+            lastEarnedAt: Date.UTC(2026, 10, 3, 13),
+            platform: 'PS5',
+          },
+          syncedAt: 0,
+        },
+      }),
+    );
+    const firstLine = [...el.querySelectorAll('ul')]
+      .find((ul) => ul.querySelector('li.num'))!
+      .textContent!.replace(/\s+/g, ' ');
+    expect(firstLine).toContain('45h 30m playtime');
+    expect(firstLine).toContain('Last played 3 Nov 2026');
+    expect(el.querySelector('[aria-label="From PlayStation"]')).not.toBeNull();
+    const trophies = el.querySelector('[aria-label=Trophies]')!;
+    expect(trophies.textContent!.replace(/\s+/g, ' ')).toContain('37/54 · 72%');
+    // Grades as icons with counts, Platinum first.
+    expect(
+      [...trophies.querySelectorAll('[aria-label]')].map((s) => s.getAttribute('aria-label')),
+    ).toEqual(['0 platinum', '1 gold', '6 silver', '30 bronze']);
+    [...el.querySelectorAll('button')]
+      .find((b) => b.textContent?.includes('Edit my data'))!
+      .click();
+    expect(sheet2.request()?.fields).toEqual({ purchase: true, hours: false, completed: true });
+  });
+
+  it('uses the last trophy as last played when PlayStation has no playtime for the game', async () => {
+    const { el } = await render(
+      tracked({
+        status: 'completed',
+        releaseDate: '2020-01-01',
+        hoursPlayed: 12,
+        playstation: {
+          playSeconds: 0,
+          firstPlayedAt: null,
+          lastPlayedAt: null,
+          trophies: {
+            earned: { bronze: 10, silver: 1, gold: 0, platinum: 0 },
+            defined: { bronze: 30, silver: 5, gold: 2, platinum: 0 },
+            progress: 25,
+            lastEarnedAt: Date.UTC(2019, 4, 2, 12),
+            platform: 'PS4',
+          },
+          syncedAt: 0,
+        },
+      }),
+    );
+    expect(el.textContent).toContain('Last played 2 May 2019');
+    // No Platinum in the game: no Platinum icon.
+    expect(el.querySelector('[aria-label="0 platinum"]')).toBeNull();
+    // Hours still yours to edit: PlayStation has none.
+    expect(el.textContent).toContain('12h playtime');
+    expect(el.querySelector('[aria-label="From PlayStation"]')).toBeNull();
+  });
+
   it('edits hours, completed date and purchase details in a sheet', async () => {
     const { el, edits, sheet2 } = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', hoursPlayed: 10 }),

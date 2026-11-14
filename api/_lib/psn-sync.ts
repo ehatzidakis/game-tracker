@@ -15,6 +15,8 @@ export interface TrophyListData {
   definedTrophies: TrophyCounts;
   earnedTrophies: TrophyCounts;
   lastUpdatedDateTime?: string;
+  /** "trophy" for PS4 lists, "trophy2" for PS5 ones: needed to ask for a list's trophies. */
+  npServiceName?: 'trophy' | 'trophy2';
 }
 
 /** Minutes are what's shown, so smaller differences don't count as a change. */
@@ -57,9 +59,7 @@ function trophiesOf(list: TrophyListData | null): TrophyProgress | null {
 const content = (data: PlaystationData | null | undefined) =>
   data ? JSON.stringify({ ...data, syncedAt: 0 }) : null;
 
-export type PsnGameUpdate = Partial<
-  Pick<TrackedGame, 'playstation' | 'hoursPlayed' | 'hoursPlayedManual'>
->;
+export type PsnGameUpdate = Partial<TrackedGame>;
 
 /**
  * The updates for each library game (by IGDB id), only for games where something changed.
@@ -120,4 +120,60 @@ export function psnUpdates(
     if (Object.keys(update).length) updates.set(game.igdbId, update);
   }
   return updates;
+}
+
+/** A library game with a Platinum on PlayStation that isn't Completed with Platinum yet. */
+export interface PlatinumMove {
+  igdbId: number;
+  /** The trophy list with the Platinum, to ask when it was earned. */
+  listId: string;
+  serviceName: 'trophy' | 'trophy2';
+  /** It isn't Completed yet: it moves there (otherwise only its completion goes up to Platinum). */
+  completes: boolean;
+}
+
+/**
+ * The games a Platinum completes: any of their trophy lists has the Platinum earned, and they
+ * aren't Completed with Platinum yet. DLC has no Platinum, so it never shows up here.
+ */
+export function platinumMoves(
+  library: readonly TrackedGame[],
+  lists: readonly TrophyListData[],
+  listsByGame: ReadonlyMap<number, readonly string[]>,
+): PlatinumMove[] {
+  const listById = new Map(lists.map((l) => [l.npCommunicationId, l]));
+  const moves: PlatinumMove[] = [];
+  for (const game of library) {
+    if (game.status === 'completed' && game.completion === 'platinum') continue;
+    const withPlatinum = (listsByGame.get(game.igdbId) ?? [])
+      .map((id) => listById.get(id))
+      .filter((l) => l !== undefined && l.earnedTrophies.platinum > 0);
+    const list = pickTrophyList(withPlatinum as TrophyListData[], game.myPlatform);
+    if (!list) continue;
+    moves.push({
+      igdbId: game.igdbId,
+      listId: list.npCommunicationId,
+      serviceName:
+        list.npServiceName ?? (/PS5/i.test(list.trophyTitlePlatform) ? 'trophy2' : 'trophy'),
+      completes: game.status !== 'completed',
+    });
+  }
+  return moves;
+}
+
+/**
+ * What a Platinum changes on a game: Completed, with Platinum, completed the day the Platinum was
+ * earned (`platinumAt`), no longer Playing. Already Completed: only how far you got, its date
+ * stays.
+ */
+export function platinumUpdate(game: TrackedGame, platinumAt: number, now: number): PsnGameUpdate {
+  if (game.status === 'completed') return { completion: 'platinum', updatedAt: now };
+  return {
+    status: 'completed',
+    completion: 'platinum',
+    completedAt: platinumAt,
+    purchasedAt: game.purchasedAt ?? platinumAt,
+    ...(game.playing ? { playing: false } : {}),
+    updatedAt: now,
+  };
 }

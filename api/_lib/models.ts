@@ -291,6 +291,8 @@ export interface PsnSyncState {
   lastOkAt?: number | null;
   /** Library games it changed, last time it worked. */
   changed?: number;
+  /** Games a new Platinum moved to Completed, last time it worked. */
+  platinums?: number;
 }
 
 /** How often the PlayStation sync runs by itself (you can also run it from Settings). */

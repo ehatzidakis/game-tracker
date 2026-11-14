@@ -1,6 +1,12 @@
 import type { TrackedGame } from '../../../api/_lib/models.js';
 import type { PsnGame, PsnMatch } from '../../../api/_lib/psn-match.js';
-import { pickTrophyList, psnUpdates, type TrophyListData } from '../../../api/_lib/psn-sync.js';
+import {
+  pickTrophyList,
+  platinumMoves,
+  platinumUpdate,
+  psnUpdates,
+  type TrophyListData,
+} from '../../../api/_lib/psn-sync.js';
 
 const now = Date.parse('2026-11-14T12:00:00Z');
 const counts = (bronze: number, silver: number, gold: number, platinum: number) => ({
@@ -150,5 +156,56 @@ describe('PlayStation sync updates', () => {
     expect(pickTrophyList([ps4, ps5], 'ps5')?.npCommunicationId).toBe('B');
     expect(pickTrophyList([ps4, ps5], 'pc')?.npCommunicationId).toBe('A');
     expect(pickTrophyList([], 'ps5')).toBeNull();
+  });
+});
+
+describe('a Platinum completes its game', () => {
+  const plat = (id: string, platinum: number, platform = 'PS5'): TrophyListData => ({
+    ...list(id, platform, platinum ? 100 : 60),
+    earnedTrophies: counts(40, 10, 3, platinum),
+    npServiceName: platform === 'PS5' ? 'trophy2' : 'trophy',
+  });
+
+  it('finds games with a Platinum that aren’t Completed with Platinum yet', () => {
+    const library = [
+      game(1, { status: 'backlog', playing: true }),
+      game(2, { status: 'completed', completion: 'main' }),
+      game(3, { status: 'completed', completion: 'platinum' }),
+      game(4, { status: 'shelved' }),
+    ];
+    const moves = platinumMoves(
+      library,
+      [plat('A', 1), plat('B', 1, 'PS4'), plat('C', 1), plat('D', 0)],
+      new Map([
+        [1, ['A']],
+        [2, ['B']],
+        [3, ['C']],
+        [4, ['D']],
+      ]),
+    );
+    expect(moves).toEqual([
+      { igdbId: 1, listId: 'A', serviceName: 'trophy2', completes: true },
+      { igdbId: 2, listId: 'B', serviceName: 'trophy', completes: false },
+    ]);
+  });
+
+  it('moves it to Completed on the day of the Platinum, and stops Playing', () => {
+    const platinumAt = Date.parse('2026-11-10T21:30:00Z');
+    expect(platinumUpdate(game(1, { status: 'backlog', playing: true }), platinumAt, now)).toEqual({
+      status: 'completed',
+      completion: 'platinum',
+      completedAt: platinumAt,
+      purchasedAt: platinumAt,
+      playing: false,
+      updatedAt: now,
+    });
+  });
+
+  it('only raises how far you got on a game already Completed, keeping its date', () => {
+    const done = game(2, { status: 'completed', completion: 'main', completedAt: 5 });
+    expect(platinumUpdate(done, Date.parse('2026-11-10T21:30:00Z'), now)).toEqual({
+      completion: 'platinum',
+      updatedAt: now,
+    });
   });
 });

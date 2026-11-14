@@ -5,7 +5,7 @@
 // kept in meta/psnAuth (server only) and renewed as they go; the NPSSO itself is never stored,
 // only a fingerprint of it, so a new one in PSN_NPSSO is noticed and used.
 import { createHash } from 'node:crypto';
-import type { Firestore } from 'firebase-admin/firestore';
+import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 import {
   exchangeAccessCodeForAuthTokens,
   exchangeNpssoForAccessCode,
@@ -13,6 +13,7 @@ import {
   getProfileFromUserName,
   getUserPlayedGames,
   getUserTitles,
+  getUserTrophiesEarnedForTitle,
   getUserTrophiesForSpecificTitle,
   type AuthTokensResponse,
 } from 'psn-api';
@@ -25,7 +26,8 @@ import {
   type TrackedGame,
   type TrophyCounts,
 } from './models.js';
-import { psnUpdates } from './psn-sync.js';
+import { sendToUser } from './jobs.js';
+import { platinumMoves, platinumUpdate, psnUpdates } from './psn-sync.js';
 import {
   gamesWithoutLists,
   groupPlayed,
@@ -261,6 +263,22 @@ export async function syncPsnUser(
       read.listsByGame,
       now,
     );
+    // A new Platinum completes its game, dated the day it was earned.
+    const moves = platinumMoves(read.library, read.snapshot.lists, read.listsByGame);
+    const byId = new Map(read.library.map((g) => [g.igdbId, g]));
+    const completed: string[] = [];
+    for (const move of moves) {
+      const game = byId.get(move.igdbId)!;
+      const at = move.completes
+        ? await platinumEarnedAt(db, read.link.accountId, move, read.snapshot.lists, now)
+        : now;
+      updates.set(move.igdbId, {
+        ...(updates.get(move.igdbId) ?? {}),
+        ...platinumUpdate(game, at, now),
+      });
+      if (move.completes) completed.push(game.name);
+    }
+
     const entries = [...updates];
     for (let i = 0; i < entries.length; i += 400) {
       const batch = db.batch();
@@ -269,7 +287,15 @@ export async function syncPsnUser(
       }
       await batch.commit();
     }
-    state = { at: now, ok: true, error: null, lastOkAt: now, changed: updates.size };
+    await announcePlatinums(userRef, moves, completed, byId);
+    state = {
+      at: now,
+      ok: true,
+      error: null,
+      lastOkAt: now,
+      changed: updates.size,
+      platinums: completed.length,
+    };
   } catch (error) {
     console.error(`PlayStation sync for ${uid} failed`, error);
     state = {
@@ -285,6 +311,69 @@ export async function syncPsnUser(
   }
   await userRef.set({ psnSync: state }, { merge: true });
   return state;
+}
+
+/**
+ * When the Platinum of a game was earned (ms): asks PlayStation for its trophy list. Falls back
+ * to when the list last changed, then to now, if PlayStation won't say.
+ */
+async function platinumEarnedAt(
+  db: Firestore,
+  accountId: string,
+  move: { listId: string; serviceName: 'trophy' | 'trophy2' },
+  lists: readonly PsnTrophyList[],
+  now: number,
+): Promise<number> {
+  try {
+    const auth = { accessToken: (await psnAccessToken(db, now)).accessToken };
+    const { trophies } = await getUserTrophiesEarnedForTitle(auth, accountId, move.listId, 'all', {
+      npServiceName: move.serviceName,
+    });
+    const earned = trophies.find((t) => t.trophyType === 'platinum' && t.earned)?.earnedDateTime;
+    const at = earned ? Date.parse(earned) : NaN;
+    if (!Number.isNaN(at)) return at;
+  } catch (error) {
+    console.error('PSN Platinum date lookup failed', error);
+  }
+  const updated = lists.find((l) => l.npCommunicationId === move.listId)?.lastUpdatedDateTime;
+  const at = updated ? Date.parse(updated) : NaN;
+  return Number.isNaN(at) ? now : at;
+}
+
+/** "Platinum! Elden Ring moved to Completed", one each, or one for several at once. */
+async function announcePlatinums(
+  userRef: DocumentReference,
+  moves: readonly { igdbId: number; completes: boolean }[],
+  completed: readonly string[],
+  byId: ReadonlyMap<number, TrackedGame>,
+): Promise<void> {
+  const moved = moves.filter((m) => m.completes);
+  try {
+    if (moved.length > 3) {
+      await sendToUser(userRef, {
+        title: `${moved.length} Platinums!`,
+        body: `${completed.join(', ')} moved to Completed`,
+        url: '/library',
+        tag: 'platinums',
+      });
+      return;
+    }
+    for (const move of moved) {
+      const game = byId.get(move.igdbId)!;
+      await sendToUser(userRef, {
+        title: `Platinum! ${game.name}`,
+        body: 'Moved to Completed',
+        url: `/game/${game.igdbId}`,
+        tag: `platinum-${game.igdbId}`,
+        icon: game.coverId
+          ? `https://images.igdb.com/igdb/image/upload/t_cover_small/${game.coverId}.jpg`
+          : undefined,
+      });
+    }
+  } catch (error) {
+    // The games are completed either way; a notification that didn't go out isn't worth failing.
+    console.error('Platinum notification failed', error);
+  }
 }
 
 /**

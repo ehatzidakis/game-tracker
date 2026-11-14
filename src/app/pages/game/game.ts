@@ -15,10 +15,12 @@ import {
   LucideStore,
   LucideTrophy,
   LucideFlag,
+  LucideGamepad2,
 } from '@lucide/angular';
 import { igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
+  type TrophyCounts,
   MAX_PLAYING,
   completionLabel,
   isDlc,
@@ -34,7 +36,7 @@ import {
   type PlatformKey,
 } from '../../../../api/_lib/platforms.js';
 import { daysBetween, pickRelease } from '../../../../api/_lib/release.js';
-import { countdown, dateFieldValue, fromDateField, isReleased, today } from '../../core/dates';
+import { countdown, isReleased, today } from '../../core/dates';
 import { formatPlaytime } from '../../core/playtime';
 import {
   coverUrl,
@@ -49,6 +51,7 @@ import {
 import { OpenCriticService } from '../../core/opencritic';
 import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
 import { EventArt } from '../../shared/event-art';
+import { PLAYSTATION } from '../../shared/event-icon';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
@@ -93,6 +96,7 @@ const COMMON_STORES = ['PlayStation Store', 'Amazon'];
     LucideStore,
     LucideTrophy,
     LucideFlag,
+    LucideGamepad2,
   ],
   templateUrl: './game.html',
 })
@@ -258,27 +262,36 @@ export class GamePage {
     return `${when}, at ${notifyTime}`;
   });
 
+  /** PlayStation has a playtime for this game: it fills in your hours, which can't be edited. */
+  protected readonly hoursFromPsn = computed(
+    () => (this.tracked()?.playstation?.playSeconds ?? 0) > 0,
+  );
+
   /**
-   * Which of your fields apply: hours once a game is out and yours, the completed date once
-   * it's completed, purchase details once you own or pre-ordered it. Null when none do.
+   * Which of your fields apply: hours once a game is out and yours (unless PlayStation has them),
+   * how far you got once it's completed, purchase details once you own or pre-ordered it. Null
+   * when none do.
    */
   protected readonly editableFields = computed<SheetFields | null>(() => {
     const t = this.tracked();
     if (!t) return null;
     const owned = t.status !== 'wishlist';
     const fields = {
-      hours: owned && this.released(),
+      hours: owned && this.released() && !this.hoursFromPsn(),
       completed: t.status === 'completed',
       purchase: owned || !!t.preordered,
     };
     return fields.hours || fields.completed || fields.purchase ? fields : null;
   });
 
-  /** "34h 21m playtime", "Completed 7 Nov 2026", "€69.99", … Only what you've filled in. */
+  /**
+   * "34h 21m playtime", "Last played 3 Nov 2026", "Completed 7 Nov 2026", "€69.99", … Only what
+   * there is: yours, and what PlayStation says.
+   */
   protected readonly myData = computed(() => {
     const t = this.tracked();
-    const fields = this.editableFields();
-    if (!t || !fields) return [];
+    const fields = this.editableFields() ?? { hours: false, completed: false, purchase: false };
+    if (!t) return [];
     type Item = { icon: string; label: string };
     // Line 1: how far you got (Platinum is the trophy by the name), when, how long.
     const progress: Item[] = [];
@@ -289,7 +302,18 @@ export class GamePage {
       progress.push({ icon: 'completed', label: `Completed ${SHORT_DATE.format(t.completedAt)}` });
     }
     const played = formatPlaytime(t.hoursPlayed);
-    if (fields.hours && played) progress.push({ icon: 'hours', label: `${played} playtime` });
+    if (this.hoursFromPsn() && played) {
+      // From PlayStation: its logo instead of the clock.
+      progress.push({ icon: 'psn', label: `${played} playtime` });
+    } else if (fields.hours && played) {
+      progress.push({ icon: 'hours', label: `${played} playtime` });
+    }
+    // Last played: PlayStation's date, or else when the last trophy was earned.
+    const ps = t.playstation;
+    const lastPlayed = ps?.lastPlayedAt ?? ps?.trophies?.lastEarnedAt ?? null;
+    if (lastPlayed) {
+      progress.push({ icon: 'played', label: `Last played ${SHORT_DATE.format(lastPlayed)}` });
+    }
     // Line 2: when, where and for how much you bought it.
     const purchase: Item[] = [];
     if (fields.purchase) {
@@ -302,6 +326,20 @@ export class GamePage {
       if (t.physical) purchase.push({ icon: 'physical', label: 'Physical copy' });
     }
     return [progress, purchase].filter((line) => line.length);
+  });
+
+  /**
+   * Trophies from PlayStation: "37/54 · 72%" and how many of each grade you've earned (Platinum
+   * only when the game has one). Null without a trophy list.
+   */
+  protected readonly trophies = computed(() => {
+    const t = this.tracked()?.playstation?.trophies;
+    if (!t) return null;
+    const sum = (c: TrophyCounts) => c.bronze + c.silver + c.gold + c.platinum;
+    const grades = (['platinum', 'gold', 'silver', 'bronze'] as const)
+      .filter((grade) => t.defined[grade] > 0)
+      .map((grade) => ({ grade, earned: t.earned[grade], of: t.defined[grade] }));
+    return { earned: sum(t.earned), of: sum(t.defined), progress: t.progress, grades };
   });
 
   /** Platinum: a trophy next to the game's name. */
@@ -454,8 +492,8 @@ export class GamePage {
   protected readonly editingRating = signal(false);
   protected readonly platformLabel = platformLabel;
   protected readonly coverUrl = coverUrl;
-  protected readonly dateFieldValue = dateFieldValue;
   protected readonly formatPlaytime = formatPlaytime;
+  protected readonly playstationLogo = PLAYSTATION;
 
   constructor() {
     // The top bar shows the game's name once you scroll past the artwork.
@@ -619,13 +657,6 @@ export class GamePage {
     } else {
       this.library.setStatus(t, 'completed');
     }
-  }
-
-  /** The completed date of a DLC, set on its own page. */
-  protected setCompletedOn(event: Event): void {
-    const t = this.tracked();
-    const completedAt = fromDateField((event.target as HTMLInputElement).value);
-    if (t && completedAt !== t.completedAt) this.library.edit(t, { completedAt });
   }
 
   /** "Edit my data": hours, completed date and purchase details in a sheet. */

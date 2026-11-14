@@ -285,6 +285,20 @@ dialog.sheet[open]::backdrop {
   --tab-bar-bottom: max(calc(env(safe-area-inset-bottom) - 14px), 12px);
   --tab-bar-space: calc(62px + var(--tab-bar-bottom));
 }
+/* Trophy grades on a game's page. Light enough to read on black (4.5:1 or more). */
+.trophy-bronze {
+  color: #d39a6a;
+}
+.trophy-silver {
+  color: #c9d0d8;
+}
+.trophy-gold {
+  color: #e8c04a;
+}
+.trophy-platinum {
+  color: #a9c8ee;
+}
+
 /* A cover in the Library for a game you're playing: a blue outline. */
 .playing-cover {
   box-shadow:

@@ -8,7 +8,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { COMPLETIONS, type Completion, type TrackedGame } from '../../../api/_lib/models.js';
-import { dateFieldValue, fromDateField } from '../core/dates';
 import { parsePlaytime, splitPlaytime } from '../core/playtime';
 import { FitWidth } from './fit-content';
 
@@ -29,7 +28,7 @@ export interface MyData {
 export interface SheetFields {
   purchase: boolean;
   hours: boolean;
-  /** The completed date and how far you got. */
+  /** How far you got (the completed date isn't edited: it's set when you complete it). */
   completed: boolean;
 }
 
@@ -199,16 +198,8 @@ export function parsePrice(text: string): number | null | undefined {
                   }
                 </div>
               </div>
-              <label class="row">
-                <span class="flex-1">Completed on</span>
-                <input
-                  name="completed"
-                  type="date"
-                  class="num rounded-[8px] bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
-                  [value]="dateFieldValue(req.initial.completedAt)"
-                  [max]="req.today"
-                />
-              </label>
+              <!-- No "Completed on": it's the day you marked the game Completed (or, synced from
+                   PlayStation, the day you earned the Platinum). -->
             }
             @if (req.fields.purchase) {
               <label class="row">
@@ -323,7 +314,6 @@ export class DetailsSheetOutlet {
   protected readonly physical = signal(false);
   protected readonly completion = signal<Completion | null>(null);
   protected readonly completions = COMPLETIONS;
-  protected readonly dateFieldValue = dateFieldValue;
   protected readonly splitPlaytime = splitPlaytime;
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
@@ -359,8 +349,6 @@ export class DetailsSheetOutlet {
       data.hoursPlayed = hours;
     }
     if (req.fields.completed) {
-      // An emptied date keeps the old one: a completed game always has one.
-      data.completedAt = fromDateField(field('completed')) ?? req.initial.completedAt ?? null;
       data.completion = this.completion() ?? req.initial.completion ?? null;
     }
     if (req.fields.purchase) {

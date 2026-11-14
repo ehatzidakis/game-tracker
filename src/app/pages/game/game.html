@@ -128,8 +128,8 @@
       <svg lucideChevronRight [size]="16" [strokeWidth]="2.25" class="shrink-0"></svg>
     </a>
   }
-  <!-- Your data at a glance (only what you've filled in), edited in a sheet. -->
-  @if (!isDlcPage() && editableFields()) {
+  <!-- Your data at a glance (only what there is: yours, and PlayStation's), edited in a sheet. -->
+  @if (!isDlcPage() && (editableFields() || tracked()?.playstation)) {
     <!-- Line 1: how far, when, how long. Line 2: bought on, where, price. -->
     @for (line of myData(); track $index) {
       <ul
@@ -144,6 +144,21 @@
               }
               @case ('hours') {
                 <svg lucideClock [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('psn') {
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  fill="currentColor"
+                  class="shrink-0"
+                  aria-label="From PlayStation"
+                >
+                  <path [attr.d]="playstationLogo" />
+                </svg>
+              }
+              @case ('played') {
+                <svg lucideGamepad2 [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
               }
               @case ('completed') {
                 <svg lucideCircleCheck [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
@@ -166,14 +181,37 @@
         }
       </ul>
     }
-    <button
-      type="button"
-      class="mt-2.5 flex items-center gap-1.5 text-[15px] leading-5 text-accent active:opacity-60"
-      (click)="editMyData()"
-    >
-      <svg lucidePencil [size]="15" [strokeWidth]="2.25"></svg>
-      Edit my data
-    </button>
+    <!-- Trophies from PlayStation: earned of all, progress, then each grade (icons, no words). -->
+    @if (trophies(); as tr) {
+      <p
+        class="num mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[15px] leading-5 text-muted"
+        aria-label="Trophies"
+      >
+        <span class="flex items-center gap-1.5">
+          <svg lucideTrophy [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+          {{ tr.earned }}/{{ tr.of }} · {{ tr.progress }}%
+        </span>
+        @for (g of tr.grades; track g.grade) {
+          <span class="flex items-center gap-1" [attr.aria-label]="g.earned + ' ' + g.grade">
+            <!-- The grade's colour on a wrapper: the icon component manages its own classes. -->
+            <span class="flex shrink-0" [class]="'trophy-' + g.grade" aria-hidden="true">
+              <svg lucideTrophy [size]="14" [strokeWidth]="2.25"></svg>
+            </span>
+            <span aria-hidden="true">{{ g.earned }}</span>
+          </span>
+        }
+      </p>
+    }
+    @if (editableFields()) {
+      <button
+        type="button"
+        class="mt-2.5 flex items-center gap-1.5 text-[15px] leading-5 text-accent active:opacity-60"
+        (click)="editMyData()"
+      >
+        <svg lucidePencil [size]="15" [strokeWidth]="2.25"></svg>
+        Edit my data
+      </button>
+    }
   }
   @if (isDlcPage() && parent(); as p) {
     <a
@@ -242,17 +280,7 @@
               <span></span>
             </button>
           </div>
-          @if (t.status === 'completed') {
-            <label class="row">
-              <span class="flex-1">Completed on</span>
-              <input
-                type="date"
-                class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none scheme-dark"
-                [value]="dateFieldValue(t.completedAt)"
-                (change)="setCompletedOn($event)"
-              />
-            </label>
-          }
+
           <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
           <label class="row">
             <span class="flex-1">Price</span>
