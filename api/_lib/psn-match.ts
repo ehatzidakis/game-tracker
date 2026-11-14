@@ -211,18 +211,25 @@ export function trophyListsForLibrary(
   matches: readonly PsnMatch[],
   library: readonly LibraryEntry[],
 ): Map<number, string[]> {
-  const gameOf = new Map(
-    matches.filter((m) => m.igdbId !== null).map((m) => [m.conceptId, m.igdbId!]),
-  );
+  const matchOf = new Map(matches.filter((m) => m.igdbId !== null).map((m) => [m.conceptId, m]));
+  const nameOf = new Map(library.map((g) => [g.igdbId, comparableName(g.name)]));
   const named = libraryByName(library);
   const byGame = new Map<number, string[]>();
   for (const list of lists) {
     // Its own name first: a collection ("Uncharted: The Nathan Drake Collection") has a list per
     // game, each for that game in the library.
     const concept = listConcepts.get(list.npCommunicationId);
-    const igdbId =
-      named(list.trophyTitleName)?.igdbId ??
-      (concept !== undefined ? gameOf.get(concept) : undefined);
+    const match = concept !== undefined ? matchOf.get(concept) : undefined;
+    // A game you linked by hand brings its playtime, but its lists only when they're for that
+    // game: "Horizon Zero Dawn" for "Horizon Zero Dawn Remastered", not the Call of Duty
+    // launcher's "Modern Warfare II" for "Modern Warfare".
+    const viaMatch =
+      match &&
+      (match.by !== 'manual' ||
+        (nameOf.get(match.igdbId!) ?? '').startsWith(comparableName(list.trophyTitleName)))
+        ? match.igdbId!
+        : undefined;
+    const igdbId = named(list.trophyTitleName)?.igdbId ?? viaMatch;
     if (igdbId === undefined) continue;
     byGame.set(igdbId, [...(byGame.get(igdbId) ?? []), list.npCommunicationId]);
   }

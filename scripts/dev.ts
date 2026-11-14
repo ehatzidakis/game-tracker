@@ -13,6 +13,7 @@ import { GET as notify } from '../api/cron/notify.ts';
 import { POST as igdb } from '../api/igdb.ts';
 import { GET as opencritic, POST as opencriticScores } from '../api/opencritic.ts';
 import { DELETE as psnUnlink, POST as psnLink } from '../api/psn.ts';
+import { POST as psnSync } from '../api/psn-sync.ts';
 import { POST as pushTest } from '../api/push-test.ts';
 
 type Handler = (request: Request) => Promise<Response>;
@@ -23,6 +24,7 @@ const routes: Record<string, Partial<Record<string, Handler>>> = {
   '/api/calendar.ics': { GET: calendar },
   '/api/push-test': { POST: pushTest },
   '/api/psn': { POST: psnLink, DELETE: psnUnlink },
+  '/api/psn-sync': { POST: psnSync },
   '/api/cron/daily': { GET: daily },
   '/api/cron/notify': { GET: notify },
 };

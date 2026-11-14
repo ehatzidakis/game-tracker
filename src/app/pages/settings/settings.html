@@ -150,9 +150,13 @@
       <a routerLink="/playstation" class="row">
         <span class="flex-1">Games</span>
         <span class="row-value num">
-          {{ psnGames.matched().length }} matched
-          @if (psnGames.unmatched().length) {
-            · {{ psnGames.unmatched().length }} not in library
+          @if (psnGames.loaded()) {
+            {{ psnGames.matched().length }} matched
+            @if (psnGames.unmatched().length) {
+              · {{ psnGames.unmatched().length }} not in library
+            }
+          } @else {
+            …
           }
         </span>
         <svg
@@ -162,13 +166,33 @@
           class="-mr-1 shrink-0 text-faint"
         ></svg>
       </a>
+      <!-- When playtime and trophies were last read; runs by itself every 8 hours. -->
+      <div class="row">
+        <div class="min-w-0 flex-1">
+          <p>Synced</p>
+          <p
+            class="num text-[13px] leading-[18px]"
+            [class]="s.psnSync?.ok === false ? 'text-danger' : 'text-muted'"
+          >
+            {{ syncedLine() }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="shrink-0 text-[17px] text-accent active:opacity-60 disabled:opacity-40"
+          [disabled]="psnSyncing()"
+          (click)="syncPsn()"
+        >
+          {{ psnSyncing() ? 'Syncing…' : 'Sync now' }}
+        </button>
+      </div>
       <button type="button" class="row text-danger" [disabled]="psnBusy()" (click)="unlinkPsn()">
         Disconnect
       </button>
     </div>
     <p class="group-footer">
       @if (psn.games && psn.trophies) {
-        Your games, playtime and trophies can be read.
+        Playtime, last played and trophies come from your PlayStation every 8 hours.
       } @else if (psn.trophies) {
         Your trophies can be read, but not the games you’ve played (and their playtime): in your
         PlayStation privacy settings, let others see your gaming history.

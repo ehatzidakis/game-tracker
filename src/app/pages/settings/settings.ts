@@ -55,6 +55,45 @@ export class SettingsPage {
     }
   }
 
+  protected readonly psnSyncing = signal(false);
+
+  /** "Today 10:05 · 4 games updated", "Not yet", or why the last one failed. */
+  protected readonly syncedLine = computed(() => {
+    const sync = this.library.settings().psnSync;
+    if (!sync) return 'Not yet';
+    const when = (ms: number) => {
+      const d = new Date(ms);
+      const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const day =
+        d.toDateString() === new Date().toDateString()
+          ? 'Today'
+          : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+      return `${day} ${time}`;
+    };
+    if (!sync.ok) {
+      const last = sync.lastOkAt ? ` Last worked ${when(sync.lastOkAt)}.` : '';
+      return `${sync.error ?? 'It failed.'} Nothing was changed.${last}`;
+    }
+    const n = sync.changed ?? 0;
+    return `${when(sync.at)} · ${n ? `${n} ${n === 1 ? 'game' : 'games'} updated` : 'up to date'}`;
+  });
+
+  protected async syncPsn(): Promise<void> {
+    if (this.psnSyncing()) return;
+    this.psnSyncing.set(true);
+    try {
+      const state = await this.psn.syncNow();
+      const n = state.changed ?? 0;
+      this.toast.show(
+        n ? `Synced: ${n} ${n === 1 ? 'game' : 'games'} updated` : 'Synced: up to date',
+      );
+    } catch (error) {
+      this.toast.error((error as Error).message, error);
+    } finally {
+      this.psnSyncing.set(false);
+    }
+  }
+
   protected async unlinkPsn(): Promise<void> {
     if (this.psnBusy() || !confirm('Disconnect your PlayStation account?')) return;
     this.psnBusy.set(true);

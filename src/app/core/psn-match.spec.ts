@@ -149,3 +149,42 @@ describe('matching to the library', () => {
     });
   });
 });
+
+describe('trophy lists of games linked by hand', () => {
+  it('come along only when the list is for that game', () => {
+    const library = [
+      { igdbId: 1, name: 'Horizon Zero Dawn Remastered', releaseDate: '2024-10-31' },
+      { igdbId: 2, name: 'Call of Duty: Modern Warfare', releaseDate: '2019-10-25' },
+    ];
+    const games = groupPlayed([
+      title('CUSA10211_00', 10, 'Horizon Zero Dawn™', 'ps4_game', 'PT7H27M'),
+      title('PPSA01234_00', 20, 'Call of Duty®', 'ps5_native_game', 'PT11H35M'),
+    ]);
+    const lists: PsnTrophyTitle[] = [
+      {
+        npCommunicationId: 'HZD',
+        trophyTitleName: 'Horizon Zero Dawn',
+        trophyTitlePlatform: 'PS4',
+      },
+      {
+        npCommunicationId: 'MW2',
+        trophyTitleName: 'Call of Duty® Modern Warfare® II',
+        trophyTitlePlatform: 'PS5',
+      },
+    ];
+    const links = linkTrophyLists(games, lists, new Map([['PPSA01234_00', ['MW2']]]));
+    const { matches, listsByGame } = matchProfile(
+      { games, lists, links, storeIds: new Map() },
+      library,
+      new Map([
+        [10, 1],
+        [20, 2],
+      ]),
+    );
+    expect(matches.map((m) => [m.igdbId, m.by])).toEqual([
+      [1, 'manual'],
+      [2, 'manual'],
+    ]);
+    expect(Object.fromEntries(listsByGame)).toEqual({ 1: ['HZD'] });
+  });
+});

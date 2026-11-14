@@ -1,6 +1,6 @@
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { collection, doc, onSnapshot, updateDoc, type FirestoreError } from 'firebase/firestore';
-import type { PsnGameRecord, PsnLink } from '../../../api/_lib/models.js';
+import type { PsnGameRecord, PsnLink, PsnSyncState } from '../../../api/_lib/models.js';
 import { AuthService } from './auth.service';
 import { db } from './db';
 import { ToastService } from './toast.service';
@@ -16,6 +16,8 @@ export class PsnService {
   private readonly toast = inject(ToastService);
 
   private readonly state = signal<PsnGameRecord[]>([]);
+  /** False until the list has been read once (so counts don't show 0 meanwhile). */
+  readonly loaded = signal(false);
   /** Your PlayStation games, most played first. */
   readonly games = computed(() => [...this.state()].sort((a, b) => b.playSeconds - a.playSeconds));
   readonly matched = computed(() => this.games().filter((g) => g.igdbId !== null));
@@ -25,10 +27,14 @@ export class PsnService {
     effect((onCleanup) => {
       const user = this.auth.user();
       this.state.set([]);
+      this.loaded.set(false);
       if (!user) return;
       const stop = onSnapshot(
         collection(db, 'users', user.uid, 'psnGames'),
-        (snap) => this.state.set(snap.docs.map((d) => d.data() as PsnGameRecord)),
+        (snap) => {
+          this.state.set(snap.docs.map((d) => d.data() as PsnGameRecord));
+          this.loaded.set(true);
+        },
         (error) => console.error(error),
       );
       onCleanup(stop);
@@ -40,6 +46,17 @@ export class PsnService {
     const res = await this.call('POST', { onlineId });
     const body = (await res.json().catch(() => ({}))) as PsnLink & { error?: string };
     if (!res.ok) throw new Error(body.error ?? 'PlayStation didn’t answer. Try again in a moment.');
+    return body;
+  }
+
+  /** Runs the PlayStation sync now. Throws with a message to show when it fails. */
+  async syncNow(): Promise<PsnSyncState> {
+    const res = await fetch('/api/psn-sync', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await this.auth.idToken()}` },
+    });
+    const body = (await res.json().catch(() => ({}))) as PsnSyncState & { error?: string };
+    if (!res.ok) throw new Error(body.error ?? 'PlayStation didn’t answer. Try again later.');
     return body;
   }
 

@@ -17,7 +17,15 @@ import {
   type AuthTokensResponse,
 } from 'psn-api';
 import { igdbQuery } from './igdb-client.js';
-import type { PsnGameRecord, PsnLink, TrackedGame } from './models.js';
+import {
+  PSN_SYNC_EVERY_MS,
+  type PsnGameRecord,
+  type PsnLink,
+  type PsnSyncState,
+  type TrackedGame,
+  type TrophyCounts,
+} from './models.js';
+import { psnUpdates } from './psn-sync.js';
 import {
   gamesWithoutLists,
   groupPlayed,
@@ -105,7 +113,7 @@ export async function psnAccessToken(
 /** Everything read from one PlayStation profile, ready to match to a library. */
 export interface PsnSnapshot {
   games: PsnGame[];
-  lists: PsnTrophyTitle[];
+  lists: PsnTrophyList[];
   /** Trophy list id → the PlayStation game (concept) it belongs to. */
   links: Map<string, number>;
   /** PlayStation Store concept id → IGDB game ids, from IGDB. */
@@ -119,12 +127,6 @@ export type PsnTrophyList = PsnTrophyTitle & {
   earnedTrophies: TrophyCounts;
   lastUpdatedDateTime: string;
 };
-export interface TrophyCounts {
-  bronze: number;
-  silver: number;
-  gold: number;
-  platinum: number;
-}
 
 /**
  * Reads a profile's played games and trophy lists (a few requests), links the lists to the games
@@ -204,10 +206,9 @@ export async function refreshPsnGames(db: Firestore, uid: string, now = Date.now
   if (!snapshot.games.length && !snapshot.lists.length) {
     throw new Error(`PlayStation returned no games or trophies for ${link.onlineId}`);
   }
-  const library = (await userRef.collection('games').get()).docs.map((d) => {
-    const g = d.data() as TrackedGame;
-    return { igdbId: g.igdbId, name: g.name, releaseDate: g.releaseDate };
-  });
+  const library = (await userRef.collection('games').get()).docs.map(
+    (d) => d.data() as TrackedGame,
+  );
   const records = userRef.collection('psnGames');
   const manual = new Map(
     (await records.get()).docs
@@ -232,7 +233,77 @@ export async function refreshPsnGames(db: Firestore, uid: string, now = Date.now
     }
     await batch.commit();
   }
-  return { link, snapshot, matches, listsByGame };
+  return { link, snapshot, matches, listsByGame, library };
+}
+
+/**
+ * The sync for one user: reads PlayStation, saves the matches, then writes playtime, first and
+ * last played and trophies onto the matched library games (see psn-sync.ts for the rules).
+ * Records how it went on users/{uid}.psnSync. When PlayStation can't be read, nothing is written
+ * to any game: only the failure is recorded.
+ */
+export async function syncPsnUser(
+  db: Firestore,
+  uid: string,
+  now = Date.now(),
+): Promise<PsnSyncState | null> {
+  const userRef = db.collection('users').doc(uid);
+  const before = (await userRef.get()).data()?.['psnSync'] as PsnSyncState | undefined;
+  let state: PsnSyncState;
+  try {
+    const read = await refreshPsnGames(db, uid, now);
+    if (!read) return null;
+    const updates = psnUpdates(
+      read.library,
+      read.snapshot.games,
+      read.matches,
+      read.snapshot.lists,
+      read.listsByGame,
+      now,
+    );
+    const entries = [...updates];
+    for (let i = 0; i < entries.length; i += 400) {
+      const batch = db.batch();
+      for (const [igdbId, update] of entries.slice(i, i + 400)) {
+        batch.update(userRef.collection('games').doc(String(igdbId)), { ...update });
+      }
+      await batch.commit();
+    }
+    state = { at: now, ok: true, error: null, lastOkAt: now, changed: updates.size };
+  } catch (error) {
+    console.error(`PlayStation sync for ${uid} failed`, error);
+    state = {
+      at: now,
+      ok: false,
+      error:
+        error instanceof PsnAuthError
+          ? 'The app couldn’t sign in to PlayStation.'
+          : 'PlayStation didn’t answer.',
+      lastOkAt: before?.lastOkAt ?? null,
+      changed: before?.changed ?? 0,
+    };
+  }
+  await userRef.set({ psnSync: state }, { merge: true });
+  return state;
+}
+
+/**
+ * The scheduled sync, from the hourly job: every user with PlayStation linked whose last sync is
+ * PSN_SYNC_EVERY_MS old (8 hours), or who has never synced. One user failing doesn't stop the rest.
+ */
+export async function runPsnSync(db: Firestore, now = Date.now()) {
+  const synced: string[] = [];
+  const failed: string[] = [];
+  const users = await db.collection('users').where('psn.accountId', '>', '').get();
+  for (const user of users.docs) {
+    const last = user.data()['psnSync'] as PsnSyncState | undefined;
+    // A little early is fine: the hourly job may run a few minutes off.
+    if (last && now - last.at < PSN_SYNC_EVERY_MS - 10 * 60_000) continue;
+    const state = await syncPsnUser(db, user.id, now);
+    if (state?.ok) synced.push(user.id);
+    else if (state) failed.push(user.id);
+  }
+  return { synced: synced.length, failed: failed.length };
 }
 
 /** IGDB's external game source for the PlayStation Store (its ids are the store's concept ids). */

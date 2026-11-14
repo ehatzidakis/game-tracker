@@ -73,6 +73,14 @@ export interface TrackedGame {
    */
   releaseHistory?: ReleaseChange[];
 
+  /**
+   * From your PlayStation, written by the sync while this game is matched to a PlayStation game
+   * (or has a trophy list). Its playtime also goes into hoursPlayed.
+   */
+  playstation?: PlaystationData | null;
+  /** The hours you had typed in before PlayStation's first replaced them (kept, never shown). */
+  hoursPlayedManual?: number | null;
+
   // Yours.
   status: Status;
   completion: Completion | null;
@@ -239,7 +247,54 @@ export interface UserSettings {
   notifyDaysBefore: number;
   defaultPlatform: PlatformKey;
   psn?: PsnLink | null;
+  /** How the last PlayStation sync went (written by the server). */
+  psnSync?: PsnSyncState | null;
 }
+
+export interface TrophyCounts {
+  bronze: number;
+  silver: number;
+  gold: number;
+  platinum: number;
+}
+
+/** A game's trophy progress, from one of its PlayStation trophy lists. */
+export interface TrophyProgress {
+  earned: TrophyCounts;
+  defined: TrophyCounts;
+  /** 0–100, as PlayStation counts it (weighted by grade). */
+  progress: number;
+  /** When the last trophy was earned (ms). */
+  lastEarnedAt: number | null;
+  /** "PS5", "PS4", "PS5,PSPC"… */
+  platform: string;
+}
+
+/** What the sync keeps on a library game (TrackedGame.playstation). */
+export interface PlaystationData {
+  /** Over all its PlayStation versions (PS4 and PS5 added, demos left out); 0 when none. */
+  playSeconds: number;
+  /** ms */
+  firstPlayedAt: number | null;
+  lastPlayedAt: number | null;
+  trophies: TrophyProgress | null;
+  syncedAt: number;
+}
+
+export interface PsnSyncState {
+  /** When it last ran (ms). */
+  at: number;
+  ok: boolean;
+  /** Why it failed, when it did. */
+  error?: string | null;
+  /** When it last worked. */
+  lastOkAt?: number | null;
+  /** Library games it changed, last time it worked. */
+  changed?: number;
+}
+
+/** How often the PlayStation sync runs by itself (you can also run it from Settings). */
+export const PSN_SYNC_EVERY_MS = 8 * 3_600_000;
 
 export const DEFAULT_SETTINGS: UserSettings = {
   calendarKey: null,
