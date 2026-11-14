@@ -23,6 +23,7 @@ import {
 } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
 import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
+import { eventCompany } from '../../../../api/_lib/igdb-events.js';
 import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
 import { OpenCriticService } from '../../core/opencritic';
@@ -32,6 +33,11 @@ import { EventArt } from '../../shared/event-art';
 import { ScoreRing } from '../../shared/score-ring';
 import { SearchField } from '../../shared/search-field';
 import {
+  DEFAULT_EVENT_SORT,
+  EVENT_SORTS,
+  eventYearGroups,
+  sortEvents,
+  type EventSort,
   compareBy,
   COPY_TABS,
   matchesCopy,
@@ -60,7 +66,9 @@ const TAB_SORTS: Partial<Record<Status, { key: Sort; label: string }[]>> = {
   ],
   shelved: [...SORTS, PLAYTIME],
 };
-const sortsFor = (tab: Status) => TAB_SORTS[tab] ?? SORTS;
+/** A tab's sorts, in the menu A–Z ("Date completed", "Name", "OpenCritic", "Playtime"…). */
+const sortsFor = (tab: Status) =>
+  [...(TAB_SORTS[tab] ?? SORTS)].sort((a, b) => a.label.localeCompare(b.label));
 
 /** The four game tabs, plus the gaming events that are over. */
 type Tab = Status | 'events';
@@ -149,6 +157,47 @@ export class LibraryPage {
   /** "3 Sep 2026" */
   protected eventDate(event: GamingEvent): string {
     return EVENT_DATE.format(event.startsAt);
+  }
+
+  // The Events tab's own sorts (air date, company, year), remembered on this device.
+  protected readonly eventSorts = EVENT_SORTS;
+  protected readonly eventSort = signal<EventSort>(
+    remembered(
+      `${SORT_KEY}.events`,
+      DEFAULT_EVENT_SORT,
+      EVENT_SORTS.map((s) => s.key),
+    ),
+  );
+  protected readonly eventReversed = signal(
+    remembered(`${SORT_KEY}.events.reversed`, '0', ['0', '1']) === '1',
+  );
+  protected readonly eventSortLabel = computed(
+    () => EVENT_SORTS.find((s) => s.key === this.eventSort())?.label ?? '',
+  );
+  protected readonly sortedEvents = computed(() =>
+    sortEvents(this.pastEvents(), this.eventSort(), this.eventReversed()),
+  );
+  /** By year: "3 in 2026", that year's events, then the next. Each year folds away. */
+  protected readonly eventGroups = computed(() =>
+    this.eventSort() === 'year' ? eventYearGroups(this.sortedEvents()) : null,
+  );
+
+  /** Under an event's card: the company when sorted by company, else the date. */
+  protected eventCaption(event: GamingEvent): string {
+    if (this.eventSort() !== 'company') return this.eventDate(event);
+    return eventCompany(event)?.name ?? 'No company';
+  }
+
+  protected setEventSort(event: Event): void {
+    const sort = (event.target as HTMLSelectElement).value as EventSort;
+    this.eventSort.set(sort);
+    remember(`${SORT_KEY}.events`, sort);
+  }
+
+  protected toggleEventReversed(): void {
+    const reversed = !this.eventReversed();
+    this.eventReversed.set(reversed);
+    remember(`${SORT_KEY}.events.reversed`, reversed ? '1' : '0');
   }
   protected readonly statusLabel = statusLabel;
   /** Searching looks through the whole library, every tab, by title. */
@@ -289,11 +338,11 @@ export class LibraryPage {
   protected readonly isDlc = isDlc;
 
   protected isCollapsed(key: string): boolean {
-    return this.collapsed().has(`${this.filter()}:${key}`);
+    return this.collapsed().has(`${this.tab()}:${key}`);
   }
 
   protected toggleGroup(key: string): void {
-    const id = `${this.filter()}:${key}`;
+    const id = `${this.tab()}:${key}`;
     if (collapsedGroups.has(id)) collapsedGroups.delete(id);
     else collapsedGroups.add(id);
     this.collapsed.set(new Set(collapsedGroups));

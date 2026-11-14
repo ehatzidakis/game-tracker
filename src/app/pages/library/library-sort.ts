@@ -1,4 +1,5 @@
-import type { Status, TrackedGame } from '../../../../api/_lib/models.js';
+import { eventCompany } from '../../../../api/_lib/igdb-events.js';
+import type { GamingEvent, Status, TrackedGame } from '../../../../api/_lib/models.js';
 import { searchable, titleMatcher } from '../../core/title-search';
 
 /** Which copies a tab shows: everything, only discs, or only downloads. */
@@ -162,4 +163,53 @@ export function searchLibrary(games: readonly TrackedGame[], query: string): Tra
     .map((game) => ({ game, rank: rank(searchable(game.name)) }))
     .sort((x, y) => x.rank - y.rank || byName(x.game, y.game))
     .map(({ game }) => game);
+}
+
+/** How the Library's Events tab can be sorted. */
+export type EventSort = 'airdate' | 'company' | 'year';
+
+/** In the menu A–Z. */
+export const EVENT_SORTS: readonly { key: EventSort; label: string }[] = [
+  { key: 'airdate', label: 'Air date' },
+  { key: 'company', label: 'Company' },
+  { key: 'year', label: 'Year' },
+];
+export const DEFAULT_EVENT_SORT: EventSort = 'year';
+
+/**
+ * Events in their sort's order: by air date (and by year) the latest first; by company A–Z, the
+ * ones without a company last, each company's latest first. `reversed` flips the main order;
+ * events without a company stay last either way.
+ */
+export function sortEvents(
+  events: readonly GamingEvent[],
+  sort: EventSort,
+  reversed = false,
+): GamingEvent[] {
+  const dir = reversed ? -1 : 1;
+  const latest = (a: GamingEvent, b: GamingEvent) => b.startsAt - a.startsAt;
+  if (sort !== 'company') return [...events].sort((a, b) => dir * latest(a, b));
+  const name = (e: GamingEvent) => eventCompany(e)?.name ?? null;
+  return [...events].sort((a, b) => {
+    const na = name(a);
+    const nb = name(b);
+    if (na === null || nb === null)
+      return Number(na === null) - Number(nb === null) || latest(a, b);
+    return dir * na.localeCompare(nb) || latest(a, b);
+  });
+}
+
+/** Already-sorted events split by the year they aired: "3 in 2026", then the next year. */
+export function eventYearGroups(
+  events: readonly GamingEvent[],
+): { key: string; title: string; events: GamingEvent[] }[] {
+  const groups: { key: string; title: string; events: GamingEvent[] }[] = [];
+  for (const e of events) {
+    const key = String(new Date(e.startsAt).getFullYear());
+    const last = groups.at(-1);
+    if (last?.key === key) last.events.push(e);
+    else groups.push({ key, title: '', events: [e] });
+  }
+  for (const g of groups) g.title = `${g.events.length} in ${g.key}`;
+  return groups;
 }

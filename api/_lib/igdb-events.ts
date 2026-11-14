@@ -91,3 +91,63 @@ export function igdbEventChanged(stored: GamingEvent, fresh: IgdbEventFields): b
     (stored.logoId ?? null) !== fresh.logoId
   );
 }
+
+/** The IGDB company behind an event, to show and link on its page. */
+export interface EventCompany {
+  id: number;
+  name: string;
+}
+
+/**
+ * Who holds an event, read from its name (IGDB doesn't record it): IGDB ids for the companies
+ * that hold their own shows. First match wins, so "Xbox Games Showcase" is Xbox even with
+ * "Bethesda" in it. Checked against IGDB on 2026-11-14.
+ */
+const EVENT_COMPANIES: readonly [RegExp, EventCompany][] = [
+  [/state of play|playstation|\bsony\b/, { id: 10100, name: 'Sony Interactive Entertainment' }],
+  [/xbox/, { id: 17966, name: 'Xbox Game Studios' }],
+  [/nintendo/, { id: 70, name: 'Nintendo' }],
+  [/ubisoft/, { id: 104, name: 'Ubisoft Entertainment' }],
+  [/capcom/, { id: 37, name: 'Capcom' }],
+  [/square enix/, { id: 26, name: 'Square Enix' }],
+  [/bandai namco/, { id: 248, name: 'Bandai Namco Entertainment' }],
+  [/devolver/, { id: 634, name: 'Devolver Digital' }],
+  [/\bea play\b|electronic arts|\bea sports\b/, { id: 1, name: 'Electronic Arts' }],
+  [/atlus/, { id: 818, name: 'Atlus' }],
+  [/\bsega\b/, { id: 112, name: 'Sega' }],
+  [/konami/, { id: 129, name: 'Konami' }],
+  [/annapurna/, { id: 11662, name: 'Annapurna Interactive' }],
+  [/bethesda/, { id: 16565, name: 'Bethesda Softworks' }],
+  [/warner bros/, { id: 30651, name: 'Warner Bros. Games' }],
+  [/koei tecmo/, { id: 858, name: 'Koei Tecmo Games' }],
+  [/activision|call of duty/, { id: 66, name: 'Activision' }],
+  [/blizz/, { id: 51, name: 'Blizzard Entertainment' }],
+  [/\briot\b/, { id: 41, name: 'Riot Games' }],
+  [/bungie|destiny/, { id: 620, name: 'Bungie' }],
+  [/thq nordic/, { id: 10075, name: 'THQ Nordic' }],
+  [/focus entertainment/, { id: 110, name: 'Focus Entertainment' }],
+  [/\bnacon\b/, { id: 24760, name: 'Nacon' }],
+  [/netease/, { id: 5501, name: 'NetEase Games' }],
+];
+
+/** When the name doesn't say: the host you picked, for the three platform holders. */
+const COMPANY_OF_KIND: Partial<Record<EventKind, EventCompany>> = {
+  playstation: EVENT_COMPANIES[0][1],
+  xbox: EVENT_COMPANIES[1][1],
+  nintendo: EVENT_COMPANIES[2][1],
+};
+
+/**
+ * The company behind an event: from its name, else, for an event you made yourself, from the
+ * host you picked (PlayStation, Xbox, Nintendo). An IGDB event's host is only guessed from its
+ * name ("Wholesome Direct" reads as Nintendo), so it doesn't count. Null for showcases that
+ * aren't a game company's (The Game Awards, Summer Game Fest…).
+ */
+export function eventCompany(
+  event: Pick<GamingEvent, 'title' | 'kind' | 'igdbId'>,
+): EventCompany | null {
+  const t = event.title.toLowerCase();
+  const named = EVENT_COMPANIES.find(([pattern]) => pattern.test(t))?.[1];
+  if (named) return named;
+  return event.igdbId ? null : (COMPANY_OF_KIND[event.kind] ?? null);
+}

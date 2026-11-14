@@ -1,4 +1,5 @@
 import {
+  eventCompany,
   eventLink,
   igdbEventChanged,
   igdbEventDocId,
@@ -63,5 +64,36 @@ describe('IGDB events', () => {
   it('counts an event without a duration as an hour long', () => {
     expect(eventEnd({ startsAt: 1000, durationMinutes: null })).toBe(1000 + 3_600_000);
     expect(eventEnd({ startsAt: 1000, durationMinutes: 30 })).toBe(1000 + 1_800_000);
+  });
+});
+
+describe('the company behind an event', () => {
+  const ev = (title: string, kind: GamingEvent['kind'] = 'other', igdbId: number | null = 1) => ({
+    title,
+    kind,
+    igdbId,
+  });
+
+  it('reads it from the name', () => {
+    expect(eventCompany(ev('State of Play: 2026-9-3'))?.name).toBe(
+      'Sony Interactive Entertainment',
+    );
+    expect(eventCompany(ev('Nintendo Direct | June 2026'))?.id).toBe(70);
+    expect(eventCompany(ev('Ubisoft Forward 2026'))?.name).toBe('Ubisoft Entertainment');
+    // First match wins: an Xbox show with Bethesda in its name is Xbox's.
+    expect(eventCompany(ev('Xbox Games Showcase + Bethesda Direct'))?.name).toBe(
+      'Xbox Game Studios',
+    );
+  });
+
+  it('has none for showcases, and doesn’t trust a guessed host on IGDB events', () => {
+    expect(eventCompany(ev('The Game Awards 2026', 'showcase'))).toBeNull();
+    // "Direct" made it look like Nintendo's, but that's only a guess from the name.
+    expect(eventCompany(ev('Wholesome Direct 2026', 'nintendo'))).toBeNull();
+  });
+
+  it('uses the host you picked on an event of your own', () => {
+    expect(eventCompany(ev('Showcase', 'playstation', null))?.id).toBe(10100);
+    expect(eventCompany(ev('Some show', 'other', null))).toBeNull();
   });
 });

@@ -47,32 +47,83 @@
   </div>
 
   @if (showEvents()) {
-    <!-- Gaming events from your calendar that are over, latest first. -->
+    <!-- Gaming events from your calendar that are over, sorted by air date, company or year. -->
     @if (pastEvents().length) {
-      <p class="num mt-3 flex h-8 items-center text-[15px] leading-5 text-muted">
-        {{ pastEvents().length }} {{ pastEvents().length === 1 ? 'event' : 'events' }}
-      </p>
-      <ul class="mt-3 grid grid-cols-3 gap-x-3 gap-y-5">
-        @for (event of pastEvents(); track event.id) {
-          <li>
-            <a [routerLink]="['/event', event.id]" class="block active:opacity-70">
-              <app-event-art
-                class="aspect-[3/4] rounded-[6px]"
-                fit="contain"
-                [logoId]="event.logoId"
-                [kind]="event.kind"
-                [iconSize]="72"
+      <div class="mt-3 flex items-center gap-2 text-[15px] leading-5 text-muted">
+        <p class="num min-w-0 truncate">
+          {{ pastEvents().length }} {{ pastEvents().length === 1 ? 'event' : 'events' }}
+        </p>
+        <!-- The same pill and reverse button as the game tabs. -->
+        <label
+          class="relative ml-auto flex h-8 shrink-0 items-center gap-1 rounded-full bg-group pr-3 pl-3.5 text-base text-accent active:bg-pressed"
+        >
+          <span class="sr-only">Sort events by</span>
+          <span aria-hidden="true">{{ eventSortLabel() }}</span>
+          <svg lucideChevronDown [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
+          <!-- 16px or more so iOS doesn't zoom in when it opens. -->
+          <select
+            class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
+            (change)="setEventSort($event)"
+          >
+            @for (s of eventSorts; track s.key) {
+              <option [value]="s.key" [selected]="s.key === eventSort()">{{ s.label }}</option>
+            }
+          </select>
+        </label>
+        <button
+          type="button"
+          class="grid size-8 shrink-0 place-items-center rounded-full"
+          [class]="
+            eventReversed()
+              ? 'bg-accent-fill text-white active:brightness-90'
+              : 'bg-group text-accent active:bg-pressed'
+          "
+          aria-label="Reverse order"
+          [attr.aria-pressed]="eventReversed()"
+          (click)="toggleEventReversed()"
+        >
+          <svg lucideArrowUpDown [size]="17" [strokeWidth]="2.25"></svg>
+        </button>
+      </div>
+      @if (eventGroups(); as groups) {
+        <!-- By year: "3 in 2026", that year's events. Tap a year to fold it. -->
+        @for (group of groups; track group.key) {
+          @let open = !isCollapsed(group.key);
+          <section [attr.aria-label]="group.title">
+            <h2 class="mt-6 mb-3">
+              <button
+                type="button"
+                class="num flex w-full items-center justify-between gap-3 text-left text-[20px] leading-6 font-semibold active:opacity-60"
+                [attr.aria-expanded]="open"
+                (click)="toggleGroup(group.key)"
+              >
+                <span class="min-w-0">{{ group.title }}</span>
+                <!-- Rotates the wrapper: the icon component manages its own classes. -->
+                <span
+                  class="shrink-0 text-muted transition-transform duration-200"
+                  [class.rotate-90]="open"
+                  aria-hidden="true"
+                >
+                  <svg lucideChevronRight [size]="20" [strokeWidth]="2.5" class="block"></svg>
+                </span>
+              </button>
+            </h2>
+            @if (open) {
+              <ng-container
+                [ngTemplateOutlet]="eventGrid"
+                [ngTemplateOutletContext]="{ $implicit: group.events }"
               />
-              <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
-                {{ event.title }}
-              </p>
-              <p class="num mt-0.5 text-[12px] leading-4 tracking-normal text-muted">
-                {{ eventDate(event) }}
-              </p>
-            </a>
-          </li>
+            }
+          </section>
         }
-      </ul>
+      } @else {
+        <div class="mt-3">
+          <ng-container
+            [ngTemplateOutlet]="eventGrid"
+            [ngTemplateOutletContext]="{ $implicit: sortedEvents() }"
+          />
+        </div>
+      }
     } @else {
       <div class="mx-auto mt-16 max-w-72 text-center">
         <svg lucideLibraryBig [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
@@ -323,6 +374,30 @@
                 }
               }
             }
+          </p>
+        </a>
+      </li>
+    }
+  </ul>
+</ng-template>
+
+<ng-template #eventGrid let-events>
+  <ul class="grid grid-cols-3 gap-x-3 gap-y-5">
+    @for (event of events; track event.id) {
+      <li>
+        <a [routerLink]="['/event', event.id]" class="block active:opacity-70">
+          <app-event-art
+            class="aspect-[3/4] rounded-[6px]"
+            fit="contain"
+            [logoId]="event.logoId"
+            [kind]="event.kind"
+            [iconSize]="72"
+          />
+          <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
+            {{ event.title }}
+          </p>
+          <p class="num mt-0.5 line-clamp-2 text-[12px] leading-4 tracking-normal text-muted">
+            {{ eventCaption(event) }}
           </p>
         </a>
       </li>

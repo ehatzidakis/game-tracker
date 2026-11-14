@@ -8,7 +8,7 @@ import {
   LucidePencil,
   LucidePlus,
 } from '@lucide/angular';
-import { igdbEventFields, igdbIdOf } from '../../../../api/_lib/igdb-events.js';
+import { eventCompany, igdbEventFields, igdbIdOf } from '../../../../api/_lib/igdb-events.js';
 import { eventEnd, isDlc, statusLabel } from '../../../../api/_lib/models.js';
 import { daysBetween } from '../../../../api/_lib/release.js';
 import { today } from '../../core/dates';
@@ -95,6 +95,19 @@ const dayTime = (ms: number) => DAY_TIME.format(ms).replace(',', '');
         }
 
         <div class="grouped mt-6">
+          <!-- Who holds it (read from its name), opening the company's page. -->
+          @if (e.company; as company) {
+            <a [routerLink]="['/company', company.id]" class="row">
+              <span class="shrink-0">Company</span>
+              <span class="row-value min-w-0 truncate">{{ company.name }}</span>
+              <svg
+                lucideChevronRight
+                [size]="18"
+                [strokeWidth]="2.25"
+                class="-mr-1 shrink-0 text-faint"
+              ></svg>
+            </a>
+          }
           <div class="row">
             <span class="flex-1">Starts</span>
             <span class="row-value num">{{ e.starts }}</span>
@@ -272,6 +285,7 @@ export class EventPage {
     return {
       title: event.title,
       kind: event.kind,
+      company: eventCompany(event),
       logoId: event.logoId ?? null,
       starts: dayTime(event.startsAt),
       ends: event.durationMinutes ? dayTime(end) : null,

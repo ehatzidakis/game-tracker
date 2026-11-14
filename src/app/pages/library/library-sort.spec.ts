@@ -1,6 +1,9 @@
-import type { TrackedGame } from '../../../../api/_lib/models.js';
+import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
 import {
   compareBy,
+  EVENT_SORTS,
+  eventYearGroups,
+  sortEvents,
   COPY_TABS,
   DEFAULT_SORT,
   groupByYear,
@@ -220,5 +223,36 @@ describe('physical and digital copies', () => {
     expect([disc, download].filter((g) => matchesCopy(g, 'digital'))).toEqual([download]);
     expect([disc, download].filter((g) => matchesCopy(g, 'all'))).toHaveLength(2);
     expect(COPY_TABS).toEqual(['completed', 'backlog', 'shelved']);
+  });
+});
+
+describe('sorting past events', () => {
+  const ev = (id: string, title: string, startsAt: string) =>
+    ({ id, title, kind: 'other', igdbId: 1, startsAt: Date.parse(startsAt) }) as GamingEvent;
+  const events = [
+    ev('a', 'Nintendo Direct', '2026-06-10T14:00:00Z'),
+    ev('b', 'The Game Awards 2025', '2025-12-12T01:00:00Z'),
+    ev('c', 'State of Play', '2026-09-03T13:00:00Z'),
+    ev('d', 'Nintendo Direct Mini', '2025-03-27T14:00:00Z'),
+  ];
+  const ids = (list: GamingEvent[]) => list.map((e) => e.id);
+
+  it('by air date: latest first, or oldest first reversed', () => {
+    expect(ids(sortEvents(events, 'airdate'))).toEqual(['c', 'a', 'b', 'd']);
+    expect(ids(sortEvents(events, 'airdate', true))).toEqual(['d', 'b', 'a', 'c']);
+  });
+
+  it('by company: A–Z, each company’s latest first, events without one last either way', () => {
+    expect(ids(sortEvents(events, 'company'))).toEqual(['a', 'd', 'c', 'b']);
+    expect(ids(sortEvents(events, 'company', true))).toEqual(['c', 'a', 'd', 'b']);
+  });
+
+  it('by year: in groups, latest year first', () => {
+    const groups = eventYearGroups(sortEvents(events, 'year'));
+    expect(groups.map((g) => [g.title, ids(g.events)])).toEqual([
+      ['2 in 2026', ['c', 'a']],
+      ['2 in 2025', ['b', 'd']],
+    ]);
+    expect(EVENT_SORTS.map((s) => s.label)).toEqual(['Air date', 'Company', 'Year']);
   });
 });
