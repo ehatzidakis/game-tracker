@@ -1,5 +1,5 @@
 import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
-import { calendarGroups, type CalendarGroup } from './calendar-groups';
+import { calendarGroups, nextReleaseId, vagueDate, type CalendarGroup } from './calendar-groups';
 
 const ids = (groups: CalendarGroup[]) =>
   groups.map((g) => [
@@ -78,5 +78,37 @@ describe('calendarGroups', () => {
     expect(calendarGroups([game(1, '2026-11-07', 'day')], '2026-11-07')[0].title).toBe(
       'November 2026',
     );
+  });
+});
+
+describe('vagueDate', () => {
+  const at = (
+    releaseDate: string | null,
+    releasePrecision: TrackedGame['releasePrecision'],
+    releaseLabel: string,
+  ) => vagueDate({ releaseDate, releasePrecision, releaseLabel });
+
+  it('leaves out the year the header already shows', () => {
+    expect(at('2027-11-01', 'month', 'Nov 2027')).toBe('In November');
+    expect(at('2027-09-30', 'quarter', 'Q3 2027')).toBe('Jul–Sep');
+  });
+
+  it('says the date is not announced for a year alone or no date', () => {
+    expect(at('2028-12-31', 'year', '2028')).toBe('Date not announced');
+    expect(at(null, 'tbd', 'TBA')).toBe('Date not announced');
+  });
+});
+
+describe('nextReleaseId', () => {
+  it('is the earliest exact day from today, leaving out released, vague and finished games', () => {
+    const games = [
+      game(1, '2026-11-10', 'day'), // already out
+      game(2, '2026-11-01', 'month'), // no exact day
+      game(3, '2026-11-20', 'day', 'completed'),
+      game(4, '2026-11-25', 'day', 'backlog'),
+      game(5, '2026-12-01', 'day'),
+    ];
+    expect(nextReleaseId(games, '2026-11-14')).toBe(4);
+    expect(nextReleaseId([game(1, '2026-11-10', 'day')], '2026-11-14')).toBeNull();
   });
 });

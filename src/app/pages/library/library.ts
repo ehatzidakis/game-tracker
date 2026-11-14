@@ -22,6 +22,7 @@ import {
   type TrackedGame,
 } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
+import { nextReleaseId } from '../calendar/calendar-groups';
 import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
 import { EventsService } from '../../core/events.service';
@@ -333,6 +334,8 @@ export class LibraryPage {
   });
 
   protected readonly countdown = countdown;
+  /** The next game to come out: its countdown is blue, as in the Calendar. */
+  protected readonly nextId = computed(() => nextReleaseId(this.library.games(), today()));
   protected readonly formatPlaytime = formatPlaytime;
   protected readonly formatPlaytimeClock = formatPlaytimeClock;
   protected readonly isDlc = isDlc;

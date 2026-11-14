@@ -360,7 +360,9 @@
                   }
                 }
                 @case ('wishlist') {
-                  {{ countdown(game) ?? game.releaseLabel }}
+                  <span [class.text-accent]="game.igdbId === nextId()">{{
+                    countdown(game) ?? game.releaseLabel
+                  }}</span>
                 }
                 @case ('backlog') {
                   @if (game.playing) {
@@ -369,7 +371,9 @@
                       · {{ played }}
                     }
                   } @else {
-                    {{ countdown(game) }}
+                    <span [class.text-accent]="game.igdbId === nextId()">{{
+                      countdown(game)
+                    }}</span>
                   }
                 }
               }

@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { LucideChevronRight, LucidePlus } from '@lucide/angular';
 import type { GamingEvent } from '../../../../api/_lib/models.js';
 import { EventsService } from '../../core/events.service';
-import { EventIcon } from '../../shared/event-icon';
+import { EventArt } from '../../shared/event-art';
 import { EventSheet, timeRange } from '../../shared/event-sheet';
 
 const DAY = new Intl.DateTimeFormat('en-GB', {
@@ -19,7 +19,7 @@ const DAY = new Intl.DateTimeFormat('en-GB', {
  */
 @Component({
   selector: 'app-events',
-  imports: [RouterLink, EventIcon, LucideChevronRight, LucidePlus],
+  imports: [RouterLink, EventArt, LucideChevronRight, LucidePlus],
   template: `
     <h1 class="large-title">Gaming events</h1>
 
@@ -41,7 +41,13 @@ const DAY = new Intl.DateTimeFormat('en-GB', {
           @for (event of group.events; track event.id) {
             <li class="row p-0!">
               <a [routerLink]="['/event', event.id]" class="row py-2!">
-                <app-event-icon [kind]="event.kind" [size]="40" />
+                <app-event-art
+                  class="aspect-[3/4] w-10 shrink-0 rounded-[5px]"
+                  fit="contain"
+                  [logoId]="event.logoId"
+                  [kind]="event.kind"
+                  [iconSize]="28"
+                />
                 <div class="min-w-0 flex-1">
                   <p class="truncate" [class.text-muted]="event.archived">{{ event.title }}</p>
                   <p class="num text-[15px] leading-5 text-muted">{{ when(event) }}</p>

@@ -5,7 +5,7 @@ import { EventIcon } from './event-icon';
 
 /**
  * A gaming event's picture, in whatever shape its host gives it: IGDB's logo, or (for an event
- * you made yourself) its host's icon on its colour.
+ * you made yourself) its host's icon in white on Raised Grey, like a cover without art.
  * Logos are wide. In a wide frame the logo fills it; in a tall one (a Library card) the whole
  * logo sits in the middle over a blurred copy of itself.
  */
@@ -31,7 +31,12 @@ import { EventIcon } from './event-icon';
         [class]="fit() === 'contain' ? 'object-contain' : 'object-cover'"
       />
     } @else {
-      <app-event-icon class="size-full! rounded-none!" [kind]="kind()" [size]="iconSize()" />
+      <app-event-icon
+        class="size-full! rounded-none!"
+        tone="calm"
+        [kind]="kind()"
+        [size]="iconSize()"
+      />
     }
     <!-- Hairline edge, as on covers. -->
     <span

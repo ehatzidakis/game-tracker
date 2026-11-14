@@ -15,7 +15,14 @@ const BACKGROUND: Record<EventKind, string> = {
   other: '#3a3a3c',
 };
 
-/** A gaming event's square tile: who's holding it, on their colour. */
+/** Raised Grey: where an event stands in for art (lists, cards), the glyph alone says who. */
+const CALM = '#2c2c2e';
+
+/**
+ * A gaming event's square tile: who's holding it. `solid` puts the glyph on the host's colour
+ * (the host picker, where colour helps you choose); `calm` on Raised Grey, like a cover with no
+ * art, so an event never outshouts the game covers around it.
+ */
 @Component({
   selector: 'app-event-icon',
   imports: [LucideMic, LucideGamepad2],
@@ -68,7 +75,10 @@ export class EventIcon {
   readonly kind = input.required<EventKind>();
   /** Tile size in px. */
   readonly size = input(40);
+  readonly tone = input<'solid' | 'calm'>('solid');
   protected readonly playstation = PLAYSTATION;
-  protected readonly background = computed(() => BACKGROUND[this.kind()] ?? BACKGROUND.other);
+  protected readonly background = computed(() =>
+    this.tone() === 'calm' ? CALM : (BACKGROUND[this.kind()] ?? BACKGROUND.other),
+  );
   protected readonly glyph = computed(() => Math.round(this.size() * 0.55));
 }

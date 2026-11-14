@@ -24,6 +24,47 @@ export function localDate(ms: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+const MONTH_LONG = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' });
+const QUARTER_MONTHS = ['Jan–Mar', 'Apr–Jun', 'Jul–Sep', 'Oct–Dec'];
+
+/**
+ * A game without an exact day, in words its header ("Later in 2027", "TBA") doesn't already say:
+ * "In November", "Jul–Sep", or "Date not announced" for a year alone or no date at all.
+ */
+export function vagueDate(
+  game: Pick<TrackedGame, 'releaseDate' | 'releasePrecision' | 'releaseLabel'>,
+): string {
+  const date = game.releaseDate ? new Date(`${game.releaseDate}T00:00:00Z`) : null;
+  if (!date || Number.isNaN(date.getTime())) return 'Date not announced';
+  if (game.releasePrecision === 'month') return `In ${MONTH_LONG.format(date)}`;
+  if (game.releasePrecision === 'quarter') {
+    const q = /^Q([1-4])\b/.exec(game.releaseLabel)?.[1];
+    return QUARTER_MONTHS[q ? Number(q) - 1 : Math.floor(date.getUTCMonth() / 3)];
+  }
+  if (game.releasePrecision === 'day') return game.releaseLabel;
+  return 'Date not announced';
+}
+
+/**
+ * The next game to come out: the earliest exact day, today or later, among games the Calendar
+ * lists (not completed or shelved). Its countdown is the one blue countdown, in the Calendar and
+ * the Library alike.
+ */
+export function nextReleaseId(games: readonly TrackedGame[], today: string): number | null {
+  let next: TrackedGame | null = null;
+  for (const g of games) {
+    if (g.status === 'completed' || g.status === 'shelved') continue;
+    if (g.releasePrecision !== 'day' || !g.releaseDate || g.releaseDate < today) continue;
+    if (
+      !next ||
+      g.releaseDate < next.releaseDate! ||
+      (g.releaseDate === next.releaseDate && g.name.localeCompare(next.name) < 0)
+    )
+      next = g;
+  }
+  return next?.igdbId ?? null;
+}
+
 const gameItem = (game: TrackedGame): CalendarItem => ({
   type: 'game',
   id: `game-${game.igdbId}`,

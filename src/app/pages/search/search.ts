@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { injectQuery, keepPreviousData } from '@tanstack/angular-query-experimental';
 import {
   LucideBuilding2,
@@ -78,7 +78,8 @@ export class SearchPage {
   protected readonly library = inject(LibraryService);
   protected readonly events = inject(EventsService);
 
-  protected readonly term = signal('');
+  /** Starts with ?q= when another screen sends you here to search (the Calendar's no-match link). */
+  protected readonly term = signal(inject(ActivatedRoute).snapshot.queryParamMap.get('q') ?? '');
   // IGDB allows about 4 requests a second, so wait for a pause in typing.
   private readonly searchTerm = debounced(
     computed(() => this.term().trim()),
