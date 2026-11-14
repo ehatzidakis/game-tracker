@@ -5,6 +5,7 @@ import {
   platinumMoves,
   platinumUpdate,
   psnUpdates,
+  shouldAlert,
   type TrophyListData,
 } from '../../../api/_lib/psn-sync.js';
 
@@ -207,5 +208,20 @@ describe('a Platinum completes its game', () => {
       completion: 'platinum',
       updatedAt: now,
     });
+  });
+});
+
+describe('telling you the sync isn’t working', () => {
+  const hour = 3_600_000;
+  it('tells you right away when the sign-in needs a new token, once per outage', () => {
+    expect(shouldAlert({ lastOkAt: now - hour }, true, now)).toBe(true);
+    expect(shouldAlert({ lastOkAt: now - hour, alertedAt: now - 1 }, true, now)).toBe(false);
+  });
+
+  it('waits a day before telling you about other failures', () => {
+    expect(shouldAlert({ lastOkAt: now - 8 * hour }, false, now)).toBe(false);
+    expect(shouldAlert({ lastOkAt: now - 25 * hour }, false, now)).toBe(true);
+    // Never worked yet (just linked): nothing to compare with.
+    expect(shouldAlert(undefined, false, now)).toBe(false);
   });
 });

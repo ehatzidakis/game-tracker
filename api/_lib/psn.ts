@@ -27,7 +27,7 @@ import {
   type TrophyCounts,
 } from './models.js';
 import { sendToUser } from './jobs.js';
-import { platinumMoves, platinumUpdate, psnUpdates } from './psn-sync.js';
+import { platinumMoves, platinumUpdate, psnUpdates, shouldAlert } from './psn-sync.js';
 import {
   gamesWithoutLists,
   groupPlayed,
@@ -52,7 +52,16 @@ interface StoredAuth {
   /** sha256 of the NPSSO the tokens came from. */
   npssoFingerprint: string;
   updatedAt: number;
+  /**
+   * Set when signing in with the NPSSO failed (expired, or Sony changed something): no new
+   * attempt with the same NPSSO for a day, so the spare account doesn't fail logins every hour.
+   * A new PSN_NPSSO is tried straight away. Cleared by the next sign-in that works.
+   */
+  broken?: { npssoFingerprint: string; at: number; reason: string } | null;
 }
+
+/** How long a sign-in that failed is left alone before trying the same NPSSO again. */
+const RETRY_SIGN_IN_AFTER_MS = 24 * 3_600_000;
 
 const authRef = (db: Firestore) => db.collection('meta').doc('psnAuth');
 const fingerprint = (npsso: string) => createHash('sha256').update(npsso).digest('hex');
@@ -84,11 +93,9 @@ export async function psnAccessToken(
   if (!npsso) throw new PsnAuthError('PSN_NPSSO is not set');
   const print = fingerprint(npsso);
 
-  if (!cached || cached.npssoFingerprint !== print) {
-    const snap = await authRef(db).get();
-    const saved = snap.exists ? (snap.data() as StoredAuth) : null;
-    cached = saved?.npssoFingerprint === print ? saved : null;
-  }
+  const snap = cached && cached.npssoFingerprint === print ? null : await authRef(db).get();
+  const saved = snap?.exists ? (snap.data() as StoredAuth) : null;
+  if (snap) cached = saved?.npssoFingerprint === print ? saved : null;
   if (cached && cached.accessExpiresAt - MARGIN > now) return cached;
 
   let auth: StoredAuth | null = null;
@@ -100,11 +107,21 @@ export async function psnAccessToken(
     }
   }
   if (!auth) {
+    // This NPSSO already failed less than a day ago: don't ask Sony again yet.
+    const broken = (saved ?? (await authRef(db).get()).data())?.broken as StoredAuth['broken'];
+    if (broken?.npssoFingerprint === print && now - broken.at < RETRY_SIGN_IN_AFTER_MS) {
+      throw new PsnAuthError(`PlayStation sign-in failed earlier: ${broken.reason}`);
+    }
     try {
       const code = await exchangeNpssoForAccessCode(npsso);
       auth = stored(await exchangeAccessCodeForAuthTokens(code), npsso, now);
     } catch (error) {
-      throw new PsnAuthError(`PlayStation sign-in failed: ${(error as Error).message}`);
+      const reason = (error as Error).message.slice(0, 200);
+      await authRef(db).set(
+        { broken: { npssoFingerprint: print, at: now, reason } },
+        { merge: true },
+      );
+      throw new PsnAuthError(`PlayStation sign-in failed: ${reason}`);
     }
   }
   cached = auth;
@@ -295,19 +312,35 @@ export async function syncPsnUser(
       lastOkAt: now,
       changed: updates.size,
       platinums: completed.length,
+      needsToken: false,
+      alertedAt: null,
     };
   } catch (error) {
     console.error(`PlayStation sync for ${uid} failed`, error);
+    const needsToken = error instanceof PsnAuthError;
+    const alert = shouldAlert(before, needsToken, now);
     state = {
       at: now,
       ok: false,
-      error:
-        error instanceof PsnAuthError
-          ? 'The app couldn’t sign in to PlayStation.'
-          : 'PlayStation didn’t answer.',
+      error: needsToken ? 'PlayStation needs a new token.' : 'PlayStation didn’t answer.',
+      needsToken,
       lastOkAt: before?.lastOkAt ?? null,
       changed: before?.changed ?? 0,
+      alertedAt: alert ? now : (before?.alertedAt ?? null),
     };
+    if (alert) {
+      const since = before?.lastOkAt
+        ? ` It last worked on ${new Date(before.lastOkAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`
+        : '';
+      await sendToUser(userRef, {
+        title: needsToken ? 'PlayStation sync paused' : 'PlayStation sync isn’t working',
+        body: needsToken
+          ? 'The app needs a new PlayStation token. Your games are unchanged.'
+          : `It couldn’t read your PlayStation.${since} Your games are unchanged.`,
+        url: '/settings',
+        tag: 'psn-sync',
+      }).catch((sendError: unknown) => console.error(sendError));
+    }
   }
   await userRef.set({ psnSync: state }, { merge: true });
   return state;

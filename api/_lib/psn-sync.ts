@@ -177,3 +177,20 @@ export function platinumUpdate(game: TrackedGame, platinumAt: number, now: numbe
     updatedAt: now,
   };
 }
+
+/** After this long without a sync that worked, you're told (when it isn't the sign-in). */
+export const SYNC_ALERT_AFTER_MS = 24 * 3_600_000;
+
+/**
+ * Whether a failed sync should tell you: once per outage, right away when the sign-in needs a
+ * new token, else once it hasn't worked for a day (one bad hour isn't worth a notification).
+ */
+export function shouldAlert(
+  before: { alertedAt?: number | null; lastOkAt?: number | null } | undefined,
+  needsToken: boolean,
+  now: number,
+): boolean {
+  if (before?.alertedAt) return false;
+  if (needsToken) return true;
+  return !!before?.lastOkAt && now - before.lastOkAt >= SYNC_ALERT_AFTER_MS;
+}

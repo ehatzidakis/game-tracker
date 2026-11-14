@@ -191,7 +191,12 @@
       </button>
     </div>
     <p class="group-footer">
-      @if (psn.games && psn.trophies) {
+      @if (s.psnSync?.needsToken) {
+        Playtime and trophies are paused, and nothing was changed: the app’s PlayStation sign-in
+        stopped working. To renew it, sign in to playstation.com as the spare account, open
+        ca.account.sony.com/api/v1/ssocookie, and put the 64 characters after “npsso” in Vercel as
+        PSN_NPSSO (then redeploy). The next sync picks it up.
+      } @else if (psn.games && psn.trophies) {
         Playtime, last played and trophies come from your PlayStation every 8 hours.
       } @else if (psn.trophies) {
         Your trophies can be read, but not the games you’ve played (and their playtime): in your

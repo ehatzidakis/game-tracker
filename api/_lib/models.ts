@@ -293,6 +293,10 @@ export interface PsnSyncState {
   changed?: number;
   /** Games a new Platinum moved to Completed, last time it worked. */
   platinums?: number;
+  /** It failed because the app's PlayStation sign-in stopped working: PSN_NPSSO needs renewing. */
+  needsToken?: boolean;
+  /** When you were told it isn't working (once per outage; cleared when it works again). */
+  alertedAt?: number | null;
 }
 
 /** How often the PlayStation sync runs by itself (you can also run it from Settings). */
