@@ -15,6 +15,7 @@ import {
   type IgdbSyncGame,
 } from '../../../api/_lib/igdb-sync.js';
 import {
+  completedOn,
   DEFAULT_SETTINGS,
   normalizeGame,
   preorderArrived,
@@ -283,7 +284,7 @@ const NOT_PREORDERED = {
 };
 
 export function statusStamps(
-  game: Pick<TrackedGame, 'status' | 'purchasedAt' | 'startedAt'>,
+  game: Pick<TrackedGame, 'status' | 'purchasedAt' | 'startedAt' | 'playstation'>,
   status: Status,
   now: number,
 ): Partial<TrackedGame> {
@@ -292,8 +293,10 @@ export function statusStamps(
       return { purchasedAt: game.purchasedAt ?? now };
     case 'shelved':
       return { shelvedAt: now };
-    case 'completed':
-      return { completedAt: now, purchasedAt: game.purchasedAt ?? now };
+    case 'completed': {
+      const completedAt = completedOn(game, now);
+      return { completedAt, purchasedAt: game.purchasedAt ?? completedAt };
+    }
     default:
       return {};
   }

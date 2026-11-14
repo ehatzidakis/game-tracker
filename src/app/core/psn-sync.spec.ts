@@ -225,3 +225,17 @@ describe('telling you the sync isn’t working', () => {
     expect(shouldAlert(undefined, false, now)).toBe(false);
   });
 });
+
+describe('the date of a game added straight to Completed', () => {
+  it('becomes the day it was last played, once PlayStation says', () => {
+    const added = game(1, { status: 'completed', addedAt: now - 5000, completedAt: now - 5000 });
+    const update = psnUpdates([added], [psnGame(100, 30)], [match(100, 1)], [], new Map(), now);
+    expect(update.get(1)?.completedAt).toBe(Date.parse('2026-11-01T20:00:00Z'));
+  });
+
+  it('stays when it was set some other way', () => {
+    const done = game(1, { status: 'completed', addedAt: 1, completedAt: 2 });
+    const update = psnUpdates([done], [psnGame(100, 30)], [match(100, 1)], [], new Map(), now);
+    expect(update.get(1)?.completedAt).toBeUndefined();
+  });
+});

@@ -105,6 +105,17 @@ export function psnUpdates(
 
     const update: PsnGameUpdate = {};
     if (content(data) !== content(game.playstation)) update.playstation = data;
+    // Added straight to Completed, before PlayStation was read: it got the day it was added.
+    // Now that PlayStation says when it was last played, that's its date.
+    if (
+      game.status === 'completed' &&
+      game.completedAt != null &&
+      game.completedAt === game.addedAt &&
+      data.lastPlayedAt !== null &&
+      data.lastPlayedAt !== game.completedAt
+    ) {
+      update.completedAt = data.lastPlayedAt;
+    }
     if (data.playSeconds > 0) {
       // Whole minutes, rounded down, as PlayStation itself shows it ("113h 9m" for 113:09:33).
       const hours = Math.floor(data.playSeconds / 60) / 60;

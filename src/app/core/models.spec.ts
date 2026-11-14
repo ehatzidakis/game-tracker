@@ -1,4 +1,5 @@
 import {
+  completedOn,
   normalizeGame,
   preorderArrived,
   shownInLibrary,
@@ -40,5 +41,33 @@ describe('normalizeGame', () => {
     expect(normalizeGame(old)).toMatchObject({ status: 'backlog', playing: true });
     const fine = { igdbId: 2, status: 'shelved' } as TrackedGame;
     expect(normalizeGame(fine)).toBe(fine);
+  });
+});
+
+describe('completedOn', () => {
+  const now = Date.parse('2026-11-14T12:00:00Z');
+  const ps = (lastPlayedAt: number | null, lastEarnedAt: number | null) => ({
+    playstation: {
+      playSeconds: 0,
+      firstPlayedAt: null,
+      lastPlayedAt,
+      trophies: lastEarnedAt
+        ? {
+            earned: { bronze: 1, silver: 0, gold: 0, platinum: 0 },
+            defined: { bronze: 1, silver: 0, gold: 0, platinum: 0 },
+            progress: 100,
+            lastEarnedAt,
+            platform: 'PS5',
+          }
+        : null,
+      syncedAt: 0,
+    },
+  });
+
+  it('is the last time you played it on PlayStation, else its last trophy, else now', () => {
+    expect(completedOn(ps(1000, 2000), now)).toBe(1000);
+    expect(completedOn(ps(null, 2000), now)).toBe(2000);
+    expect(completedOn(ps(null, null), now)).toBe(now);
+    expect(completedOn({}, now)).toBe(now);
   });
 });

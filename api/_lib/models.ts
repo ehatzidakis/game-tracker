@@ -140,6 +140,15 @@ export function preorderArrived(
   );
 }
 
+/**
+ * When a game marked Completed was finished: the last time it was played on PlayStation, else
+ * when its last trophy was earned, else now (a game PlayStation doesn't know).
+ */
+export function completedOn(game: Pick<TrackedGame, 'playstation'>, now: number): number {
+  const ps = game.playstation;
+  return ps?.lastPlayedAt ?? ps?.trophies?.lastEarnedAt ?? now;
+}
+
 /** How many games can be marked Playing at once. */
 export const MAX_PLAYING = 3;
 
