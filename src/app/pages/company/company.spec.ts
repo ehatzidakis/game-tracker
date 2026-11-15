@@ -5,7 +5,7 @@ import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-exper
 import type { TrackedGame } from '../../../../api/_lib/models.js';
 import { countryName } from '../../core/countries';
 import {
-  companySections,
+  companyGames,
   IgdbService,
   type CompanyCredit,
   type CompanyDetails,
@@ -86,14 +86,14 @@ describe('CompanyPage', () => {
   it('shows the company’s details, description and links', async () => {
     const el = await render(fromSoftware);
     expect(text(el.querySelector('h1'))).toBe('FromSoftware');
-    expect(text(el.querySelector('h1 + p'))).toBe('Japan · Founded 1 Nov 1986');
-    const rows = [...el.querySelectorAll('article > .grouped .row')].map(text);
-    expect(rows).toEqual([
-      'CountryJapan',
-      'Founded1 Nov 1986',
-      'Size201-500 employees',
-      'StatusActive',
-      'Part ofKadokawa Corporation',
+    // Its details in short lines, as a game's "my data".
+    const facts = [...el.querySelectorAll('[aria-label=Details] li')].map(text);
+    expect(facts).toEqual([
+      'Japan',
+      'Founded 1 Nov 1986',
+      '201-500 employees',
+      'Active',
+      'Part of Kadokawa Corporation',
     ]);
     expect(el.querySelector('a[href="/company/9"]')).not.toBeNull();
     expect(el.textContent).toContain('headquartered in Tokyo');
@@ -109,46 +109,54 @@ describe('CompanyPage', () => {
     ]);
   });
 
-  it('lists its games newest first, upcoming on top, with your status', async () => {
-    const el = await render(fromSoftware, [{ igdbId: 2, status: 'completed' }]);
-    const developed = el.querySelector('[aria-label=Developed]')!;
-    expect(text(developed.querySelector('h2'))).toBe('Developed · 4');
-    expect([...developed.querySelectorAll('li')].map(text)).toEqual([
-      'DuskbloodsTBA',
-      'Elden RingCompleted',
-      'Dark Souls: Remastered2018',
-      'Dark Souls2011',
+  it('shows every game in one grid, newest first, then undated, cancelled last and greyed out', async () => {
+    const el = await render(fromSoftware, [
+      { igdbId: 2, status: 'completed', completion: 'platinum' },
+      { igdbId: 1, status: 'wishlist' },
     ]);
-    expect(text(el.querySelector('[aria-label=Published] h2'))).toBe('Published · 1');
+    const cards = () =>
+      [...el.querySelectorAll('[aria-label=Games] li a')].map((a) => a.getAttribute('aria-label'));
+    expect(text(el.querySelector('[aria-label=Games] h2'))).toBe('12 games');
+    expect(cards()).toEqual([
+      'Nightreign DLC, 2025',
+      'Elden Ring, 2022, Completed, Platinum',
+      'Dark Souls: Remastered, 2018',
+      'Episode One, 2015',
+      'Dark Souls, 2011, Wishlist',
+      'Shadow of the Erdtree, TBA',
+      'Duskbloods, TBA',
+      'Season Pass, TBA',
+      'Dark Souls (Switch), TBA',
+      'Helped Game, TBA',
+      'Cancelled thing, Cancelled',
+      'Cancelled Port, Cancelled',
+    ]);
+    // Cancelled covers are greyed out; the Platinum trophy sits on Elden Ring's.
+    expect(el.querySelectorAll('[aria-label=Games] .dimmed').length).toBe(2);
+    expect(el.querySelectorAll('[aria-label=Games] app-cover svg').length).toBe(1);
   });
 
-  it('folds the other lists until you tap their heading', async () => {
+  it('filters the grid by what the company did, all games to start', async () => {
     const el = await render(fromSoftware);
-    const headings = [...el.querySelectorAll('section h2')].map(text);
-    expect(headings).toEqual([
-      'Developed · 4',
+    const select = el.querySelector('[aria-label=Games] select') as HTMLSelectElement;
+    expect([...select.options].map((o) => o.textContent!.trim())).toEqual([
+      'All games · 12',
+      'Developed · 5',
       'Published · 1',
-      'Ported · 1',
+      'Ported · 2',
       'Supported · 1',
       'DLC and expansions · 2',
       'Episodes · 1',
       'Seasons · 1',
       'Cancelled · 2',
-      'Links',
     ]);
-    const dlc = el.querySelector('[aria-label="DLC and expansions"]')!;
-    const button = dlc.querySelector('h2 button') as HTMLButtonElement;
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-    expect(dlc.querySelector('li')).toBeNull();
-    button.click();
+    select.value = 'dlcs';
+    select.dispatchEvent(new Event('change'));
     await new Promise((r) => setTimeout(r));
-    expect(button.getAttribute('aria-expanded')).toBe('true');
-    expect([...dlc.querySelectorAll('li')].map(text)).toEqual([
-      'Shadow of the ErdtreeTBA',
-      'Nightreign DLC2025',
-    ]);
-    // Developed and Published have no fold.
-    expect(el.querySelector('[aria-label=Developed] h2 button')).toBeNull();
+    expect(text(el.querySelector('[aria-label=Games] h2'))).toBe('2 games');
+    expect(
+      [...el.querySelectorAll('[aria-label=Games] li a')].map((a) => a.getAttribute('aria-label')),
+    ).toEqual(['Nightreign DLC, 2025', 'Shadow of the Erdtree, TBA']);
   });
 
   it('loads the logo as a PNG, so its see-through background stays white on the tile', async () => {
@@ -165,21 +173,25 @@ describe('CompanyPage', () => {
 });
 
 describe('company helpers', () => {
-  it('sorts games into lists, leaving out bundles, other editions and empty lists', () => {
-    const ids = Object.fromEntries(
-      companySections(fromSoftware, credits).map((s) => [s.key, s.games.map((g) => g.id)]),
+  it('lists each game once with its roles, leaving out bundles and other editions', () => {
+    const roles = Object.fromEntries(
+      companyGames(fromSoftware, credits).map((e) => [e.game.id, e.roles.join(' ')]),
     );
-    expect(ids).toEqual({
-      developed: [7, 2, 4, 1],
-      published: [2],
-      ported: [20],
-      supported: [21],
-      dlcs: [3, 11],
-      episodes: [8],
-      seasons: [9],
-      cancelled: [6, 23],
+    expect(roles).toEqual({
+      1: 'developed',
+      2: 'developed published',
+      3: 'dlcs',
+      4: 'developed',
+      6: 'developed cancelled',
+      7: 'developed',
+      8: 'episodes',
+      9: 'seasons',
+      11: 'dlcs',
+      20: 'ported',
+      21: 'supported',
+      23: 'ported cancelled',
     });
-    expect(companySections({})).toEqual([]);
+    expect(companyGames({})).toEqual([]);
   });
 
   it('names countries from their ISO number, and only known ones', () => {

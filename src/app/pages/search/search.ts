@@ -10,6 +10,7 @@ import {
   LucideSearch,
 } from '@lucide/angular';
 import { countryName } from '../../core/countries';
+import { moreCount } from '../../core/show-more';
 import { Cover } from '../../shared/cover';
 import { EventArt } from '../../shared/event-art';
 import { igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
@@ -52,7 +53,7 @@ const EVENT_DAY = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
 });
-/** How many events, and companies, a search lists before "Show all". */
+/** How many events, and companies, a search lists at first; "Show N more" adds as many again. */
 const SHOWN_EVENTS = 4;
 const SHOWN_COMPANIES = 4;
 
@@ -106,10 +107,8 @@ export class SearchPage {
     placeholderData: keepPreviousData,
   }));
   protected readonly foundEvents = computed(() => this.eventResults.data() ?? []);
-  protected readonly allEvents = signal(false);
-  protected readonly shownEvents = computed(() =>
-    this.allEvents() ? this.foundEvents() : this.foundEvents().slice(0, SHOWN_EVENTS),
-  );
+  protected readonly eventCount = signal(SHOWN_EVENTS);
+  protected readonly shownEvents = computed(() => this.foundEvents().slice(0, this.eventCount()));
 
   /** Developers and publishers whose name has what you typed, the best-known first, last. */
   private readonly companyResults = injectQuery(() => ({
@@ -120,10 +119,11 @@ export class SearchPage {
     placeholderData: keepPreviousData,
   }));
   protected readonly foundCompanies = computed(() => this.companyResults.data() ?? []);
-  protected readonly allCompanies = signal(false);
+  protected readonly companyCount = signal(SHOWN_COMPANIES);
   protected readonly shownCompanies = computed(() =>
-    this.allCompanies() ? this.foundCompanies() : this.foundCompanies().slice(0, SHOWN_COMPANIES),
+    this.foundCompanies().slice(0, this.companyCount()),
   );
+  protected readonly more = moreCount;
   protected readonly logoUrl = logoUrl;
   /** "Japan · Developer and publisher" */
   protected companyLine(company: CompanySummary): string {
@@ -208,8 +208,8 @@ export class SearchPage {
 
   protected onInput(event: Event): void {
     this.term.set((event.target as HTMLInputElement).value);
-    this.allEvents.set(false);
-    this.allCompanies.set(false);
+    this.eventCount.set(SHOWN_EVENTS);
+    this.companyCount.set(SHOWN_COMPANIES);
   }
 
   protected async add(game: GameSearchResult): Promise<void> {

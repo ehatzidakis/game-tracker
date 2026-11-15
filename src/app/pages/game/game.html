@@ -3,39 +3,12 @@
 <ng-template #dlcList>
   @if (!isDlcPage() && dlcs().length) {
     <section aria-label="DLC and expansions">
-      <h2 class="group-header">DLC and expansions</h2>
-      <ul class="grouped" style="--sep-inset: 68px">
-        @for (d of shownDlcs(); track d.id) {
-          <li class="row p-0!">
-            <a [routerLink]="['/game', d.id]" class="row py-2!">
-              <app-cover
-                class="w-10 shrink-0 rounded-[5px]!"
-                [coverId]="d.cover?.image_id"
-                [name]="''"
-              />
-              <div class="min-w-0 flex-1">
-                <p class="truncate">{{ d.name }}</p>
-                <p class="num text-[15px] leading-5 text-muted">{{ rowState(d) }}</p>
-              </div>
-              <svg
-                lucideChevronRight
-                [size]="18"
-                [strokeWidth]="2.25"
-                class="-mr-1 shrink-0 text-faint"
-              ></svg>
-            </a>
-          </li>
-        }
-      </ul>
-      @if (dlcs().length > shownDlcs().length) {
-        <button
-          type="button"
-          class="group-footer text-accent! active:opacity-60"
-          (click)="allDlcs.set(true)"
-        >
-          Show all {{ dlcs().length }}
-        </button>
-      }
+      <app-card-grid
+        title="DLC and expansions"
+        [cards]="dlcs()"
+        [filters]="dlcFilters"
+        [resetKey]="gameId()"
+      />
     </section>
   }
 </ng-template>
@@ -59,18 +32,57 @@
       [name]="name()"
       [eager]="true"
     />
-    <div class="min-w-0 pb-0.5">
-      @if (name()) {
-        <h1 class="text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance">
-          {{ name() }}
-          @if (platinum()) {
-            <span class="ml-1 inline-flex align-[-2px] text-accent" aria-label="Platinum">
-              <svg lucideTrophy [size]="22" [strokeWidth]="2.25"></svg>
+    <div class="min-w-0 flex-1 pb-0.5">
+      <!-- The name, and at the far right on its first line, the pencil for "Edit my data". -->
+      <div class="flex items-start gap-2">
+        @if (name()) {
+          <h1
+            class="min-w-0 flex-1 text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance"
+          >
+            {{ name() }}
+            @if (platinum()) {
+              <span class="ml-1 inline-flex align-[-2px] text-accent" aria-label="Platinum">
+                <svg lucideTrophy [size]="22" [strokeWidth]="2.25"></svg>
+              </span>
+            }
+          </h1>
+        } @else {
+          <div class="h-7 w-40 animate-pulse rounded-md bg-raised"></div>
+        }
+        @if (tracked() && !isDlcPage()) {
+          <!-- 44px to tap; the negative margins keep it to the title's line. -->
+          <button
+            type="button"
+            class="-my-[7.5px] -mr-3 ml-auto grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
+            aria-label="Edit my data"
+            (click)="editMyData()"
+          >
+            <svg lucidePencil [size]="20" [strokeWidth]="2.25"></svg>
+          </button>
+        }
+      </div>
+      <!-- The release date between the name and its makers; the header grows upwards, so the
+           name rises and Developer · Publisher stay level with the cover's foot. -->
+      <!-- Then your rating, after a middle dot (changed in "Edit my data"). -->
+      @let myRating = tracked()?.status === 'completed' ? tracked()?.rating : null;
+      @if (release().label || myRating) {
+        <p class="num mt-1 flex flex-wrap items-center gap-x-1 text-[15px] leading-5">
+          @if (release().label) {
+            <span>{{ release().label }}</span>
+            @if (countdown(); as c) {
+              <span class="text-accent">· {{ c }}</span>
+            }
+          }
+          @if (myRating) {
+            @if (release().label) {
+              <span aria-hidden="true">·</span>
+            }
+            <span class="flex items-center gap-1" [attr.aria-label]="'My rating ' + myRating + '/10'">
+              <svg lucideStar [size]="14" [strokeWidth]="2.25" class="shrink-0" aria-hidden="true"></svg>
+              <span aria-hidden="true">{{ myRating }}/10</span>
             </span>
           }
-        </h1>
-      } @else {
-        <div class="h-7 w-40 animate-pulse rounded-md bg-raised"></div>
+        </p>
       }
       <!-- Developer · Publisher, each opening the company's page. -->
       @if (makers().length) {
@@ -95,18 +107,9 @@
   </header>
 
   @if (release().label) {
-    <p class="num mt-4 text-[15px] leading-5">
-      <span>{{ release().label }}</span>
-      @if (countdown(); as c) {
-        <span class="text-accent"> · {{ c }}</span>
-      }
-      @if (tracked(); as t) {
-        <span class="text-muted"> · {{ platformLabel(t.myPlatform) }}</span>
-      }
-    </p>
     <!-- The dates it had before, saved each time the date moved. Latest change first. -->
     @if (earlierDates().length) {
-      <ul class="mt-1 text-[13px] leading-[18px] text-muted" aria-label="Earlier release dates">
+      <ul class="mt-4 text-[13px] leading-[18px] text-muted" aria-label="Earlier release dates">
         @for (was of earlierDates(); track was.key) {
           <li class="num">
             Was {{ was.label }}
@@ -128,9 +131,10 @@
       <svg lucideChevronRight [size]="16" [strokeWidth]="2.25" class="shrink-0"></svg>
     </a>
   }
-  <!-- Your data at a glance (only what there is: yours, and PlayStation's), edited in a sheet. -->
-  @if (!isDlcPage() && (editableFields() || tracked()?.playstation)) {
-    <!-- Line 1: how far, when, how long. Line 2: bought on, where, price. -->
+  <!-- Your data at a glance (your status, then only what there is: yours, and PlayStation's),
+       edited in a sheet from the pencil by the name. -->
+  @if (!isDlcPage() && tracked()) {
+    <!-- Line 1: status, how far, how long, when. Line 2: bought on, where, price. -->
     @for (line of myData(); track $index) {
       <ul
         class="flex flex-wrap gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted"
@@ -139,6 +143,18 @@
         @for (item of line; track item.label) {
           <li class="num flex items-center gap-1.5">
             @switch (item.icon) {
+              @case ('wishlist') {
+                <svg lucideBookmark [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('backlog') {
+                <svg lucideLibraryBig [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('playing') {
+                <svg lucidePlay [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
+              @case ('shelved') {
+                <svg lucideArchive [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+              }
               @case ('level') {
                 <svg lucideFlag [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
               }
@@ -202,16 +218,68 @@
         }
       </p>
     }
-    @if (editableFields()) {
-      <button
-        type="button"
-        class="mt-2.5 flex items-center gap-1.5 text-[15px] leading-5 text-accent active:opacity-60"
-        (click)="editMyData()"
-      >
-        <svg lucidePencil [size]="15" [strokeWidth]="2.25"></svg>
-        Edit my data
-      </button>
-    }
+  }
+  <!-- What others think, in one line: OpenCritic's Top Critic Average (its ring, as on Library
+       covers, opening the reviews) and the players' score, each with how many rated it. Then
+       HowLongToBeat: a link, in blue with its own icon, so it reads as something else. -->
+  @if (name()) {
+    <ul
+      class="num mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] leading-5 text-muted"
+      aria-label="Scores"
+    >
+      @if (openCritic(); as oc) {
+        <li>
+          <a
+            [href]="oc.url"
+            target="_blank"
+            rel="noopener"
+            class="flex items-center gap-1.5 active:opacity-60"
+            [attr.aria-label]="
+              oc.topCriticScore !== null
+                ? 'OpenCritic ' + oc.topCriticScore + ', ' + oc.topCritics
+                : 'OpenCritic: not enough critic reviews yet'
+            "
+          >
+            @if (oc.topCriticScore !== null) {
+              <app-score-ring [score]="oc.topCriticScore" [size]="24" aria-hidden="true" />
+              <span aria-hidden="true">{{ oc.topCritics }}</span>
+            } @else {
+              <span aria-hidden="true">No critic score yet</span>
+            }
+          </a>
+        </li>
+        @if (oc.playerRating !== null) {
+          <li
+            class="flex items-center gap-1.5"
+            [attr.aria-label]="'Players ' + oc.playerRating + ', ' + oc.players"
+          >
+            <svg lucideUsers [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+            <span aria-hidden="true"
+              ><span class="text-label">{{ oc.playerRating }}</span> · {{ oc.players }}</span
+            >
+          </li>
+        }
+      } @else if (openCriticLimit(); as limit) {
+        <!-- Not looked up yet, and OpenCritic's daily allowance is used up. -->
+        <li class="flex items-center gap-1.5">
+          <svg lucideClock [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+          OpenCritic {{ limit.when }}
+        </li>
+      }
+      <li>
+        <!-- HowLongToBeat has no API, so this opens its search for the game. -->
+        <a
+          [href]="hltbUrl()"
+          target="_blank"
+          rel="noopener"
+          class="flex items-center gap-1.5 text-accent active:opacity-60"
+        >
+          <img src="icons/hltb.png" alt="" class="size-[15px] shrink-0 rounded-[3px]" />
+          HLTB
+          <svg lucideExternalLink [size]="13" [strokeWidth]="2.25" class="shrink-0"></svg>
+        </a>
+      </li>
+    </ul>
   }
   @if (isDlcPage() && parent(); as p) {
     <a
@@ -331,22 +399,9 @@
     </section>
   } @else if (tracked(); as t) {
     <section aria-label="Your progress">
-      <h2 class="group-header">Status</h2>
-      <div class="segmented" role="radiogroup" aria-label="Status">
-        @for (s of statuses; track s.key) {
-          <button
-            type="button"
-            role="radio"
-            class="text-[12.5px]!"
-            [attr.aria-checked]="t.status === s.key"
-            (click)="setStatus(s.key)"
-          >
-            {{ s.label }}
-          </button>
-        }
-      </div>
       @if (t.status === 'backlog') {
-        <div class="grouped mt-3">
+        <!-- Your status shows by the name and changes in "Edit my data"; Playing stays a switch. -->
+        <div class="grouped mt-6">
           <div class="row">
             <p id="playing-label" class="flex-1">Playing</p>
             <button
@@ -362,58 +417,6 @@
           </div>
         </div>
         <p class="group-footer">Up to {{ maxPlaying }} at a time. They lead your Backlog.</p>
-      }
-
-      @if (t.status === 'completed') {
-        <!-- How far you got is set when completing and changed in "Edit my data". -->
-        @let shownRating = ratingPreview() ?? t.rating;
-        <h2 class="group-header flex items-baseline gap-3">
-          Rating
-          @if (shownRating) {
-            <span class="num ml-auto text-[17px] font-semibold normal-case text-label"
-              >{{ shownRating }}<span class="text-[13px] font-normal text-muted">/10</span></span
-            >
-          } @else {
-            <span class="ml-auto normal-case">{{
-              editingRating() ? 'Slide to rate' : 'Not rated'
-            }}</span>
-          }
-          <!-- Locked until you tap Edit, so scrolling past can't change it. -->
-          @if (editingRating()) {
-            @if (t.rating && ratingPreview() === null) {
-              <button
-                type="button"
-                class="text-[13px] normal-case text-danger active:opacity-60"
-                (click)="setRating(null); editingRating.set(false)"
-              >
-                Clear
-              </button>
-            }
-            <button
-              type="button"
-              class="text-[13px] font-semibold normal-case text-accent active:opacity-60"
-              (click)="editingRating.set(false)"
-            >
-              Done
-            </button>
-          } @else {
-            <button
-              type="button"
-              class="text-[13px] normal-case text-accent active:opacity-60"
-              (click)="editingRating.set(true)"
-            >
-              Edit
-            </button>
-          }
-        </h2>
-        <!-- While editing: slide your finger along the bar (or tap), 1 to 10 in half points. -->
-        <app-rating-slider
-          class="px-1"
-          [value]="t.rating"
-          [disabled]="!editingRating()"
-          (preview)="ratingPreview.set($event)"
-          (changed)="setRating($event)"
-        />
       }
 
       <ng-container [ngTemplateOutlet]="dlcList" />
@@ -471,163 +474,24 @@
 
   @if (shownAt().length) {
     <section aria-label="Shown at">
-      <h2 class="group-header">Shown at</h2>
-      <ul class="grouped" style="--sep-inset: 99px">
-        @for (event of listedShownAt(); track event.id) {
-          <li class="row p-0!">
-            <a [routerLink]="['/event', event.id]" class="row py-2!">
-              <app-event-art
-                class="h-10 w-[71px] shrink-0 rounded-[5px]"
-                [logoId]="event.logoId"
-                [iconSize]="40"
-              />
-              <div class="min-w-0 flex-1">
-                <p class="truncate">{{ event.name }}</p>
-                <p class="num text-[15px] leading-5 text-muted">{{ event.date }}</p>
-              </div>
-              <svg
-                lucideChevronRight
-                [size]="18"
-                [strokeWidth]="2.25"
-                class="-mr-1 shrink-0 text-faint"
-              ></svg>
-            </a>
-          </li>
-        }
-      </ul>
-      @if (shownAt().length > listedShownAt().length) {
-        <button
-          type="button"
-          class="group-footer text-accent! active:opacity-60"
-          (click)="allShownAt.set(true)"
-        >
-          Show all {{ shownAt().length }}
-        </button>
-      }
-    </section>
-  }
-
-  @if (openCritic(); as oc) {
-    <section aria-label="OpenCritic">
-      <h2 class="group-header">OpenCritic</h2>
-      <div class="grouped">
-        @if (oc.topCriticScore !== null) {
-          <div class="row">
-            <div class="min-w-0 flex-1">
-              <p>Top Critic Average</p>
-              <p class="num text-[13px] leading-[18px] text-muted">{{ oc.topCritics }}</p>
-            </div>
-            <p class="num shrink-0 text-[20px] font-semibold">
-              {{ oc.topCriticScore }}<span class="text-[13px] font-normal text-muted">/100</span>
-            </p>
-          </div>
-        } @else {
-          <div class="row text-muted">Not enough critic reviews yet</div>
-        }
-        @if (oc.playerRating !== null) {
-          <div class="row">
-            <div class="min-w-0 flex-1">
-              <p>Player Rating</p>
-              <p class="num text-[13px] leading-[18px] text-muted">{{ oc.players }}</p>
-            </div>
-            <p class="num shrink-0 text-[20px] font-semibold">
-              {{ oc.playerRating }}<span class="text-[13px] font-normal text-muted">/100</span>
-            </p>
-          </div>
-        }
-        @if (oc.url) {
-          <a [href]="oc.url" target="_blank" rel="noopener" class="row text-accent">
-            <span class="flex-1">Reviews on OpenCritic</span>
-            <svg lucideExternalLink [size]="16" [strokeWidth]="2" class="shrink-0 text-faint"></svg>
-          </a>
-        }
-      </div>
-    </section>
-  } @else if (openCriticLimit(); as limit) {
-    <!-- Not looked up yet, and OpenCritic's daily allowance is used up. -->
-    <section aria-label="OpenCritic">
-      <h2 class="group-header">OpenCritic</h2>
-      <div class="grouped">
-        <div class="row">
-          <div class="min-w-0 flex-1">
-            <p>Daily limit reached</p>
-            <p class="text-[13px] leading-[18px] text-muted">
-              The score can be looked up again {{ limit.when }}. Open the game then, or it fills in
-              by itself.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  }
-
-  @if (name()) {
-    <section aria-label="Time to beat">
-      <h2 class="group-header">Time to beat</h2>
-      <div class="grouped">
-        <!-- HowLongToBeat has no API, so we link to its search for this game. -->
-        <a [href]="hltbUrl()" target="_blank" rel="noopener" class="row text-accent">
-          <span class="flex-1">Search on HowLongToBeat</span>
-          <svg lucideExternalLink [size]="16" [strokeWidth]="2" class="shrink-0 text-faint"></svg>
-        </a>
-      </div>
+      <app-card-grid
+        title="Shown at"
+        noun="event"
+        [cards]="shownAt()"
+        [filters]="shownAtFilters()"
+        [resetKey]="gameId()"
+      />
     </section>
   }
 
   @if (!isDlcPage() && series(); as s) {
     <section aria-label="Series">
-      <h2 class="group-header">
-        <button
-          type="button"
-          class="flex w-full items-center justify-between gap-3 text-left uppercase active:opacity-60"
-          [attr.aria-expanded]="isOpen('series')"
-          (click)="toggleOpen('series')"
-        >
-          {{ s.name }} series
-          <!-- Rotates the wrapper: the icon component manages its own classes. -->
-          <span
-            class="shrink-0 transition-transform duration-200"
-            [class.rotate-90]="isOpen('series')"
-            aria-hidden="true"
-          >
-            <svg lucideChevronRight [size]="16" [strokeWidth]="2.5" class="block"></svg>
-          </span>
-        </button>
-      </h2>
-      @if (isOpen('series')) {
-        <ul class="grouped" style="--sep-inset: 68px">
-          @for (g of shownSeries(); track g.id) {
-            <li class="row p-0!">
-              <a [routerLink]="['/game', g.id]" class="row py-2!">
-                <app-cover
-                  class="w-10 shrink-0 rounded-[5px]!"
-                  [coverId]="g.cover?.image_id"
-                  [name]="''"
-                />
-                <div class="min-w-0 flex-1">
-                  <p class="truncate">{{ g.name }}</p>
-                  <p class="num text-[15px] leading-5 text-muted">{{ rowState(g) }}</p>
-                </div>
-                <svg
-                  lucideChevronRight
-                  [size]="18"
-                  [strokeWidth]="2.25"
-                  class="-mr-1 shrink-0 text-faint"
-                ></svg>
-              </a>
-            </li>
-          }
-        </ul>
-        @if (s.games.length > shownSeries().length) {
-          <button
-            type="button"
-            class="group-footer text-accent! active:opacity-60"
-            (click)="allSeries.set(true)"
-          >
-            Show all {{ s.games.length }}
-          </button>
-        }
-      }
+      <app-card-grid
+        [title]="s.name + ' series'"
+        [cards]="s.cards"
+        [filters]="seriesFilters"
+        [resetKey]="gameId()"
+      />
     </section>
   }
 

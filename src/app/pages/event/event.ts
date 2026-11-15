@@ -9,20 +9,17 @@ import {
   LucidePlus,
 } from '@lucide/angular';
 import { eventCompany, igdbEventFields, igdbIdOf } from '../../../../api/_lib/igdb-events.js';
-import { eventEnd, isDlc, statusLabel } from '../../../../api/_lib/models.js';
+import { eventEnd } from '../../../../api/_lib/models.js';
 import { daysBetween } from '../../../../api/_lib/release.js';
 import { today } from '../../core/dates';
 import { EventsService } from '../../core/events.service';
-import { IgdbService, type GameSummary } from '../../core/igdb';
+import { IgdbService } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
-import { Cover } from '../../shared/cover';
+import { CardGrid, gameMarks, yearOf, type GridCard, type GridFilter } from '../../shared/card-grid';
 import { EventArt } from '../../shared/event-art';
 import { EventSheet } from '../../shared/event-sheet';
 import { localDate } from '../calendar/calendar-groups';
-
-/** How many games an event's page lists before "Show all". */
-const SHOWN_GAMES = 8;
 
 const DAY_TIME = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short',
@@ -49,7 +46,7 @@ const dayTime = (ms: number) => DAY_TIME.format(ms).replace(',', '');
   selector: 'app-event',
   imports: [
     RouterLink,
-    Cover,
+    CardGrid,
     EventArt,
     LucideCalendarCheck,
     LucideChevronRight,
@@ -164,39 +161,13 @@ const dayTime = (ms: number) => DAY_TIME.format(ms).replace(',', '');
 
         @if (games().length) {
           <section aria-label="Games shown">
-            <h2 class="group-header">Games shown · {{ games().length }}</h2>
-            <ul class="grouped" style="--sep-inset: 68px">
-              @for (g of shownGames(); track g.id) {
-                <li class="row p-0!">
-                  <a [routerLink]="['/game', g.id]" class="row py-2!">
-                    <app-cover
-                      class="w-10 shrink-0 rounded-[5px]!"
-                      [coverId]="g.cover?.image_id"
-                      [name]="''"
-                    />
-                    <div class="min-w-0 flex-1">
-                      <p class="truncate">{{ g.name }}</p>
-                      <p class="num text-[15px] leading-5 text-muted">{{ gameState(g) }}</p>
-                    </div>
-                    <svg
-                      lucideChevronRight
-                      [size]="18"
-                      [strokeWidth]="2.25"
-                      class="-mr-1 shrink-0 text-faint"
-                    ></svg>
-                  </a>
-                </li>
-              }
-            </ul>
-            @if (games().length > shownGames().length) {
-              <button
-                type="button"
-                class="group-footer text-accent! active:opacity-60"
-                (click)="allGames.set(true)"
-              >
-                Show all {{ games().length }}
-              </button>
-            }
+            <app-card-grid
+              title="Games shown"
+              [cards]="games()"
+              [filters]="gameFilters"
+              [initial]="15"
+              [resetKey]="id()"
+            />
           </section>
         }
 
@@ -250,7 +221,6 @@ export class EventPage {
   }));
 
   protected readonly wholeText = signal(false);
-  protected readonly allGames = signal(false);
 
   /** What the page shows: IGDB's latest when there is one, otherwise your copy. */
   protected readonly view = computed(() => {
@@ -303,16 +273,36 @@ export class EventPage {
     };
   });
 
-  /** The games shown at it: yours first, then the rest, each A–Z. */
-  protected readonly games = computed(() => {
+  /**
+   * The games shown at it as cards, yours first, then the rest, each A–Z: the year under each and
+   * your status, to filter by upcoming, out, or in your library.
+   */
+  protected readonly games = computed((): GridCard[] => {
     const mine = this.library.byId();
-    return [...(this.details.data()?.games ?? [])].sort(
-      (a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id)) || a.name.localeCompare(b.name),
-    );
+    const now = Date.now() / 1000;
+    return [...(this.details.data()?.games ?? [])]
+      .sort(
+        (a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id)) || a.name.localeCompare(b.name),
+      )
+      .map((g) => {
+        const tracked = mine.get(g.id);
+        const out = !!g.first_release_date && g.first_release_date <= now;
+        return {
+          id: g.id,
+          link: ['/game', g.id],
+          name: g.name,
+          coverId: g.cover?.image_id,
+          line: yearOf(g.first_release_date),
+          tags: [out ? 'out' : 'upcoming', ...(tracked ? ['mine'] : [])],
+          ...gameMarks(tracked),
+        };
+      });
   });
-  protected readonly shownGames = computed(() =>
-    this.allGames() ? this.games() : this.games().slice(0, SHOWN_GAMES),
-  );
+  protected readonly gameFilters: GridFilter[] = [
+    { key: 'upcoming', title: 'Upcoming' },
+    { key: 'out', title: 'Out' },
+    { key: 'mine', title: 'In my library' },
+  ];
 
   constructor() {
     // The top bar shows the event's name once you scroll past it.
@@ -339,13 +329,6 @@ export class EventPage {
   }
 
   /** Your status for a game ("Wishlist", "Completed"), or the year it came out. */
-  protected gameState(game: GameSummary): string {
-    const t = this.library.byId().get(game.id);
-    if (t) return isDlc(t) && t.status !== 'wishlist' ? 'Owned' : statusLabel(t.status);
-    if (!game.first_release_date) return 'TBA';
-    return String(new Date(game.first_release_date * 1000).getUTCFullYear());
-  }
-
   protected add(): void {
     const d = this.details.data();
     if (d) this.events.addFromIgdb(d);

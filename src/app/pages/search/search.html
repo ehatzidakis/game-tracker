@@ -209,9 +209,9 @@
           <button
             type="button"
             class="group-footer text-accent! active:opacity-60"
-            (click)="allEvents.set(true)"
+            (click)="eventCount.set(eventCount() + more(shownEvents().length, foundEvents().length))"
           >
-            Show all {{ foundEvents().length }}
+            Show {{ more(shownEvents().length, foundEvents().length) }} more
           </button>
         }
       </section>
@@ -261,9 +261,9 @@
           <button
             type="button"
             class="group-footer text-accent! active:opacity-60"
-            (click)="allCompanies.set(true)"
+            (click)="companyCount.set(companyCount() + more(shownCompanies().length, foundCompanies().length))"
           >
-            Show all {{ foundCompanies().length }}
+            Show {{ more(shownCompanies().length, foundCompanies().length) }} more
           </button>
         }
       </section>

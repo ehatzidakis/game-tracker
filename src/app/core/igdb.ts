@@ -453,62 +453,82 @@ const SEASON = 7;
 const UNLISTED_TYPES = [3, 5, 12, 13, 14];
 const CANCELLED_STATUS = 6;
 
-/** One list on a company's page. The ones past Developed and Published start folded. */
-export interface CompanySection {
-  key: string;
-  title: string;
-  games: CompanyGame[];
-  folded: boolean;
-}
+/** What a company did for a game: the filters on its page, in this order. */
+export const COMPANY_ROLES = [
+  { key: 'developed', title: 'Developed' },
+  { key: 'published', title: 'Published' },
+  { key: 'ported', title: 'Ported' },
+  { key: 'supported', title: 'Supported' },
+  { key: 'dlcs', title: 'DLC and expansions' },
+  { key: 'episodes', title: 'Episodes' },
+  { key: 'seasons', title: 'Seasons' },
+  { key: 'cancelled', title: 'Cancelled' },
+] as const;
+export type CompanyRole = (typeof COMPANY_ROLES)[number]['key'];
 
-/** Each game once, without other editions of the same game, newest first (upcoming on top). */
-function listed(
-  games: readonly CompanyGame[],
-  keep: (game: CompanyGame) => boolean,
-): CompanyGame[] {
-  const seen = new Set<number>();
-  return games
-    .filter((g) => !g.version_parent && keep(g) && !seen.has(g.id) && !!seen.add(g.id))
-    .sort(newestFirst);
+/** A game on a company's page, with what the company did for it. */
+export interface CompanyEntry {
+  game: CompanyGame;
+  roles: CompanyRole[];
+  cancelled: boolean;
 }
 
 /**
- * The lists on a company's page, empty ones left out: Developed and Published (main games,
- * remakes, remasters and the like), then, folded, Ported, Supported, DLC and expansions,
- * Episodes, Seasons and Cancelled.
+ * Every game a company is credited with, once each: developed and published (main games,
+ * remakes, remasters and the like; DLC, episodes and seasons count as those instead), ported and
+ * supported (any kind), and cancelled. Other editions, bundles, mods, packs and updates are left
+ * out. Newest first (upcoming on top), then the ones with no date yet (IGDB lacks dates for
+ * some old games too), then cancelled ones.
  */
-export function companySections(
+export function companyGames(
   company: Pick<CompanyDetails, 'developed' | 'published'>,
   credits: readonly CompanyCredit[] = [],
-): CompanySection[] {
-  const type = (g: CompanyGame) => g.game_type ?? 0;
-  const live = (types: number[]) => (g: CompanyGame) =>
-    types.includes(type(g)) && g.game_status !== CANCELLED_STATUS;
-  const anyLive = (g: CompanyGame) =>
-    !UNLISTED_TYPES.includes(type(g)) && g.game_status !== CANCELLED_STATUS;
-  const credited = (kind: 'porting' | 'supporting') =>
-    credits.filter((c) => c[kind] && c.game).map((c) => c.game!);
-  const made = [...(company.developed ?? []), ...(company.published ?? [])];
-  const all = [...made, ...credited('porting'), ...credited('supporting')];
+): CompanyEntry[] {
+  const entries = new Map<number, CompanyEntry>();
+  const credit = (game: CompanyGame, role: CompanyRole | null) => {
+    const type = game.game_type ?? 0;
+    if (game.version_parent || UNLISTED_TYPES.includes(type)) return;
+    let entry = entries.get(game.id);
+    if (!entry) {
+      const cancelled = game.game_status === CANCELLED_STATUS;
+      entry = { game, roles: cancelled ? ['cancelled'] : [], cancelled };
+      entries.set(game.id, entry);
+    }
+    if (role && !entry.roles.includes(role)) entry.roles.push(role);
+  };
+  /** Main games count as developed or published; DLC, episodes and seasons as themselves. */
+  const made = (game: CompanyGame, role: 'developed' | 'published') => {
+    const type = game.game_type ?? 0;
+    credit(
+      game,
+      MAIN_TYPES.includes(type)
+        ? role
+        : DLC_TYPES.includes(type)
+          ? 'dlcs'
+          : type === EPISODE
+            ? 'episodes'
+            : type === SEASON
+              ? 'seasons'
+              : null,
+    );
+  };
+  for (const g of company.developed ?? []) made(g, 'developed');
+  for (const g of company.published ?? []) made(g, 'published');
+  for (const c of credits) {
+    if (c.game && c.porting) credit(c.game, 'ported');
+    if (c.game && c.supporting) credit(c.game, 'supported');
+  }
 
-  const sections: [string, string, CompanyGame[], boolean][] = [
-    ['developed', 'Developed', listed(company.developed ?? [], live(MAIN_TYPES)), false],
-    ['published', 'Published', listed(company.published ?? [], live(MAIN_TYPES)), false],
-    ['ported', 'Ported', listed(credited('porting'), anyLive), true],
-    ['supported', 'Supported', listed(credited('supporting'), anyLive), true],
-    ['dlcs', 'DLC and expansions', listed(made, live(DLC_TYPES)), true],
-    ['episodes', 'Episodes', listed(made, live([EPISODE])), true],
-    ['seasons', 'Seasons', listed(made, live([SEASON])), true],
-    [
-      'cancelled',
-      'Cancelled',
-      listed(all, (g) => !UNLISTED_TYPES.includes(type(g)) && g.game_status === CANCELLED_STATUS),
-      true,
-    ],
-  ];
-  return sections
-    .map(([key, title, games, folded]) => ({ key, title, games, folded }))
-    .filter((s) => s.games.length);
+  const order = (role: CompanyRole) => COMPANY_ROLES.findIndex((r) => r.key === role);
+  return [...entries.values()]
+    .filter((e) => e.roles.length)
+    .map((e) => ({ ...e, roles: e.roles.sort((a, b) => order(a) - order(b)) }))
+    .sort(
+      (a, b) =>
+        Number(a.cancelled) - Number(b.cancelled) ||
+        Number(!a.game.first_release_date) - Number(!b.game.first_release_date) ||
+        newestFirst(a.game, b.game),
+    );
 }
 
 /** The main game's DLC and expansions, expansions first, each group newest first. */

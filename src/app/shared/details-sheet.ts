@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
@@ -7,9 +8,16 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { COMPLETIONS, type Completion, type TrackedGame } from '../../../api/_lib/models.js';
+import {
+  COMPLETIONS,
+  STATUSES,
+  type Completion,
+  type Status,
+  type TrackedGame,
+} from '../../../api/_lib/models.js';
 import { parsePlaytime, splitPlaytime } from '../core/playtime';
 import { FitWidth } from './fit-content';
+import { RatingSlider } from './rating-slider';
 
 /** Your own data about a game: what you paid, where and when, and how long you played. */
 export interface MyData {
@@ -22,6 +30,23 @@ export interface MyData {
   /** Milliseconds. */
   completedAt: number | null;
   completion: Completion | null;
+}
+
+/** What "Edit my data" saves: your data, and the status and rating it also edits. */
+export type SheetResult = Partial<MyData> & { status?: Status; rating?: number | null };
+
+/**
+ * For "Edit my data" on a game's page: the status and rating are edited here too, and the other
+ * fields follow the status you pick (purchase details once you own it, how far you got and the
+ * rating once it's completed).
+ */
+export interface StatusEdit {
+  status: Status;
+  rating: number | null;
+  released: boolean;
+  /** PlayStation has the playtime, so it isn't typed in. */
+  hoursFromPsn: boolean;
+  preordered: boolean;
 }
 
 /** Which fields the sheet asks for. */
@@ -42,10 +67,12 @@ interface SheetRequest {
   dismiss: string;
   fields: SheetFields;
   initial: Partial<MyData>;
+  /** Present for "Edit my data": the status and rating, with what the fields depend on. */
+  statusEdit?: StatusEdit;
   /** Stores you've used before, then common ones, as buttons. */
   stores: string[];
   today: string;
-  resolve: (data: Partial<MyData> | null) => void;
+  resolve: (data: SheetResult | null) => void;
 }
 
 /**
@@ -75,13 +102,17 @@ export class DetailsSheet {
     });
   }
 
-  /** "Edit my data" on a game's page: the fields that apply, filled with what you entered. */
+  /**
+   * "Edit my data" on a game's page: its status and rating, and the fields that apply, filled with
+   * what you entered.
+   */
   edit(
     game: TrackedGame,
     fields: SheetFields,
     today: string,
     stores: string[],
-  ): Promise<Partial<MyData> | null> {
+    statusEdit?: StatusEdit,
+  ): Promise<SheetResult | null> {
     return this.open({
       title: 'Your data for ',
       name: game.name,
@@ -97,17 +128,18 @@ export class DetailsSheet {
         completedAt: game.completedAt,
         completion: game.completion,
       },
+      statusEdit,
       stores,
       today,
     });
   }
 
-  finish(data: Partial<MyData> | null): void {
+  finish(data: SheetResult | null): void {
     this.request()?.resolve(data);
     this.request.set(null);
   }
 
-  private open(request: Omit<SheetRequest, 'resolve'>): Promise<Partial<MyData> | null> {
+  private open(request: Omit<SheetRequest, 'resolve'>): Promise<SheetResult | null> {
     this.request()?.resolve(null);
     return new Promise((resolve) => this.request.set({ ...request, resolve }));
   }
@@ -124,7 +156,7 @@ export function parsePrice(text: string): number | null | undefined {
 /** Rendered once, in the shell. */
 @Component({
   selector: 'app-details-sheet',
-  imports: [FitWidth],
+  imports: [FitWidth, RatingSlider],
   template: `
     <dialog
       #dialog
@@ -145,8 +177,30 @@ export function parsePrice(text: string): number | null | undefined {
             <p class="px-4 pb-3 text-center text-[13px] leading-[18px] text-muted">
               All optional. Leave anything you don't know empty.
             </p>
+            @if (req.statusEdit) {
+              <!-- The status is only changed here, so it can't be changed by a stray tap. -->
+              <div class="row flex-col items-stretch! gap-2! py-2.5!">
+                <span id="sheet-status-label" class="text-[13px] leading-[18px] text-muted"
+                  >Status</span
+                >
+                <div class="segmented" role="radiogroup" aria-labelledby="sheet-status-label">
+                  @for (s of statuses; track s.key) {
+                    <button
+                      type="button"
+                      role="radio"
+                      class="text-[12.5px]!"
+                      [attr.aria-checked]="status() === s.key"
+                      (click)="status.set(s.key)"
+                    >
+                      {{ s.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+            @let fields = shownFields();
             <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
-            @if (req.fields.hours) {
+            @if (fields.hours) {
               @let played = req.initial.hoursPlayed ? splitPlaytime(req.initial.hoursPlayed) : null;
               <div class="row">
                 <span class="flex-1">Playtime</span>
@@ -180,7 +234,7 @@ export function parsePrice(text: string): number | null | undefined {
                 </label>
               </div>
             }
-            @if (req.fields.completed) {
+            @if (fields.completed) {
               <div class="row flex-col items-stretch! gap-2! py-2.5!">
                 <span id="sheet-completion-label" class="text-[13px] leading-[18px] text-muted"
                   >How far you got</span
@@ -200,8 +254,39 @@ export function parsePrice(text: string): number | null | undefined {
               </div>
               <!-- No "Completed on": it's the day you marked the game Completed (or, synced from
                    PlayStation, the day you earned the Platinum). -->
+              @if (req.statusEdit) {
+                <!-- Slide along the bar (or tap), 1 to 10 in half points. -->
+                @let shown = ratingPreview() ?? rating();
+                <div class="row flex-col items-stretch! gap-2! py-2.5!">
+                  <div class="flex items-baseline gap-3 text-[13px] leading-[18px] text-muted">
+                    <span id="sheet-rating-label">Rating</span>
+                    <span class="num ml-auto">
+                      @if (shown) {
+                        <span class="text-[17px] font-semibold text-label">{{ shown }}</span>/10
+                      } @else {
+                        Slide to rate
+                      }
+                    </span>
+                    @if (rating() && ratingPreview() === null) {
+                      <button
+                        type="button"
+                        class="text-danger active:opacity-60"
+                        (click)="rating.set(null)"
+                      >
+                        Clear
+                      </button>
+                    }
+                  </div>
+                  <app-rating-slider
+                    class="px-1"
+                    [value]="rating()"
+                    (preview)="ratingPreview.set($event)"
+                    (changed)="rating.set($event)"
+                  />
+                </div>
+              }
             }
-            @if (req.fields.purchase) {
+            @if (fields.purchase) {
               <label class="row">
                 <span class="flex-1">Price</span>
                 <span class="flex items-baseline gap-0.5">
@@ -314,6 +399,25 @@ export class DetailsSheetOutlet {
   protected readonly physical = signal(false);
   protected readonly completion = signal<Completion | null>(null);
   protected readonly completions = COMPLETIONS;
+  protected readonly statuses = STATUSES;
+  /** The status picked in the sheet ("Edit my data" only). */
+  protected readonly status = signal<Status | null>(null);
+  protected readonly rating = signal<number | null>(null);
+  protected readonly ratingPreview = signal<number | null>(null);
+  /** The fields shown: fixed, or following the status picked in "Edit my data". */
+  protected readonly shownFields = computed((): SheetFields => {
+    const req = this.sheet.request();
+    if (!req) return { purchase: false, hours: false, completed: false };
+    const edit = req.statusEdit;
+    const status = this.status();
+    if (!edit || !status) return req.fields;
+    const owned = status !== 'wishlist';
+    return {
+      hours: owned && edit.released && !edit.hoursFromPsn,
+      completed: status === 'completed',
+      purchase: owned || edit.preordered,
+    };
+  });
   protected readonly splitPlaytime = splitPlaytime;
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
@@ -326,6 +430,9 @@ export class DetailsSheetOutlet {
         this.storeText.set(req.initial.boughtFrom ?? '');
         this.physical.set(!!req.initial.physical);
         this.completion.set(req.initial.completion ?? null);
+        this.status.set(req.statusEdit?.status ?? null);
+        this.rating.set(req.statusEdit?.rating ?? null);
+        this.ratingPreview.set(null);
         el.showModal();
       }
       if (!req && el.open) el.close();
@@ -339,19 +446,27 @@ export class DetailsSheetOutlet {
     const form = event.target as HTMLFormElement;
     const field = (name: string) =>
       (form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? '';
-    const data: Partial<MyData> = {};
+    const data: SheetResult = {};
+    const fields = this.shownFields();
 
-    if (req.fields.hours) {
+    if (req.statusEdit && this.status()) {
+      data.status = this.status()!;
+      if (data.status === 'completed' && !this.completion()) {
+        return this.error.set('Pick how far you got.');
+      }
+    }
+    if (fields.hours) {
       const hours = parsePlaytime(field('hours'), field('minutes'));
       if (hours === undefined) {
         return this.error.set('Playtime should be whole hours and minutes, up to 59 minutes.');
       }
       data.hoursPlayed = hours;
     }
-    if (req.fields.completed) {
+    if (fields.completed) {
       data.completion = this.completion() ?? req.initial.completion ?? null;
+      if (req.statusEdit) data.rating = this.rating();
     }
-    if (req.fields.purchase) {
+    if (fields.purchase) {
       const price = parsePrice(field('price'));
       if (price === undefined) return this.error.set('Price should be a number, like 69.99.');
       const ordered = field('ordered');

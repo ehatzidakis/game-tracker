@@ -1,25 +1,18 @@
 import { Component, computed, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { LucideChevronRight, LucidePlus } from '@lucide/angular';
+import { LucidePlus } from '@lucide/angular';
+import { eventCompany } from '../../../../api/_lib/igdb-events.js';
 import type { GamingEvent } from '../../../../api/_lib/models.js';
 import { EventsService } from '../../core/events.service';
-import { EventArt } from '../../shared/event-art';
-import { EventSheet, timeRange } from '../../shared/event-sheet';
-
-const DAY = new Intl.DateTimeFormat('en-GB', {
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-});
+import { CardGrid, eventDateLine, type GridCard, type GridFilter } from '../../shared/card-grid';
+import { EventSheet } from '../../shared/event-sheet';
 
 /**
  * Settings → Gaming events: every event you've added, including archived ones (the Calendar
- * shows what's coming up, the Library what's over). Tap one to open it.
+ * shows what's coming up, the Library what's over), as cards. Tap one to open it.
  */
 @Component({
   selector: 'app-events',
-  imports: [RouterLink, EventArt, LucideChevronRight, LucidePlus],
+  imports: [CardGrid, LucidePlus],
   template: `
     <h1 class="large-title">Gaming events</h1>
 
@@ -34,36 +27,17 @@ const DAY = new Intl.DateTimeFormat('en-GB', {
       always in your iPhone Calendar subscription. Events IGDB lists are added from Search.
     </p>
 
-    @for (group of groups(); track group.title) {
-      <section [attr.aria-label]="group.title">
-        <h2 class="group-header">{{ group.title }}</h2>
-        <ul class="grouped" style="--sep-inset: 68px">
-          @for (event of group.events; track event.id) {
-            <li class="row p-0!">
-              <a [routerLink]="['/event', event.id]" class="row py-2!">
-                <app-event-art
-                  class="aspect-[3/4] w-10 shrink-0 rounded-[5px]"
-                  fit="contain"
-                  [logoId]="event.logoId"
-                  [kind]="event.kind"
-                  [iconSize]="28"
-                />
-                <div class="min-w-0 flex-1">
-                  <p class="truncate" [class.text-muted]="event.archived">{{ event.title }}</p>
-                  <p class="num text-[15px] leading-5 text-muted">{{ when(event) }}</p>
-                </div>
-                <svg
-                  lucideChevronRight
-                  [size]="18"
-                  [strokeWidth]="2.25"
-                  class="-mr-1 shrink-0 text-faint"
-                ></svg>
-              </a>
-            </li>
-          }
-        </ul>
+    @if (cards().length) {
+      <section aria-label="Events">
+        <app-card-grid
+          noun="event"
+          allLabel="All events"
+          [cards]="cards()"
+          [filters]="filters()"
+          [initial]="25"
+        />
       </section>
-    } @empty {
+    } @else {
       <p class="mt-12 text-center text-[15px] leading-5 text-muted">
         No events yet. Add State of Play, Nintendo Direct, Summer Game Fest and the like.
       </p>
@@ -74,24 +48,51 @@ export class EventsPage {
   private readonly events = inject(EventsService);
   private readonly sheet = inject(EventSheet);
 
-  /** Upcoming (soonest first), then past (latest first), then archived. */
-  protected readonly groups = computed(() => {
+  /**
+   * Every event as a card: upcoming (soonest first), then past (latest first), then archived
+   * (greyed out). Filtered by when, or by company.
+   */
+  protected readonly cards = computed((): GridCard[] => {
     const now = Date.now();
     const all = this.events.events();
     const upcoming = all.filter((e) => !e.archived && e.startsAt >= now).reverse();
     const past = all.filter((e) => !e.archived && e.startsAt < now);
     const archived = all.filter((e) => e.archived);
+    const card = (e: GamingEvent, when: string): GridCard => {
+      const company = eventCompany(e);
+      return {
+        id: e.id,
+        link: ['/event', e.id],
+        name: e.title,
+        event: { logoId: e.logoId ?? null, kind: e.kind },
+        line: eventDateLine(e.startsAt),
+        dim: e.archived,
+        tags: [when, ...(company ? [`company-${company.name}`] : [])],
+      };
+    };
     return [
-      { title: 'Upcoming', events: upcoming },
-      { title: 'Past', events: past },
-      { title: 'Archived', events: archived },
-    ].filter((group) => group.events.length);
+      ...upcoming.map((e) => card(e, 'upcoming')),
+      ...past.map((e) => card(e, 'past')),
+      ...archived.map((e) => card(e, 'archived')),
+    ];
   });
 
-  /** "Tue 9 Jun 2026 · 22:00" */
-  protected when(event: GamingEvent): string {
-    return `${DAY.format(event.startsAt).replace(',', '')} · ${timeRange(event)}`;
-  }
+  /** Upcoming, Past and Archived, then each company (A–Z). */
+  protected readonly filters = computed((): GridFilter[] => {
+    const companies = [
+      ...new Set(
+        this.cards()
+          .flatMap((c) => c.tags)
+          .filter((t) => t.startsWith('company-')),
+      ),
+    ].sort();
+    return [
+      { key: 'upcoming', title: 'Upcoming' },
+      { key: 'past', title: 'Past' },
+      { key: 'archived', title: 'Archived' },
+      ...companies.map((key) => ({ key, title: key.slice(8), group: 'Company' })),
+    ];
+  });
 
   protected add(): void {
     void this.sheet.create();

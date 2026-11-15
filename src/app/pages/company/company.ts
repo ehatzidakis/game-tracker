@@ -1,23 +1,32 @@
 import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
-import { LucideBuilding2, LucideChevronRight, LucideExternalLink } from '@lucide/angular';
-import { isDlc, statusLabel } from '../../../../api/_lib/models.js';
+import {
+  LucideActivity,
+  LucideBuilding2,
+  LucideCalendar,
+  LucideExternalLink,
+  LucideMapPin,
+  LucideUsers,
+} from '@lucide/angular';
 import { describeRelease } from '../../../../api/_lib/release.js';
 import { countryName } from '../../core/countries';
 import {
-  companySections,
+  COMPANY_ROLES,
+  companyGames,
   logoUrl,
   IgdbService,
   type CompanyDetails,
-  type CompanyGame,
 } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
-import { Cover } from '../../shared/cover';
-
-/** How many games each list shows before "Show all". */
-const SHOWN_GAMES = 8;
+import {
+  CardGrid,
+  gameMarks,
+  yearOf,
+  type GridCard,
+  type GridFilter,
+} from '../../shared/card-grid';
 
 /** IGDB website types, with friendlier names; others keep IGDB's. */
 const SITE_LABELS: Record<string, string> = {
@@ -42,14 +51,26 @@ export function foundedLabel(company: Pick<CompanyDetails, 'start_date' | 'start
 /** "active" → "Active". */
 const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
+type Fact = { icon: 'country' | 'founded' | 'size' | 'status'; label: string };
+
 /**
- * A developer or publisher: its logo, name, details from IGDB (country, founded, size, status,
- * parent company), description, links, the games it developed and published, and, folded, the
- * ones it ported or supported, its DLC and expansions, episodes, seasons and cancelled games.
+ * A developer or publisher: its logo, name, details from IGDB in two short lines (country,
+ * founded, size, status, parent company), description, every game it's credited with as a grid
+ * of covers you can filter (developed, published, ported, supported, DLC, episodes, seasons,
+ * cancelled), and its links.
  */
 @Component({
   selector: 'app-company',
-  imports: [RouterLink, Cover, LucideBuilding2, LucideChevronRight, LucideExternalLink],
+  imports: [
+    RouterLink,
+    CardGrid,
+    LucideActivity,
+    LucideBuilding2,
+    LucideCalendar,
+    LucideExternalLink,
+    LucideMapPin,
+    LucideUsers,
+  ],
   template: `
     @if (details.data(); as c) {
       <article>
@@ -69,36 +90,51 @@ const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(
         <h1 class="mt-4 text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance">
           {{ c.name }}
         </h1>
-        @if (summary(); as line) {
-          <p class="num mt-1 text-[15px] leading-5 text-muted">{{ line }}</p>
-        }
 
+        <!-- Its details at a glance, as a game's "my data": an icon and a few words each. -->
         @if (facts().length || c.parent) {
-          <div class="grouped mt-6">
-            @for (fact of facts(); track fact.label) {
-              <div class="row">
-                <span class="flex-1">{{ fact.label }}</span>
-                <span class="row-value num">{{ fact.value }}</span>
-              </div>
+          <ul
+            class="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted"
+            aria-label="Details"
+          >
+            @for (fact of facts(); track fact.icon) {
+              <li class="num flex items-center gap-1.5">
+                @switch (fact.icon) {
+                  @case ('country') {
+                    <svg lucideMapPin [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+                  }
+                  @case ('founded') {
+                    <svg lucideCalendar [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+                  }
+                  @case ('size') {
+                    <svg lucideUsers [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+                  }
+                  @case ('status') {
+                    <svg lucideActivity [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+                  }
+                }
+                {{ fact.label }}
+              </li>
             }
             @if (c.parent; as parent) {
-              <a [routerLink]="['/company', parent.id]" class="row">
-                <span class="shrink-0">Part of</span>
-                <span class="row-value min-w-0 truncate">{{ parent.name }}</span>
-                <svg
-                  lucideChevronRight
-                  [size]="18"
-                  [strokeWidth]="2.25"
-                  class="-mr-1 shrink-0 text-faint"
-                ></svg>
-              </a>
+              <li class="flex min-w-0 items-center gap-1.5">
+                <svg lucideBuilding2 [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
+                <span class="min-w-0 truncate">
+                  Part of
+                  <a
+                    [routerLink]="['/company', parent.id]"
+                    class="underline decoration-muted/40 underline-offset-[3px] active:opacity-60"
+                    >{{ parent.name }}</a
+                  >
+                </span>
+              </li>
             }
-          </div>
+          </ul>
         }
 
         @if (c.description) {
           <p
-            class="mt-5 text-[15px] leading-5 whitespace-pre-line text-muted"
+            class="mt-4 text-[15px] leading-5 whitespace-pre-line text-muted"
             [class.line-clamp-4]="!wholeText()"
           >
             {{ c.description }}
@@ -114,65 +150,15 @@ const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(
           }
         }
 
-        @for (list of lists(); track list.key) {
-          <section [attr.aria-label]="list.title">
-            @if (list.folded) {
-              <!-- Folded until you tap the heading, like the series on a game's page. -->
-              <h2 class="group-header">
-                <button
-                  type="button"
-                  class="flex w-full items-center justify-between gap-3 text-left uppercase active:opacity-60"
-                  [attr.aria-expanded]="list.open"
-                  (click)="toggle(list.key)"
-                >
-                  {{ list.title }} · {{ list.games.length }}
-                  <!-- Rotates the wrapper: the icon component manages its own classes. -->
-                  <span
-                    class="shrink-0 transition-transform duration-200"
-                    [class.rotate-90]="list.open"
-                    aria-hidden="true"
-                  >
-                    <svg lucideChevronRight [size]="16" [strokeWidth]="2.5" class="block"></svg>
-                  </span>
-                </button>
-              </h2>
-            } @else {
-              <h2 class="group-header">{{ list.title }} · {{ list.games.length }}</h2>
-            }
-            @if (list.open) {
-              <ul class="grouped" style="--sep-inset: 68px">
-                @for (g of list.shown; track g.id) {
-                  <li class="row p-0!">
-                    <a [routerLink]="['/game', g.id]" class="row py-2!">
-                      <app-cover
-                        class="w-10 shrink-0 rounded-[5px]!"
-                        [coverId]="g.cover?.image_id"
-                        [name]="''"
-                      />
-                      <div class="min-w-0 flex-1">
-                        <p class="truncate">{{ g.name }}</p>
-                        <p class="num text-[15px] leading-5 text-muted">{{ gameState(g) }}</p>
-                      </div>
-                      <svg
-                        lucideChevronRight
-                        [size]="18"
-                        [strokeWidth]="2.25"
-                        class="-mr-1 shrink-0 text-faint"
-                      ></svg>
-                    </a>
-                  </li>
-                }
-              </ul>
-              @if (list.games.length > list.shown.length) {
-                <button
-                  type="button"
-                  class="group-footer text-accent! active:opacity-60"
-                  (click)="showAll(list.key)"
-                >
-                  Show all {{ list.games.length }}
-                </button>
-              }
-            }
+        @if (cards().length) {
+          <section aria-label="Games">
+            <app-card-grid
+              [cards]="cards()"
+              [filters]="filters"
+              allLabel="All games"
+              [initial]="25"
+              [resetKey]="companyId()"
+            />
           </section>
         }
 
@@ -216,14 +202,14 @@ export class CompanyPage {
   private readonly igdb = inject(IgdbService);
   private readonly library = inject(LibraryService);
 
-  private readonly companyId = computed(() => Number(this.id()));
+  protected readonly companyId = computed(() => Number(this.id()));
   protected readonly details = injectQuery(() => ({
     queryKey: ['igdb-company', this.companyId()],
     queryFn: () => this.igdb.company(this.companyId()),
     enabled: Number.isInteger(this.companyId()),
     staleTime: 24 * 60 * 60_000,
   }));
-  /** The games it ported or supported (a second request; those lists appear when it's in). */
+  /** The games it ported or supported (a second request; they join the grid when it's in). */
   private readonly credits = injectQuery(() => ({
     queryKey: ['igdb-company-credits', this.companyId()],
     queryFn: () => this.igdb.companyCredits(this.companyId()),
@@ -233,45 +219,42 @@ export class CompanyPage {
 
   protected readonly logoUrl = logoUrl;
   protected readonly wholeText = signal(false);
-  private readonly allOf = signal<ReadonlySet<string>>(new Set());
-  /** The folded lists you've opened on this page. */
-  private readonly opened = signal<ReadonlySet<string>>(new Set());
-
-  /** "Japan · Founded 1 Nov 1986" under the name. */
-  protected readonly summary = computed(() => {
-    const c = this.details.data();
-    if (!c) return null;
-    const founded = foundedLabel(c);
-    return [countryName(c.country), founded ? `Founded ${founded}` : null]
-      .filter(Boolean)
-      .join(' · ');
-  });
+  /** Developed, Published, Ported… as the grid's filters. */
+  protected readonly filters: GridFilter[] = COMPANY_ROLES.map((r) => ({ ...r }));
 
   /** Country, founded, size and status, as IGDB has them. */
-  protected readonly facts = computed(() => {
+  protected readonly facts = computed((): Fact[] => {
     const c = this.details.data();
     if (!c) return [];
-    return [
-      { label: 'Country', value: countryName(c.country) },
-      { label: 'Founded', value: foundedLabel(c) },
-      { label: 'Size', value: c.company_size?.name ?? null },
-      { label: 'Status', value: c.status?.name ? capitalized(c.status.name) : null },
-    ].filter((f): f is { label: string; value: string } => !!f.value);
+    const founded = foundedLabel(c);
+    const facts: [Fact['icon'], string | null][] = [
+      ['country', countryName(c.country)],
+      ['founded', founded ? `Founded ${founded}` : null],
+      ['size', c.company_size?.name ?? null],
+      ['status', c.status?.name ? capitalized(c.status.name) : null],
+    ];
+    return facts.filter(([, label]) => !!label).map(([icon, label]) => ({ icon, label: label! }));
   });
 
-  /**
-   * Developed and Published, open, then the folded lists. Each newest first, the first few
-   * unless you ask for all.
-   */
-  protected readonly lists = computed(() => {
+  /** Every game it's credited with: newest first, upcoming on top, cancelled last. */
+  protected readonly games = computed(() => {
     const c = this.details.data();
-    if (!c) return [];
-    return companySections(c, this.credits.data() ?? []).map((list) => ({
-      ...list,
-      open: !list.folded || this.opened().has(list.key),
-      shown: this.allOf().has(list.key) ? list.games : list.games.slice(0, SHOWN_GAMES),
-    }));
+    return c ? companyGames(c, this.credits.data() ?? []) : [];
   });
+
+  /** As cards: the year (or Cancelled, greyed out) under each, and your status. */
+  protected readonly cards = computed((): GridCard[] =>
+    this.games().map((e) => ({
+      id: e.game.id,
+      link: ['/game', e.game.id],
+      name: e.game.name,
+      coverId: e.game.cover?.image_id,
+      line: e.cancelled ? 'Cancelled' : yearOf(e.game.first_release_date),
+      dim: e.cancelled,
+      tags: e.roles,
+      ...gameMarks(this.library.byId().get(e.game.id)),
+    })),
+  );
 
   /** Its websites (https only), then its page on IGDB. */
   protected readonly links = computed(() => {
@@ -300,30 +283,6 @@ export class CompanyPage {
     effect(() => {
       this.companyId();
       this.wholeText.set(false);
-      this.allOf.set(new Set());
-      this.opened.set(new Set());
     });
-  }
-
-  protected toggle(key: string): void {
-    this.opened.update((keys) => {
-      const next = new Set(keys);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  protected showAll(key: string): void {
-    this.allOf.update((keys) => new Set(keys).add(key));
-  }
-
-  /** Your status for a game ("Wishlist", "Completed"), or the year it came out. */
-  protected gameState(game: CompanyGame): string {
-    const t = this.library.byId().get(game.id);
-    if (t) return isDlc(t) && t.status !== 'wishlist' ? 'Owned' : statusLabel(t.status);
-    if (!game.first_release_date) return 'TBA';
-    const ms = game.first_release_date * 1000;
-    return String(new Date(ms).getUTCFullYear());
   }
 }

@@ -3,6 +3,8 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import {
+  LucideArchive,
+  LucideBookmark,
   LucideCalendarCheck,
   LucideChevronRight,
   LucideCircleCheck,
@@ -10,14 +12,18 @@ import {
   LucideDisc3,
   LucideEuro,
   LucideExternalLink,
+  LucideLibraryBig,
   LucidePencil,
+  LucidePlay,
   LucidePlus,
+  LucideStar,
   LucideStore,
   LucideTrophy,
   LucideFlag,
   LucideGamepad2,
+  LucideUsers,
 } from '@lucide/angular';
-import { igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
+import { eventCompany, igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
 import { releaseDatesOf } from '../../../../api/_lib/igdb-sync.js';
 import {
   type TrophyCounts,
@@ -25,14 +31,11 @@ import {
   completionLabel,
   isDlc,
   statusLabel,
-  STATUSES,
   type Release,
-  type Status,
 } from '../../../../api/_lib/models.js';
 import {
   PLATFORMS,
   platformIgdbId,
-  platformLabel,
   type PlatformKey,
 } from '../../../../api/_lib/platforms.js';
 import { daysBetween, pickRelease } from '../../../../api/_lib/release.js';
@@ -50,20 +53,27 @@ import {
 } from '../../core/igdb';
 import { OpenCriticService } from '../../core/opencritic';
 import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
-import { EventArt } from '../../shared/event-art';
 import { PLAYSTATION } from '../../shared/event-icon';
 import { LibraryService } from '../../core/library.service';
 import { PageTitle } from '../../core/page-title';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
+import {
+  CardGrid,
+  eventDateLine,
+  gameMarks,
+  yearOf,
+  type GridCard,
+  type GridFilter,
+} from '../../shared/card-grid';
 import { Cover } from '../../shared/cover';
-import { RatingSlider } from '../../shared/rating-slider';
 import { ChoiceSheet } from '../../shared/choice-sheet';
 import { DetailsSheet, parsePrice, type SheetFields } from '../../shared/details-sheet';
 import { FitWidth, Grow } from '../../shared/fit-content';
+import { ScoreRing } from '../../shared/score-ring';
 
-/** How many DLC (or series games) a game's page lists before "Show all". */
-const SHOWN_DLCS = 6;
+/** IGDB game types counted as remakes and remasters in a series (remake, remaster, expanded). */
+const REMADE_TYPES = [8, 9, 10];
 const COUNT = new Intl.NumberFormat('en-GB');
 
 const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
@@ -77,13 +87,19 @@ const COMMON_STORES = ['PlayStation Store', 'Amazon'];
 @Component({
   selector: 'app-game',
   imports: [
+    CardGrid,
     Cover,
-    RatingSlider,
     NgTemplateOutlet,
     RouterLink,
     FitWidth,
-    EventArt,
     Grow,
+    ScoreRing,
+    LucideArchive,
+    LucideBookmark,
+    LucideLibraryBig,
+    LucidePlay,
+    LucideStar,
+    LucideUsers,
     LucideCalendarCheck,
     LucideChevronRight,
     LucideCircleCheck,
@@ -293,13 +309,19 @@ export class GamePage {
     const fields = this.editableFields() ?? { hours: false, completed: false, purchase: false };
     if (!t) return [];
     type Item = { icon: string; label: string };
-    // Line 1: how far you got (Platinum is the trophy by the name), when, how long.
+    // Line 1: your status (changed in "Edit my data"), how far you got (Platinum is the trophy by
+    // the name), how long, when. Your rating sits by the release date.
     const progress: Item[] = [];
+    if (t.status === 'completed') {
+      const when = t.completedAt ? ` ${SHORT_DATE.format(t.completedAt)}` : '';
+      progress.push({ icon: 'completed', label: `Completed${when}` });
+    } else if (t.status === 'backlog' && t.playing) {
+      progress.push({ icon: 'playing', label: 'Playing' });
+    } else {
+      progress.push({ icon: t.status, label: statusLabel(t.status) });
+    }
     if (fields.completed && t.completion && t.completion !== 'platinum') {
       progress.push({ icon: 'level', label: completionLabel(t.completion) ?? '' });
-    }
-    if (fields.completed && t.completedAt) {
-      progress.push({ icon: 'completed', label: `Completed ${SHORT_DATE.format(t.completedAt)}` });
     }
     const played = formatPlaytime(t.hoursPlayed);
     if (this.hoursFromPsn() && played) {
@@ -375,32 +397,70 @@ export class GamePage {
     return !!t && t.status !== 'wishlist';
   });
 
-  /** For main games: their DLC and expansions, the first few unless you ask for all. */
-  protected readonly dlcs = computed(() => {
+  /** For main games: their DLC and expansions, expansions first, as cards. */
+  protected readonly dlcs = computed((): GridCard[] => {
     const d = this.details.data();
-    return d ? dlcsOf(d) : [];
+    if (!d) return [];
+    const expansions = new Set((d.expansions ?? []).map((e) => e.id));
+    return dlcsOf(d).map((g) =>
+      this.gameCard(g, [expansions.has(g.id) ? 'expansions' : 'dlc']),
+    );
   });
-  protected readonly allDlcs = signal(false);
-  protected readonly shownDlcs = computed(() =>
-    this.allDlcs() ? this.dlcs() : this.dlcs().slice(0, SHOWN_DLCS),
-  );
+  protected readonly dlcFilters: GridFilter[] = [
+    { key: 'expansions', title: 'Expansions' },
+    { key: 'dlc', title: 'DLC' },
+    { key: 'mine', title: 'In my library' },
+  ];
 
   /**
    * Every event the game was shown at, earliest first (so the first is where it was revealed),
-   * each opening the event's page. The first few unless you ask for all.
+   * as cards opening the event's page, to filter by year or by company.
    */
-  protected readonly shownAt = computed(() =>
-    (this.eventsQuery.data() ?? []).map((e) => ({
-      id: igdbEventDocId(e.id),
-      name: e.name,
-      logoId: e.logoId,
-      date: SHORT_DATE.format(e.startsAt),
-    })),
+  protected readonly shownAt = computed((): GridCard[] =>
+    (this.eventsQuery.data() ?? []).map((e) => {
+      const year = String(new Date(e.startsAt).getFullYear());
+      const company = eventCompany({ title: e.name, kind: 'other', igdbId: e.id });
+      return {
+        id: e.id,
+        link: ['/event', igdbEventDocId(e.id)],
+        name: e.name,
+        event: { logoId: e.logoId, kind: 'other' },
+        line: eventDateLine(e.startsAt),
+        tags: [`year-${year}`, ...(company ? [`company-${company.name}`] : [])],
+      };
+    }),
   );
-  protected readonly allShownAt = signal(false);
-  protected readonly listedShownAt = computed(() =>
-    this.allShownAt() ? this.shownAt() : this.shownAt().slice(0, SHOWN_DLCS),
-  );
+  /** Its years (newest first) and companies (A–Z), as the Shown at filters. */
+  protected readonly shownAtFilters = computed((): GridFilter[] => {
+    const tags = new Set(this.shownAt().flatMap((c) => c.tags));
+    const of = (prefix: string) =>
+      [...tags].filter((t) => t.startsWith(prefix)).map((t) => t.slice(prefix.length));
+    return [
+      ...of('year-')
+        .sort((a, b) => b.localeCompare(a))
+        .map((y) => ({ key: `year-${y}`, title: y, group: 'Year' })),
+      ...of('company-')
+        .sort((a, b) => a.localeCompare(b))
+        .map((c) => ({ key: `company-${c}`, title: c, group: 'Company' })),
+    ];
+  });
+
+  /**
+   * A game as a card: the year under it (TBA without a date), your status and Platinum, and the
+   * In my library filter when it's yours.
+   */
+  private gameCard(game: GameSummary, tags: string[]): GridCard {
+    const mine = this.library.byId().get(game.id);
+    return {
+      id: game.id,
+      link: ['/game', game.id],
+      name: game.name,
+      coverId: game.cover?.image_id,
+      line: yearOf(game.first_release_date),
+      tags: mine ? [...tags, 'mine'] : tags,
+      ...gameMarks(mine),
+    };
+  }
 
   /** For a remake or remaster: the original, to link to. */
   protected readonly remake = computed(() => {
@@ -427,19 +487,29 @@ export class GamePage {
     return {
       url: score.url,
       topCriticScore: score.topCriticScore,
-      topCritics: `${COUNT.format(critics)} ${critics === 1 ? 'top critic' : 'top critics'}`,
+      topCritics: `${COUNT.format(critics)} ${critics === 1 ? 'critic' : 'critics'}`,
       playerRating: players ? Math.round(d!.rating!) : null,
-      players: `${COUNT.format(players)} ${players === 1 ? 'rating' : 'ratings'} on IGDB`,
+      players: `${COUNT.format(players)} ${players === 1 ? 'player' : 'players'}`,
     };
   });
 
-  /** Other games in the same series. */
+  /** Other games in the same series, as cards: main games, or remakes and remasters. */
   protected readonly series = computed(() => {
     const d = this.details.data();
-    return d ? seriesOf(d) : null;
+    const s = d ? seriesOf(d) : null;
+    if (!s) return null;
+    const cards = s.games.map((g) => {
+      const type = (g as { game_type?: number }).game_type ?? 0;
+      return this.gameCard(g, [REMADE_TYPES.includes(type) ? 'remakes' : 'main']);
+    });
+    return { name: s.name, cards };
   });
-  protected readonly allSeries = signal(false);
-  /** Series, Details and Links start folded on every game; tap the heading to open. */
+  protected readonly seriesFilters: GridFilter[] = [
+    { key: 'main', title: 'Main games' },
+    { key: 'remakes', title: 'Remakes and remasters' },
+    { key: 'mine', title: 'In my library' },
+  ];
+  /** Details and Links start folded on every game; tap the heading to open. */
   private readonly opened = signal<ReadonlySet<string>>(new Set());
   protected isOpen(section: string): boolean {
     return this.opened().has(section);
@@ -452,10 +522,6 @@ export class GamePage {
       return next;
     });
   }
-  protected readonly shownSeries = computed(() => {
-    const games = this.series()?.games ?? [];
-    return this.allSeries() ? games : games.slice(0, SHOWN_DLCS);
-  });
 
   /** Genres, themes, modes, publisher, engine and age rating. */
   protected readonly facts = computed(() => {
@@ -484,13 +550,7 @@ export class GamePage {
     return d ? linksOf(d) : [];
   });
 
-  protected readonly statuses = STATUSES;
   protected readonly maxPlaying = MAX_PLAYING;
-  /** The rating under your finger while you slide, shown in the heading. */
-  protected readonly ratingPreview = signal<number | null>(null);
-  /** The rating bar only moves after you tap Edit. */
-  protected readonly editingRating = signal(false);
-  protected readonly platformLabel = platformLabel;
   protected readonly coverUrl = coverUrl;
   protected readonly formatPlaytime = formatPlaytime;
   protected readonly playstationLogo = PLAYSTATION;
@@ -504,11 +564,7 @@ export class GamePage {
     // Going from a game to one of its DLC reuses this screen: start it fresh.
     effect(() => {
       this.gameId();
-      this.allDlcs.set(false);
-      this.allSeries.set(false);
-      this.allShownAt.set(false);
       this.opened.set(new Set());
-      this.editingRating.set(false);
     });
 
     // Keep your copy of the IGDB data current (e.g. a release date that moved).
@@ -550,38 +606,6 @@ export class GamePage {
     if (now) this.library.setPlaying(now, true);
   }
 
-  protected async setStatus(status: Status): Promise<void> {
-    const t = this.tracked();
-    if (!t || t.status === status) return;
-    if (status === 'completed') {
-      // Completing a game always asks how far you got. Cancel leaves the status as it was.
-      const completion = await this.sheet.completion(t.name);
-      const now = this.tracked();
-      if (!completion || !now) return;
-      this.library.setStatus(now, status, completion);
-    } else {
-      this.library.setStatus(t, status);
-    }
-    // Moving a released game out of Wishlist means you bought it: ask what you paid (optional),
-    // unless you already entered that when you pre-ordered it.
-    if (t.status === 'wishlist' && status !== 'shelved' && this.released() && !t.preordered) {
-      const details = await this.detailsSheet.askPurchase(
-        'purchase',
-        t.name,
-        today(),
-        this.stores(),
-      );
-      const now = this.tracked();
-      if (details && now) this.library.edit(now, details);
-    }
-  }
-
-  /** 1–10 in half points, or null to clear it. */
-  protected setRating(rating: number | null): void {
-    const t = this.tracked();
-    if (t && t.rating !== rating) this.library.edit(t, { rating });
-  }
-
   protected async togglePreorder(): Promise<void> {
     const t = this.tracked();
     if (!t) return;
@@ -605,25 +629,6 @@ export class GamePage {
     }
     input.value = price != null ? price.toFixed(2) : '';
     if (price !== (t.pricePaid ?? null)) this.library.edit(t, { pricePaid: price });
-  }
-
-  /**
-   * For DLC and series rows: "Completed 3 Mar 2027", "Owned", "On wishlist", your status for a
-   * game, or its release date if you don't track it.
-   */
-  protected rowState(dlc: GameSummary): string {
-    const t = this.library.byId().get(dlc.id);
-    if (t && !isDlc(t)) {
-      return t.preordered ? `${statusLabel(t.status)} · Pre-ordered` : statusLabel(t.status);
-    }
-    if (t?.status === 'completed') {
-      return t.completedAt ? `Completed ${SHORT_DATE.format(t.completedAt)}` : 'Completed';
-    }
-    if (t && t.status !== 'wishlist') return 'Owned';
-    if (t) return t.preordered ? 'On wishlist · Pre-ordered' : 'On wishlist';
-    if (!dlc.first_release_date) return 'TBA';
-    const ms = dlc.first_release_date * 1000;
-    return ms > Date.now() ? `Out ${SHORT_DATE.format(ms)}` : String(new Date(ms).getFullYear());
   }
 
   protected toggleDlcWishlist(): void {
@@ -659,14 +664,30 @@ export class GamePage {
     }
   }
 
-  /** "Edit my data": hours, completed date and purchase details in a sheet. */
+  /**
+   * "Edit my data" (the pencil by the name): status, rating, hours, how far you got and purchase
+   * details in a sheet. The status and rating are only changed here.
+   */
   protected async editMyData(): Promise<void> {
     const t = this.tracked();
-    const fields = this.editableFields();
-    if (!t || !fields) return;
-    const data = await this.detailsSheet.edit(t, fields, today(), this.stores());
+    if (!t || this.isDlcPage()) return;
+    const fields = this.editableFields() ?? { hours: false, completed: false, purchase: false };
+    const data = await this.detailsSheet.edit(t, fields, today(), this.stores(), {
+      status: t.status,
+      rating: t.rating,
+      released: this.released(),
+      hoursFromPsn: this.hoursFromPsn(),
+      preordered: !!t.preordered,
+    });
     const now = this.tracked();
-    if (data && now) this.library.edit(now, data);
+    if (!data || !now) return;
+    const { status, ...edits } = data;
+    if (status && status !== now.status) {
+      // Completing dates it from PlayStation's last played day (or today); leaving Backlog stops
+      // "Playing".
+      this.library.setStatus(now, status, edits.completion ?? undefined);
+    }
+    if (Object.keys(edits).length) this.library.edit(now, edits);
   }
 
   protected setNotes(event: Event): void {
