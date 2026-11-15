@@ -45,6 +45,24 @@ export function vagueDate(
   return 'Date not announced';
 }
 
+const MONTH_SHORT = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: 'UTC' });
+
+/**
+ * A game without an exact day where no header gives the year (the Calendar's cards): "Nov 2027",
+ * "Jul–Sep 2027", "2028", or "Date not announced".
+ */
+export function vagueDateWithYear(
+  game: Pick<TrackedGame, 'releaseDate' | 'releasePrecision' | 'releaseLabel'>,
+): string {
+  const date = game.releaseDate ? new Date(`${game.releaseDate}T00:00:00Z`) : null;
+  if (!date || Number.isNaN(date.getTime())) return 'Date not announced';
+  const year = date.getUTCFullYear();
+  if (game.releasePrecision === 'month') return `${MONTH_SHORT.format(date)} ${year}`;
+  if (game.releasePrecision === 'quarter') return `${vagueDate(game)} ${year}`;
+  if (game.releasePrecision === 'day') return game.releaseLabel;
+  return String(year);
+}
+
 /**
  * The next game to come out: the earliest exact day, today or later, among games the Calendar
  * lists (not completed or shelved). Its countdown is the one blue countdown, in the Calendar and

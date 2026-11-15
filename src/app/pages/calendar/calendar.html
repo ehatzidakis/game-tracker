@@ -33,10 +33,42 @@
   <!-- The Library's toolbar row: what's listed on the left, the action on the right. -->
   <div class="mt-3 flex items-center gap-2 text-[15px] leading-5 text-muted">
     <p class="num min-w-0 truncate">{{ countLine() }}</p>
+    <!-- Rows or cards (like the Library's), and with cards three or four a row; remembered on
+         this device. Blue when on, like the Library's buttons. -->
+    <button
+      type="button"
+      class="ml-auto grid size-8 shrink-0 place-items-center rounded-full"
+      [class]="
+        cardView()
+          ? 'bg-accent-fill text-white active:brightness-90'
+          : 'bg-group text-accent active:bg-pressed'
+      "
+      aria-label="Show as cards"
+      [attr.aria-pressed]="cardView()"
+      (click)="toggleView()"
+    >
+      <svg lucideLayoutGrid [size]="17" [strokeWidth]="2.25"></svg>
+    </button>
+    @if (cardView()) {
+      <button
+        type="button"
+        class="grid size-8 shrink-0 place-items-center rounded-full"
+        [class]="
+          columns() === '4'
+            ? 'bg-accent-fill text-white active:brightness-90'
+            : 'bg-group text-accent active:bg-pressed'
+        "
+        aria-label="Four a row"
+        [attr.aria-pressed]="columns() === '4'"
+        (click)="toggleColumns()"
+      >
+        <svg lucideGrid3x3 [size]="17" [strokeWidth]="2.25"></svg>
+      </button>
+    }
     <!-- Your own gaming event. Events IGDB lists are added from Search. -->
     <button
       type="button"
-      class="ml-auto flex h-8 shrink-0 items-center gap-1 rounded-full bg-group pr-3.5 pl-3 text-base text-accent active:bg-pressed"
+      class="flex h-8 shrink-0 items-center gap-1 rounded-full bg-group pr-3.5 pl-3 text-base text-accent active:bg-pressed"
       (click)="addEvent()"
     >
       <svg lucidePlus [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
@@ -44,6 +76,120 @@
     </button>
   </div>
 
+  @if (cardView() && groups().length) {
+    <!-- Cards like the Library's, three or four a row, all in one grid in calendar order (no
+         month headers: each date says its month, and its year when it isn't this one). A game:
+         pre-ordered top left, its release alert top right, how long until it's out bottom left
+         (blue for the next one); under it, its name, then the date and Owned / Playing / DLC. An
+         event: its logo and how long until it starts; under it, its name, day and time. -->
+    @let dense = columns() === '4';
+    <ul
+      class="mt-5"
+      [class]="dense ? 'grid grid-cols-4 gap-x-2 gap-y-4' : 'grid grid-cols-3 gap-x-3 gap-y-5'"
+    >
+      @for (item of cardItems(); track item.id) {
+        @if (item.type === 'event') {
+          @let event = item.event;
+          <li class="min-w-0">
+            <a
+              [routerLink]="['/event', event.id]"
+              class="block active:opacity-70"
+              [attr.aria-label]="event.title + ', ' + eventWhen(event, item.date)"
+            >
+              <div class="relative">
+                <app-event-art
+                  class="aspect-[3/4] rounded-[6px]"
+                  fit="contain"
+                  [logoId]="event.logoId"
+                  [kind]="event.kind"
+                  [iconSize]="dense ? 40 : 56"
+                />
+                @if (eventBadge(item.date); as left) {
+                  <span
+                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    aria-hidden="true"
+                    >{{ left }}</span
+                  >
+                }
+              </div>
+              <p
+                class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal"
+                aria-hidden="true"
+              >
+                {{ event.title }}
+              </p>
+              <p
+                class="num mt-0.5 text-[12px] leading-4 tracking-normal text-muted"
+                aria-hidden="true"
+              >
+                {{ cardDay(item.date) }}
+                @if (eventTime(event); as time) {
+                  <br />{{ time }}
+                }
+              </p>
+            </a>
+          </li>
+        } @else {
+          @let game = item.game;
+          <li class="min-w-0">
+            <a
+              [routerLink]="['/game', game.igdbId]"
+              class="block active:opacity-70"
+              [attr.aria-label]="gameCardLabel(game)"
+            >
+              <app-cover
+                [coverId]="game.coverId"
+                [name]="game.name"
+                [class.playing-cover]="game.playing && game.status === 'backlog'"
+              >
+                @if (game.preordered) {
+                  <span
+                    class="absolute top-1.5 left-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                    [class]="dense ? 'size-6' : 'size-7'"
+                    aria-hidden="true"
+                  >
+                    <app-preorder-icon [size]="dense ? 13 : 15" />
+                  </span>
+                }
+                @if (game.notify) {
+                  <span
+                    class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                    [class]="dense ? 'size-6' : 'size-7'"
+                    aria-hidden="true"
+                  >
+                    <svg lucideBell [size]="dense ? 13 : 15" [strokeWidth]="2"></svg>
+                  </span>
+                }
+                @if (countdown(game); as c) {
+                  <span
+                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    [class.text-accent]="game.igdbId === nextId()"
+                    aria-hidden="true"
+                    >{{ badge(c) }}</span
+                  >
+                }
+              </app-cover>
+              <p
+                class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal"
+                aria-hidden="true"
+              >
+                {{ game.name }}
+              </p>
+              <p
+                class="num mt-0.5 line-clamp-2 text-[12px] leading-4 tracking-normal text-muted"
+                aria-hidden="true"
+              >
+                {{ cardDate(game) }}
+                @if (coverLabel(game); as label) {
+                  · {{ label }}
+                }
+              </p>
+            </a>
+          </li>
+        }
+      }
+    </ul>
+  } @else {
   @for (group of groups(); track group.key) {
     @let open = !isCollapsed(group.key);
     <section [attr.aria-label]="group.title">
@@ -131,38 +277,13 @@
                       }
                     </p>
                   </div>
-                  <!-- What you have of it, then the alert, as small grey icons: blue is kept for
-                     the next release's countdown. -->
+                  <!-- Pre-ordered, then the alert, as small grey icons: blue is kept for the next
+                     release's countdown. No physical-copy disc: pre-orders are physical copies. -->
                   <span class="flex shrink-0 items-center gap-2 text-muted">
                     @if (game.preordered) {
-                      <!-- A box with a clock, drawn in Lucide's style (Lucide has none). -->
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        role="img"
-                        aria-label="Pre-ordered"
-                      >
-                        <path d="M11 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6" />
-                        <path d="M3 9h18" />
-                        <path d="M10 3v6M14 3v6" />
-                        <circle cx="17.5" cy="17.5" r="4.5" />
-                        <path d="M17.5 15.5v2l1.5 1" />
-                      </svg>
-                    }
-                    @if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
-                      <svg
-                        lucideDisc3
-                        [size]="16"
-                        [strokeWidth]="2"
-                        role="img"
-                        aria-label="Physical copy"
-                      ></svg>
+                      <span role="img" aria-label="Pre-ordered">
+                        <app-preorder-icon [size]="16" />
+                      </span>
                     }
                     @if (game.notify) {
                       <svg
@@ -199,5 +320,6 @@
         Search all games for “{{ query().trim() }}”
       </a>
     </div>
+  }
   }
 }

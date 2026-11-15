@@ -4,7 +4,8 @@ import {
   LucideBell,
   LucideCalendarDays,
   LucideChevronRight,
-  LucideDisc3,
+  LucideGrid3x3,
+  LucideLayoutGrid,
   LucidePlus,
 } from '@lucide/angular';
 import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
@@ -15,12 +16,26 @@ import { titleMatcher } from '../../core/title-search';
 import { Cover } from '../../shared/cover';
 import { EventArt } from '../../shared/event-art';
 import { EventSheet, timeRange } from '../../shared/event-sheet';
+import { PreorderIcon } from '../../shared/preorder-icon';
+import { remember, remembered } from '../../core/remembered';
 import { SearchField } from '../../shared/search-field';
-import { calendarGroups, nextReleaseId, vagueDate } from './calendar-groups';
+import {
+  calendarGroups,
+  nextReleaseId,
+  vagueDate,
+  vagueDateWithYear,
+  type CalendarItem,
+} from './calendar-groups';
 
 const WEEKDAY_DAY = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short',
   day: 'numeric',
+  timeZone: 'UTC',
+});
+const DAY_MONTH_YEAR = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
   timeZone: 'UTC',
 });
 const WEEKDAY_DAY_MONTH = new Intl.DateTimeFormat('en-GB', {
@@ -47,7 +62,9 @@ const MONTH_ONLY = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: '
     LucideBell,
     LucideCalendarDays,
     LucideChevronRight,
-    LucideDisc3,
+    LucideGrid3x3,
+    LucideLayoutGrid,
+    PreorderIcon,
     LucidePlus,
   ],
   templateUrl: './calendar.html',
@@ -124,6 +141,75 @@ export class CalendarPage {
   protected eventWhen(event: GamingEvent, date: string): string {
     const left = countdown({ releaseDate: date, releasePrecision: 'day' }, this.today);
     return [this.shortDate(date, false), timeRange(event), left].filter(Boolean).join(' · ');
+  }
+
+  /** Rows, or cards like the Library's; remembered on this device. */
+  protected readonly cardView = signal(
+    remembered<'list' | 'cards'>('calendar-view', 'list', ['list', 'cards']) === 'cards',
+  );
+  /** With cards: three or four a row, remembered on this device. */
+  protected readonly columns = signal(remembered<'3' | '4'>('calendar-columns', '3', ['3', '4']));
+
+  protected toggleView(): void {
+    const cards = !this.cardView();
+    this.cardView.set(cards);
+    remember('calendar-view', cards ? 'cards' : 'list');
+  }
+
+  protected toggleColumns(): void {
+    const next = this.columns() === '4' ? '3' : '4';
+    this.columns.set(next);
+    remember('calendar-columns', next);
+  }
+
+  /** On a card: "5 days", "Tomorrow", "Out today" (no "in": the badge is short). */
+  protected badge(countdown: string): string {
+    return countdown.replace(/^in /, '');
+  }
+
+  /** On an event's card: "9 days", "Tomorrow", "Today". */
+  protected eventBadge(date: string): string | null {
+    const left = countdown({ releaseDate: date, releasePrecision: 'day' }, this.today);
+    return left ? this.badge(left).replace('Out today', 'Today') : null;
+  }
+
+  /** "18:00–18:40" under an event's card. */
+  protected eventTime(event: GamingEvent): string {
+    return timeRange(event);
+  }
+
+  /** The cards: everything in calendar order, in one grid (no month headers). */
+  protected readonly cardItems = computed((): CalendarItem[] =>
+    this.groups().flatMap((group) => group.items),
+  );
+
+  /** A day under a card, with no header to give the month: "Thu 19 Nov", "12 Feb 2027". */
+  protected cardDay(date: string): string {
+    const d = new Date(`${date}T00:00:00Z`);
+    return date.slice(0, 4) === this.today.slice(0, 4)
+      ? WEEKDAY_DAY_MONTH.format(d).replace(',', '')
+      : DAY_MONTH_YEAR.format(d);
+  }
+
+  /** Under a game's card: its day ("Thu 19 Nov"), or a vague date with its year ("Nov 2027"). */
+  protected cardDate(game: TrackedGame): string {
+    return game.releasePrecision === 'day' && game.releaseDate
+      ? this.cardDay(game.releaseDate)
+      : vagueDateWithYear(game);
+  }
+
+  /** "Grand Theft Auto VI, Thu 19, in 5 days, Pre-ordered, Release alert on" for screen readers. */
+  protected gameCardLabel(game: TrackedGame): string {
+    return [
+      game.name,
+      this.cardDate(game),
+      this.countdown(game),
+      this.coverLabel(game),
+      game.preordered ? 'Pre-ordered' : null,
+      game.notify ? 'Release alert on' : null,
+    ]
+      .filter(Boolean)
+      .join(', ');
   }
 
   protected addEvent(): void {

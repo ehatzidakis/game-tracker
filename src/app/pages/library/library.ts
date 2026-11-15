@@ -8,6 +8,7 @@ import {
   LucideChevronRight,
   LucideCloudDownload,
   LucideDisc3,
+  LucideGrid3x3,
   LucideLibraryBig,
   LucideStar,
   LucideTrophy,
@@ -50,17 +51,19 @@ import {
   type Sort,
 } from './library-sort';
 
-const SORTS: { key: Sort; label: string }[] = [
+/** A sort: its name in the menu, and a shorter one for the pill where the full one is long. */
+const SORTS: { key: Sort; label: string; short?: string }[] = [
   { key: 'recent', label: 'Recent' },
   { key: 'name', label: 'Name' },
-  { key: 'release', label: 'Release date' },
+  { key: 'release', label: 'Release date', short: 'Release' },
   { key: 'critics', label: 'OpenCritic' },
 ];
 const PLAYTIME = { key: 'playtime', label: 'Playtime' } as const;
 /** Extra sorts where they make sense: Completed also by when you finished (its default). */
-const TAB_SORTS: Partial<Record<Status, { key: Sort; label: string }[]>> = {
+const TAB_SORTS: Partial<Record<Status, { key: Sort; label: string; short?: string }[]>> = {
   completed: [
-    { key: 'completed', label: 'Date completed' },
+    // The pill says just "Date": the Completed tab's toolbar has the most buttons.
+    { key: 'completed', label: 'Date completed', short: 'Date' },
     { key: 'rating', label: 'Rating' },
     PLAYTIME,
     ...SORTS,
@@ -127,6 +130,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     LucideChevronRight,
     LucideCloudDownload,
     LucideDisc3,
+    LucideGrid3x3,
     LucideLibraryBig,
     LucideStar,
     LucideTrophy,
@@ -217,7 +221,12 @@ export class LibraryPage {
   );
   protected readonly sort = computed(() => this.sortByTab()[this.filter()]);
   protected readonly sortLabel = computed(
-    () => this.sorts().find((s) => s.key === this.sort())?.label ?? '',
+    () => {
+      const s: { label: string; short?: string } | undefined = this.sorts().find(
+        (s) => s.key === this.sort(),
+      );
+      return s?.short ?? s?.label ?? '';
+    },
   );
   /** Each tab remembers whether its order is flipped, too. */
   private readonly reversedTabs = signal<ReadonlySet<Status>>(
@@ -324,20 +333,23 @@ export class LibraryPage {
     if (this.filter() !== 'completed') return 0;
     return Math.round(games.reduce((sum, g) => sum + (g.hoursPlayed ?? 0), 0));
   }
-  /** "4 in 2026", shown on the Completed tab when it isn't split by year. */
-  protected readonly thisYear = computed(() => {
-    const year = new Date().getFullYear();
-    const count = this.shown().filter(
-      (g) => g.completedAt && new Date(g.completedAt).getFullYear() === year,
-    ).length;
-    return { year, count };
-  });
+  /** Cards a row: 3, or 4 (smaller, same details), remembered on this device. */
+  protected readonly columns = signal(remembered<'3' | '4'>('library-columns', '3', ['3', '4']));
+  protected toggleColumns(): void {
+    const next = this.columns() === '4' ? '3' : '4';
+    this.columns.set(next);
+    remember('library-columns', next);
+  }
+  /** Time played on a cover: "137h 51m", or at four a row whole hours rounded up ("138h"). */
+  protected coverPlaytime(hours: number | null | undefined): string {
+    if (!hours) return '';
+    return this.columns() === '4' ? `${Math.ceil(hours)}h` : formatPlaytimeClock(hours);
+  }
 
   protected readonly countdown = countdown;
   /** The next game to come out: its countdown is blue, as in the Calendar. */
   protected readonly nextId = computed(() => nextReleaseId(this.library.games(), today()));
   protected readonly formatPlaytime = formatPlaytime;
-  protected readonly formatPlaytimeClock = formatPlaytimeClock;
   protected readonly isDlc = isDlc;
 
   protected isCollapsed(key: string): boolean {

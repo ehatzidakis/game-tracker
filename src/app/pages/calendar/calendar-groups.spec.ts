@@ -1,5 +1,11 @@
 import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
-import { calendarGroups, nextReleaseId, vagueDate, type CalendarGroup } from './calendar-groups';
+import {
+  calendarGroups,
+  nextReleaseId,
+  vagueDate,
+  vagueDateWithYear,
+  type CalendarGroup,
+} from './calendar-groups';
 
 const ids = (groups: CalendarGroup[]) =>
   groups.map((g) => [
@@ -110,5 +116,19 @@ describe('nextReleaseId', () => {
     ];
     expect(nextReleaseId(games, '2026-11-14')).toBe(4);
     expect(nextReleaseId([game(1, '2026-11-10', 'day')], '2026-11-14')).toBeNull();
+  });
+});
+
+describe('vagueDateWithYear', () => {
+  it('adds the year, for cards with no header to give it', () => {
+    const at = (
+      releaseDate: string | null,
+      releasePrecision: TrackedGame['releasePrecision'],
+      releaseLabel: string,
+    ) => vagueDateWithYear({ releaseDate, releasePrecision, releaseLabel });
+    expect(at('2027-11-01', 'month', 'Nov 2027')).toBe('Nov 2027');
+    expect(at('2027-09-30', 'quarter', 'Q3 2027')).toBe('Jul–Sep 2027');
+    expect(at('2028-12-31', 'year', '2028')).toBe('2028');
+    expect(at(null, 'tbd', 'TBA')).toBe('Date not announced');
   });
 });
