@@ -10,7 +10,7 @@ A mobile-only web app, installed to the iPhone home screen (PWA). On a PC it sho
 
 ## Users
 
-The owner, a PS5-first player who also plays on Xbox, PC and Switch 2, plus a few friends with accounts the owner creates by hand (sign-up is off). Each account's library, alerts, settings and calendar link are separate. Used on an iPhone (the owner's: 14 Pro Max, iOS 27), usually in short visits: a quick look at what's coming out, or a quick update after a play session.
+The owner, a PS5-first player who also plays on Xbox, PC and Switch 2, plus a few friends who join with a one-time invite link from Settings (Firebase's public sign-up stays off). Each account's library, alerts, settings and calendar link are separate. Used on an iPhone (the owner's: 14 Pro Max, iOS 27), usually in short visits: a quick look at what's coming out, or a quick update after a play session.
 
 ## Product Purpose
 

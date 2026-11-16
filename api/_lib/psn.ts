@@ -463,3 +463,40 @@ export async function checkPsnAccount(
     linkedAt: now,
   };
 }
+
+/** PlayStation Online IDs: 3–16 letters, digits, - and _. */
+export const PSN_ONLINE_ID = /^[A-Za-z0-9_-]{3,16}$/;
+
+/**
+ * Links a PlayStation account to users/{uid} (field "psn"): checks it with PlayStation, saves it,
+ * then matches its games to the library straight away (if that fails, the next sync does it).
+ * Another PlayStation account than before: its games (and the matches) start over. Throws
+ * PsnNotFound, PsnAuthError or PlayStation's own error; psnLinkError turns those into a message.
+ */
+export async function linkPsnAccount(
+  db: Firestore,
+  uid: string,
+  onlineId: string,
+): Promise<PsnLink> {
+  const userRef = db.collection('users').doc(uid);
+  const psn = await checkPsnAccount(db, onlineId);
+  const before = (await userRef.get()).data()?.['psn'] as PsnLink | undefined;
+  if (before && before.accountId !== psn.accountId) {
+    await db.recursiveDelete(userRef.collection('psnGames'));
+  }
+  await userRef.set({ psn }, { merge: true });
+  await refreshPsnGames(db, uid).catch((error: unknown) => console.error(error));
+  return psn;
+}
+
+/** What to tell the user when linkPsnAccount fails, with the HTTP status to answer. */
+export function psnLinkError(error: unknown): { status: number; message: string } {
+  if (error instanceof PsnNotFound) {
+    return { status: 404, message: 'No PlayStation account has that Online ID.' };
+  }
+  console.error(error);
+  if (error instanceof PsnAuthError) {
+    return { status: 503, message: 'The app can’t sign in to PlayStation right now.' };
+  }
+  return { status: 502, message: 'PlayStation didn’t answer. Try again in a moment.' };
+}

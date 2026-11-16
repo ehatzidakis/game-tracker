@@ -11,10 +11,12 @@ import { GET as calendar } from '../api/calendar.ts';
 import { GET as daily } from '../api/cron/daily.ts';
 import { GET as notify } from '../api/cron/notify.ts';
 import { POST as igdb } from '../api/igdb.ts';
+import { POST as invite } from '../api/invite.ts';
 import { GET as opencritic, POST as opencriticScores } from '../api/opencritic.ts';
 import { DELETE as psnUnlink, POST as psnLink } from '../api/psn.ts';
 import { POST as psnSync } from '../api/psn-sync.ts';
 import { POST as pushTest } from '../api/push-test.ts';
+import { GET as signupCheck, POST as signup } from '../api/signup.ts';
 
 type Handler = (request: Request) => Promise<Response>;
 // Same paths as on Vercel (vercel.json rewrites /api/calendar.ics to /api/calendar).
@@ -25,6 +27,8 @@ const routes: Record<string, Partial<Record<string, Handler>>> = {
   '/api/push-test': { POST: pushTest },
   '/api/psn': { POST: psnLink, DELETE: psnUnlink },
   '/api/psn-sync': { POST: psnSync },
+  '/api/invite': { POST: invite },
+  '/api/signup': { GET: signupCheck, POST: signup },
   '/api/cron/daily': { GET: daily },
   '/api/cron/notify': { GET: notify },
 };

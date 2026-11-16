@@ -6,6 +6,8 @@ import {
   LucideChevronsUpDown,
   LucideCopy,
   LucideRotateCcw,
+  LucideShare,
+  LucideUserPlus,
 } from '@lucide/angular';
 import { PLATFORMS, type PlatformKey } from '../../../../api/_lib/platforms.js';
 import { AuthService } from '../../core/auth.service';
@@ -26,6 +28,8 @@ import { TabTitle } from '../../shared/tab-title';
     LucideChevronsUpDown,
     LucideCopy,
     LucideRotateCcw,
+    LucideShare,
+    LucideUserPlus,
   ],
   templateUrl: './settings.html',
 })
@@ -194,6 +198,50 @@ export class SettingsPage {
       return;
     this.library.calendarKey(true);
     this.toast.show('New link made');
+  }
+
+  /** The invite link made last on this visit, and until when it works. */
+  protected readonly invite = signal<{ url: string; until: string } | null>(null);
+  protected readonly inviteBusy = signal(false);
+  protected readonly canShare = typeof navigator.share === 'function';
+
+  protected async createInvite(): Promise<void> {
+    if (this.inviteBusy()) return;
+    this.inviteBusy.set(true);
+    try {
+      const { url, expiresAt } = await this.auth.createInvite();
+      const until = new Date(expiresAt).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+      });
+      this.invite.set({ url, until });
+    } catch (error) {
+      this.toast.error("Couldn't make an invite link. Try again in a moment.", error);
+    } finally {
+      this.inviteBusy.set(false);
+    }
+  }
+
+  /** The share sheet needs a tap of its own (not one after a server call), so it's its own row. */
+  protected async shareInvite(): Promise<void> {
+    const url = this.invite()?.url;
+    if (!url) return;
+    try {
+      await navigator.share({ title: 'Questloggd', text: 'Join me on Questloggd', url });
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') await this.copyInvite();
+    }
+  }
+
+  protected async copyInvite(): Promise<void> {
+    const url = this.invite()?.url;
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      this.toast.show('Invite link copied');
+    } catch {
+      this.toast.error("Couldn't copy. Press and hold the link to copy it.");
+    }
   }
 
   protected async signOut(): Promise<void> {

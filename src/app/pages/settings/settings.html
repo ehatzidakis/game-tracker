@@ -260,6 +260,55 @@
   </p>
 </section>
 
+<!-- Invite a friend: a one-time link to make their own account (api/invite.ts, /signup). -->
+<section aria-labelledby="invite-title">
+  <h2 id="invite-title" class="group-header">Friends</h2>
+  @if (invite(); as inv) {
+    <div class="grouped" style="--sep-inset: 52px">
+      <p class="row text-[13px] leading-4.5 break-all text-muted select-all">{{ inv.url }}</p>
+      @if (canShare) {
+        <button type="button" class="row text-accent" (click)="shareInvite()">
+          <svg lucideShare [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
+          Share link
+        </button>
+      }
+      <button type="button" class="row text-accent" (click)="copyInvite()">
+        <svg lucideCopy [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
+        Copy link
+      </button>
+      <button
+        type="button"
+        class="row text-accent disabled:opacity-40"
+        [disabled]="inviteBusy()"
+        (click)="createInvite()"
+      >
+        <svg lucideUserPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
+        {{ inviteBusy() ? 'Making a link…' : 'New link for another friend' }}
+      </button>
+    </div>
+    <p class="group-footer">
+      Works once, until {{ inv.until }}. Whoever opens it can make an account, so send it only to
+      your friend.
+    </p>
+  } @else {
+    <div class="grouped">
+      <button
+        type="button"
+        class="row text-accent disabled:opacity-40"
+        [disabled]="inviteBusy()"
+        (click)="createInvite()"
+      >
+        <svg lucideUserPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
+        {{ inviteBusy() ? 'Making a link…' : 'Invite a friend' }}
+      </button>
+    </div>
+    <p class="group-footer">
+      Makes a one-time link that lets a friend create their own account, with their own library and
+      calendar.
+    </p>
+  }
+</section>
+
 <!-- Account -->
 <section aria-labelledby="account-title">
   <h2 id="account-title" class="group-header">Account</h2>

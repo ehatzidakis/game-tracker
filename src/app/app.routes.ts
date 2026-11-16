@@ -10,6 +10,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/login/login').then((m) => m.LoginPage),
   },
   {
+    // Opened from an invite link: /signup?invite=<code>.
+    path: 'signup',
+    title: 'Sign up · Questloggd',
+    canActivate: [signedOutGuard],
+    loadComponent: () => import('./pages/signup/signup').then((m) => m.SignupPage),
+  },
+  {
     path: '',
     component: Shell,
     canActivate: [signedInGuard],
