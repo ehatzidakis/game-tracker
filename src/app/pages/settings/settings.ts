@@ -44,6 +44,10 @@ export class SettingsPage {
   private readonly router = inject(Router);
   private readonly psn = inject(PsnService);
   protected readonly addAll = inject(PsnAddAll);
+  /** No games yet: the first-time setup from PlayStation is offered instead of "Add all". */
+  protected readonly libraryEmpty = computed(
+    () => this.library.loaded() && this.library.games().length === 0,
+  );
   protected readonly psnGames = this.psn;
   /** Checking or removing the PlayStation link. */
   protected readonly psnBusy = signal(false);
@@ -56,6 +60,8 @@ export class SettingsPage {
     try {
       const link = await this.psn.link(onlineId);
       this.toast.show(`Connected ${link.onlineId}`);
+      // An empty library: set it up from PlayStation (it can be skipped, and stays offered here).
+      if (this.libraryEmpty()) await this.router.navigateByUrl('/setup');
     } catch (error) {
       this.toast.error((error as Error).message, error);
     } finally {

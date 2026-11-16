@@ -17,6 +17,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/signup/signup').then((m) => m.SignupPage),
   },
   {
+    // First-time setup from PlayStation: full screen, without the tab bar.
+    path: 'setup',
+    title: 'Set up your Library · Questloggd',
+    canActivate: [signedInGuard],
+    loadComponent: () => import('./pages/setup/setup').then((m) => m.SetupPage),
+  },
+  {
     path: '',
     component: Shell,
     canActivate: [signedInGuard],

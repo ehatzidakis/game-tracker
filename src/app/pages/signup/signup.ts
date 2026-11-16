@@ -196,7 +196,9 @@ export class SignupPage implements OnInit {
         this.password(),
         this.onlineId(),
       );
-      await this.router.navigateByUrl('/');
+      // With PlayStation linked, set up the library from it first (it can be skipped).
+      const linked = !!this.onlineId().trim() && !psnError;
+      await this.router.navigateByUrl(linked ? '/setup' : '/');
       if (psnError) {
         this.toast.error(`Account made, but PlayStation didn't connect: ${psnError}`);
       } else {

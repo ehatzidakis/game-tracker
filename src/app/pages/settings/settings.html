@@ -167,7 +167,17 @@
         ></svg>
       </a>
       <!-- Games found on IGDB that aren't in the library: all in at once (PsnAddAll). -->
-      @if (addAll.addable().length; as count) {
+      @if (libraryEmpty() && addAll.addable().length) {
+        <a routerLink="/setup" class="row text-accent">
+          <span class="flex-1">Set up your Library from PlayStation</span>
+          <svg
+            lucideChevronRight
+            [size]="18"
+            [strokeWidth]="2.25"
+            class="-mr-1 shrink-0 text-faint"
+          ></svg>
+        </a>
+      } @else if (addAll.addable().length; as count) {
         <button
           type="button"
           class="row text-accent disabled:opacity-40"

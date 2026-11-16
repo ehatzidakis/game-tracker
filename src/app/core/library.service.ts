@@ -60,6 +60,8 @@ export class LibraryService {
   private readonly settingsState = signal<UserSettings>(DEFAULT_SETTINGS);
 
   readonly games = computed(() => this.gamesState() ?? []);
+  /** False until your games have been read once (so an empty library isn't mistaken for one). */
+  readonly loaded = computed(() => this.gamesState() !== null);
   readonly loading = computed(() => this.gamesState() === null);
   readonly byId = computed(() => new Map(this.games().map((g) => [g.igdbId, g])));
   /** Stores you've bought from before, then common ones: suggestions in the purchase fields. */
