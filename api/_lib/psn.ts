@@ -27,6 +27,18 @@ import {
   type TrophyCounts,
 } from './models.js';
 import { sendToUser } from './jobs.js';
+import {
+  isPart,
+  needsLookup,
+  pickIgdbGame,
+  platinumOf,
+  PLAYSTATION_PLATFORMS,
+  psnPlatform,
+  SEARCH_EXCLUDED_TYPES,
+  searchTerm,
+  type IgdbCandidate,
+  type IgdbFound,
+} from './psn-igdb.js';
 import { platinumMoves, platinumUpdate, psnUpdates, shouldAlert } from './psn-sync.js';
 import {
   gamesWithoutLists,
@@ -229,30 +241,100 @@ export async function refreshPsnGames(db: Firestore, uid: string, now = Date.now
     (d) => d.data() as TrackedGame,
   );
   const records = userRef.collection('psnGames');
+  const previous = new Map(
+    (await records.get()).docs.map((d) => {
+      const record = d.data() as PsnGameRecord;
+      return [record.conceptId, record] as const;
+    }),
+  );
   const manual = new Map(
-    (await records.get()).docs
-      .map((d) => d.data() as PsnGameRecord)
+    [...previous.values()]
       .filter((r) => r.matchedBy === 'manual')
       .map((r) => [r.conceptId, r.igdbId]),
   );
   const { matches, listsByGame } = matchProfile(snapshot, library, manual);
-
   const matchOf = new Map(matches.map((m) => [m.conceptId, m]));
+
+  // Games not in the library: which IGDB game each is, so they can be added. Asked once (again
+  // after a week if IGDB had none); if IGDB fails, what was found before stays.
+  const toLookUp = snapshot.games.filter(
+    (g) => matchOf.get(g.conceptId)?.igdbId == null && needsLookup(previous.get(g.conceptId), now),
+  );
+  let looked = new Map<number, IgdbFound | null>();
+  try {
+    looked = await findOnIgdb(toLookUp, snapshot.storeIds);
+  } catch (error) {
+    console.error('IGDB lookup for PlayStation games failed', error);
+  }
+
   for (let i = 0; i < snapshot.games.length; i += 400) {
     const batch = db.batch();
     for (const game of snapshot.games.slice(i, i + 400)) {
       const match = matchOf.get(game.conceptId);
+      const before = previous.get(game.conceptId);
       const record: PsnGameRecord = {
         ...game,
         igdbId: match?.igdbId ?? null,
         matchedBy: match?.by ?? null,
         seenAt: now,
+        platform: psnPlatform(game),
+        ...platinumOf(game.conceptId, snapshot.lists, snapshot.links),
+        ...(looked.has(game.conceptId)
+          ? { igdb: looked.get(game.conceptId) ?? null, igdbCheckedAt: now }
+          : before?.igdb !== undefined
+            ? { igdb: before.igdb, igdbCheckedAt: before.igdbCheckedAt }
+            : {}),
       };
       batch.set(records.doc(String(game.conceptId)), record);
     }
     await batch.commit();
   }
   return { link, snapshot, matches, listsByGame, library };
+}
+
+const LOOKUP_FIELDS = 'fields name, game_type, cover.image_id;';
+
+/**
+ * The IGDB game for each of these PlayStation games (rules in psn-igdb.ts): from the games IGDB
+ * lists for its PlayStation Store id, else a search by name among PS4 and PS5 games, one request
+ * each (IGDB's multiquery answers searches with nothing). Null where IGDB has none.
+ */
+export async function findOnIgdb(
+  games: readonly PsnGame[],
+  storeIds: ReadonlyMap<number, readonly number[]>,
+): Promise<Map<number, IgdbFound | null>> {
+  const result = new Map<number, IgdbFound | null>();
+  const ids = [...new Set(games.flatMap((g) => storeIds.get(g.conceptId) ?? []))];
+  const details = new Map<number, IgdbCandidate>();
+  for (let i = 0; i < ids.length; i += 500) {
+    const rows = await igdbQuery<IgdbCandidate[]>(
+      'games',
+      `${LOOKUP_FIELDS} where id = (${ids.slice(i, i + 500).join(',')}); limit 500;`,
+    );
+    for (const row of rows) details.set(row.id, row);
+  }
+
+  const toSearch: { game: PsnGame; byStore: IgdbCandidate[] }[] = [];
+  for (const game of games) {
+    const byStore = (storeIds.get(game.conceptId) ?? [])
+      .map((id) => details.get(id))
+      .filter((c) => c !== undefined);
+    const picked = pickIgdbGame(game.name, byStore);
+    if (picked && !isPart(details.get(picked.id))) result.set(game.conceptId, picked);
+    else toSearch.push({ game, byStore });
+  }
+
+  const where = `where platforms = (${PLAYSTATION_PLATFORMS.join(',')}) & game_type != (${SEARCH_EXCLUDED_TYPES.join(',')});`;
+  for (const [i, { game, byStore }] of toSearch.entries()) {
+    // IGDB allows 4 requests a second.
+    if (i) await new Promise((resolve) => setTimeout(resolve, 260));
+    const bySearch = await igdbQuery<IgdbCandidate[]>(
+      'games',
+      `search ${searchTerm(game.name)}; ${LOOKUP_FIELDS} ${where} limit 10;`,
+    );
+    result.set(game.conceptId, pickIgdbGame(game.name, byStore, bySearch));
+  }
+  return result;
 }
 
 /**

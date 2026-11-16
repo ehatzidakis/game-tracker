@@ -1,11 +1,12 @@
 import { Component, computed, inject } from '@angular/core';
-import { LucideChevronRight } from '@lucide/angular';
+import { LucideChevronRight, LucideTrophy } from '@lucide/angular';
 import { comparableName } from '../../../../api/_lib/psn-match.js';
 import type { PsnGameRecord, TrackedGame } from '../../../../api/_lib/models.js';
 import { formatPlaytime } from '../../core/playtime';
 import { LibraryService } from '../../core/library.service';
 import { PsnService } from '../../core/psn.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
+import { Cover } from '../../shared/cover';
 
 const NONE = '__none';
 
@@ -20,7 +21,7 @@ function played(seconds: number): string {
  */
 @Component({
   selector: 'app-playstation',
-  imports: [LucideChevronRight],
+  imports: [Cover, LucideChevronRight, LucideTrophy],
   template: `
     <h1 class="large-title">PlayStation games</h1>
     <p class="mt-2 text-[15px] leading-5 text-muted">
@@ -31,16 +32,31 @@ function played(seconds: number): string {
     @for (group of groups(); track group.title) {
       <section [attr.aria-label]="group.title">
         <h2 class="group-header">{{ group.title }} · {{ group.games.length }}</h2>
-        <ul class="grouped">
+        <ul class="grouped" style="--sep-inset: 68px">
           @for (g of group.games; track g.conceptId) {
             <li class="row p-0!">
-              <button type="button" class="row text-left" (click)="pick(g)">
+              <button type="button" class="row py-2! text-left" (click)="pick(g)">
+                <app-cover class="w-10 shrink-0 rounded-[5px]!" [coverId]="coverOf(g)" [name]="''">
+                  @if (g.platinumEarned) {
+                    <span
+                      class="absolute right-0.5 bottom-0.5 grid size-4 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                    >
+                      <svg lucideTrophy [size]="9" [strokeWidth]="2.5" aria-hidden="true"></svg>
+                      <span class="sr-only">Platinum</span>
+                    </span>
+                  }
+                </app-cover>
                 <div class="min-w-0 flex-1">
                   <p class="truncate">{{ g.name }}</p>
                   <p class="num truncate text-[15px] leading-5 text-muted">
                     {{ played(g.playSeconds) }}
+                    @if (g.platform) {
+                      · {{ g.platform === 'ps5' ? 'PS5' : 'PS4' }}
+                    }
                     @if (libraryName(g); as name) {
                       · {{ name }}
+                    } @else if (g.igdb === null) {
+                      · Not found on IGDB
                     }
                     @if (g.matchedBy === 'manual') {
                       · Set by you
@@ -81,6 +97,12 @@ export class PlaystationPage {
 
   protected libraryName(game: PsnGameRecord): string | null {
     return game.igdbId === null ? null : (this.library.byId().get(game.igdbId)?.name ?? null);
+  }
+
+  /** The library game's cover when it's matched, else the cover of the IGDB game it was found as. */
+  protected coverOf(game: PsnGameRecord): string | null {
+    const tracked = game.igdbId === null ? undefined : this.library.byId().get(game.igdbId);
+    return tracked?.coverId ?? game.igdb?.coverId ?? null;
   }
 
   /** Picks the library game: the most likely ones (sharing words with its name) first. */

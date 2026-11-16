@@ -245,6 +245,18 @@ export interface PsnGameRecord {
   matchedBy: 'store' | 'name' | 'manual' | null;
   /** When the sync last read it (ms). */
   seenAt: number;
+  /**
+   * The IGDB game it is, for adding it to the library (looked up while it isn't in the library):
+   * null when IGDB has none, missing when not looked up yet. See psn-igdb.ts.
+   */
+  igdb?: { id: number; name: string; coverId: string | null } | null;
+  /** When IGDB was last asked (ms); a game it didn't find is asked again after a week. */
+  igdbCheckedAt?: number;
+  /** PS5 if you played a PS5 version, else PS4. */
+  platform?: 'ps5' | 'ps4';
+  /** It has a Platinum trophy, and you earned it (from its trophy lists). */
+  hasPlatinum?: boolean;
+  platinumEarned?: boolean;
 }
 
 /** users/{uid} */

@@ -280,6 +280,44 @@ Every list of picture rows (cover or logo, title, grey line, arrow) becomes the 
 
 Left as rows: the Calendar (kept compact on purpose) and Search's results (each has the + Add button, in search order).
 
+## PlayStation games into the Library: plan, 2026-11-16
+
+Goal: your PlayStation games go into the Library without adding them one by one. Platinumed games go to Completed, the rest to the Backlog (or, the first time, wherever you put them), and from then on the sync keeps their playtime and trophies up to date as it does now.
+
+**How it works today** (for reference): Settings → PlayStation → Games lists every PlayStation game, "Not in your library" first. Tapping one doesn't link it to a different game: it asks *which game in your Library it is*, for when the automatic match missed (the Library has it under another name or edition, like "Marvel's Spider-Man Remastered" for "Marvel's Spider-Man") or picked the wrong one. That stays, but as a second choice: for a game not in the Library, the main action becomes **Add to Library**.
+
+**Rules agreed:**
+- A game with its Platinum earned → **Completed**, completion Platinum, Completed on = the day the Platinum was earned (the same rule the sync already uses).
+- Every other game → **Backlog** when you use "Add all". In the first-time setup you choose (Step 4).
+- Games already in the Library are never touched. Demos and apps stay ignored, as now.
+- Platform: PS5 if you played a PS5 version, else PS4.
+- Playtime, first and last played and trophies come from PlayStation: the sync runs for you right after adding.
+- Each added game is matched to its PlayStation game on the spot (like a match you set by hand), so the sync never guesses it again.
+- A PlayStation game IGDB has no entry for can't be added (no cover, dates or details). It's listed as "Not found on IGDB", with a button that opens Search with its name typed in.
+
+**What has to be built behind it:**
+- Find each PlayStation game on IGDB: by PlayStation Store id first (the sync already looks these up), then by name among PS4 and PS5 games for the rest, preferring the main game over bundles and other editions. Saved on each `users/{uid}/psnGames` record as `igdb: { id, name, coverId } | null`, so the lists can show covers before anything is added.
+- Platinum and platform on each record: `platinumEarned` and `hasPlatinum` (some games have none) and `platform` (`ps5` | `ps4`), filled by the sync from the trophy lists it already reads. The Platinum's date is asked from PlayStation when a game is added (as the sync does for a Platinum it finds), so it isn't read for every game on every sync.
+- `POST /api/psn-import { games: [{ conceptId, status, completion?, details? }] }`: fetches the IGDB data in batches of up to 500, writes the Library games (the same fields as adding from Search), sets their matches, then runs the sync for you. Large catalogs go in chunks so each call stays within Vercel's time limit.
+
+### Steps
+
+- [x] **Step 1. Find PlayStation games on IGDB.** *(Built 2026-11-16.)* The sync (and linking PlayStation) saves the IGDB game, Platinum and platform on each PlayStation game record. Settings → PlayStation → Games shows covers, a Platinum trophy on platinumed games, and "Not found on IGDB" where there's no match. Nothing is added yet. *As built:* rules in api/_lib/psn-igdb.ts, asking in findOnIgdb (api/_lib/psn.ts). Only games not in the library are looked up, once (again after a week if IGDB had none). A store match that's only an episode or season gives way to a game with exactly the name ("Life Is Strange", not its Episode 1); a bundle counts only with exactly the name ("Metro Redux", "Crash Bandicoot N. Sane Trilogy"). Searches go one per request: IGDB's multiquery answers searches with nothing. Dry run on both accounts: 50 of 50 games not in the library found, in under 2.5 seconds each. A few store links are debatable ("Ghost of Tsushima" → Director's Cut, "Just Dance: Decades of Hits" → Just Dance 2023 Edition, the "Call of Duty" launcher → Modern Warfare II): Step 2's sheet should let you pick another game.
+- [ ] **Step 2. Add one game.** Tap a game that's not in the Library: a sheet with its cover and name, then the same fields as "Edit my data" on a game's page (status, how far you got, rating, purchase details), filled in for you: Completed + Platinum if platinumed, else Backlog; platform from PlayStation. **Add to Library** puts it in that list with that data. Below it, "It's already in my Library as…" opens today's picker. Tapping a game that's already matched still changes its match.
+- [ ] **Step 3. Add all.** At the top of Settings → PlayStation → Games, and under the PlayStation row in Settings when some games aren't in the Library: **Add all N to Library**. It asks first: "N games will be added: M with a Platinum go to Completed, the other K go to the Backlog. You can move any of them to Completed or Shelved from there." Then it adds them, shows progress, and says how many were added (and how many weren't found on IGDB).
+- [ ] **Step 4. First-time setup.** After making an account with a PlayStation name (sign-up), and offered when you link PlayStation in Settings with an empty Library: a setup screen with your whole catalog as a cover grid, most played first, tap to mark. Three steps:
+  1. **Completed:** "Which have you finished?" Platinumed games are already marked; you can unmark them.
+  2. **Shelved:** "Which do you know you'll never finish?" Only the games not marked in step 1.
+  3. **Backlog:** "Which have you promised yourself you'll finish?" Only the games not marked in steps 1 and 2.
+  Each step has Back and Next. Then a summary: "Add 120 games: 30 Completed, 10 Shelved, 80 Backlog". Adding takes you to the Library. "Not now" skips it, and it stays offered in Settings → PlayStation.
+- [ ] **Step 5. Tests and docs.** Tests for the IGDB lookup rules, the status rules and the setup steps; DESIGN.md (setup screen, sheet) and this plan.
+
+**Decided (2026-11-16):**
+1. Games left unmarked after the three setup steps are left out. They stay under Settings → PlayStation as "Not in your library" and can be added later.
+2. Completed games you mark by hand (no Platinum) get completion **Main story** (`main`), changeable on the game's page.
+3. Trophy-only games (PS3, PS Vita, PS4 games without play history) are left out for now.
+4. No "Playing" step. Playing stays a switch on the game's page.
+
 ## Changelog of 2026-11-12 (built)
 
 1. **IGDB events in Search.** The same search also finds gaming events on IGDB (by name, newest first, above the games; IGDB has no text search for events, so it matches the words in the name). **+** adds one to your calendar with its logo, time, length and stream link. Before you type, an "Upcoming events" strip shows what IGDB has coming. Making an event by hand (+ in the Calendar) stays, because IGDB usually lists an event only a few weeks ahead (on 2026-11-12 it had one upcoming event, and The Game Awards 2026 wasn't there yet).
@@ -372,3 +410,5 @@ Left as rows: the Calendar (kept compact on purpose) and Search's results (each 
 - **2026-11-16:** Renamed the app **Questloggd** (was Game Tracker): the name under the home-screen icon (manifest and apple-mobile-web-app-title), browser tab titles ("Library · Questloggd"), the notification fallback title, the Settings hint for blocked notifications, the calendar feed's PRODID, and the docs. The login page's heading is now the wordmark itself (blue gg). The calendar feed keeps its name, "Game releases". 170 tests pass. Committed and pushed.
 - **2026-11-16:** Invites and sign-up. Settings → Friends → **Invite a friend** makes a one-time link (loggd.quest/signup?invite=…, works for 7 days; Share link / Copy link / New link for another friend). The link opens a sign-up page like the login page: email, a password that must have 8+ characters, a number and a special character (ticked off as you type; Safari's suggested passwords follow the same rules), and an optional PlayStation Online ID, linked straight away (if that fails the account is still made and it can be connected in Settings). The server makes the account (api/signup.ts, with admin rights), so Firebase's public sign-up stays off; invites live in invites/{code}, server only, and are claimed in a transaction so one link can't make two accounts. A new account starts with an empty library, so its PlayStation games show under Settings → PlayStation until they're added (importing them is a possible next step). PSN linking moved to linkPsnAccount in api/_lib/psn.ts, shared by Settings and sign-up. 181 tests pass. Tested locally. Committed and pushed.
 - **2026-11-16:** Fix: the sign-up push took every server function that uses Firestore down on Vercel (500s, the hourly alerts and PlayStation sync included, for about 10 minutes): firebase-admin/auth loads jwks-rsa, which can't require jose there. Accounts are now made by calling Firebase Authentication's API directly with the admin credentials (createAccount in api/_lib/admin.ts); firebase-admin/auth is not used anywhere. Committed and pushed.
+- **2026-11-16:** Planned: PlayStation games into the Library (section above): find each PlayStation game on IGDB, add one with its details, "Add all" (Platinum → Completed, the rest → Backlog), and a three-step first-time setup (Completed, Shelved, Backlog) after sign-up. Open questions answered: unmarked games are left out, hand-marked Completed is Main story, no trophy-only games, no Playing step.
+- **2026-11-16:** PlayStation into the Library, Step 1 built: each PlayStation game not in the library is found on IGDB (store id, then name; rules in api/_lib/psn-igdb.ts) and saved with its platform and Platinum on users/{uid}/psnGames. Settings → PlayStation → Games shows covers, a Platinum badge, PS5/PS4 and "Not found on IGDB". Nothing is added to the library yet. 195 tests pass.
