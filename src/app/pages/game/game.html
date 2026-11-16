@@ -63,24 +63,11 @@
       </div>
       <!-- The release date between the name and its makers; the header grows upwards, so the
            name rises and Developer · Publisher stay level with the cover's foot. -->
-      <!-- Then your rating, after a middle dot (changed in "Edit my data"). -->
-      @let myRating = tracked()?.status === 'completed' ? tracked()?.rating : null;
-      @if (release().label || myRating) {
-        <p class="num mt-1 flex flex-wrap items-center gap-x-1 text-[15px] leading-5">
-          @if (release().label) {
-            <span>{{ release().label }}</span>
-            @if (countdown(); as c) {
-              <span class="text-accent">· {{ c }}</span>
-            }
-          }
-          @if (myRating) {
-            @if (release().label) {
-              <span aria-hidden="true">·</span>
-            }
-            <span class="flex items-center gap-1" [attr.aria-label]="'My rating ' + myRating + '/10'">
-              <svg lucideStar [size]="14" [strokeWidth]="2.25" class="shrink-0" aria-hidden="true"></svg>
-              <span aria-hidden="true">{{ myRating }}/10</span>
-            </span>
+      @if (release().label) {
+        <p class="num mt-1 text-[15px] leading-5">
+          {{ release().label }}
+          @if (countdown(); as c) {
+            <span class="text-accent"> · {{ c }}</span>
           }
         </p>
       }
@@ -131,156 +118,162 @@
       <svg lucideChevronRight [size]="16" [strokeWidth]="2.25" class="shrink-0"></svg>
     </a>
   }
-  <!-- Your data at a glance (your status, then only what there is: yours, and PlayStation's),
-       edited in a sheet from the pencil by the name. -->
-  @if (!isDlcPage() && tracked()) {
-    <!-- Line 1: status, how far, how long, when. Line 2: bought on, where, price. -->
-    @for (line of myData(); track $index) {
-      <ul
-        class="flex flex-wrap gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted"
-        [class]="$first ? 'mt-3' : 'mt-1.5'"
-      >
-        @for (item of line; track item.label) {
-          <li class="num flex items-center gap-1.5">
-            @switch (item.icon) {
-              @case ('wishlist') {
-                <svg lucideBookmark [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('backlog') {
-                <svg lucideLibraryBig [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('playing') {
-                <svg lucidePlay [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('shelved') {
-                <svg lucideArchive [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('level') {
-                <svg lucideFlag [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('hours') {
-                <svg lucideClock [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('psn') {
-                <svg
-                  viewBox="0 0 24 24"
-                  width="15"
-                  height="15"
-                  fill="currentColor"
-                  class="shrink-0"
-                  aria-label="From PlayStation"
-                >
-                  <path [attr.d]="playstationLogo" />
-                </svg>
-              }
-              @case ('played') {
-                <svg lucideGamepad2 [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('completed') {
-                <svg lucideCircleCheck [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('price') {
-                <svg lucideEuro [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('store') {
-                <svg lucideStore [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('date') {
-                <svg lucideCalendarCheck [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-              @case ('physical') {
-                <svg lucideDisc3 [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-              }
-            }
-            {{ item.label }}
-          </li>
-        }
-      </ul>
+  <!-- What matters at a glance, in cards with room to breathe, filling the first screen (Shown
+       at and the rest are a scroll away): your progress, your trophies, the scores (critics,
+       players, yours) with HowLongToBeat, and your purchase. Big values, small captions; only
+       what there is. Edited from the pencil by the name. -->
+  <div class="mt-5 flex flex-col gap-2.5">
+    @if (!isDlcPage() && progress().length) {
+      <section class="grouped px-4 py-3" aria-label="Progress">
+        <div class="grid grid-cols-3 gap-3">
+          @for (s of progress(); track s.caption) {
+            <div class="min-w-0">
+              <p class="num truncate text-[17px] leading-[22px] font-semibold">{{ s.value }}</p>
+              <p class="flex items-center gap-1 text-[13px] leading-[18px] text-muted">
+                @if (s.psn) {
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="13"
+                    height="13"
+                    fill="currentColor"
+                    class="shrink-0"
+                    aria-label="From PlayStation"
+                  >
+                    <path [attr.d]="playstationLogo" />
+                  </svg>
+                }
+                <span class="truncate">{{ s.caption }}</span>
+              </p>
+            </div>
+          }
+        </div>
+      </section>
     }
-    <!-- Trophies from PlayStation: earned of all, progress, then each grade (icons, no words). -->
-    @if (trophies(); as tr) {
-      <p
-        class="num mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[15px] leading-5 text-muted"
-        aria-label="Trophies"
-      >
-        <span class="flex items-center gap-1.5">
-          <svg lucideTrophy [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-          {{ tr.earned }}/{{ tr.of }} · {{ tr.progress }}%
-        </span>
-        @for (g of tr.grades; track g.grade) {
-          <span class="flex items-center gap-1" [attr.aria-label]="g.earned + ' ' + g.grade">
-            <!-- The grade's colour on a wrapper: the icon component manages its own classes. -->
-            <span class="flex shrink-0" [class]="'trophy-' + g.grade" aria-hidden="true">
-              <svg lucideTrophy [size]="14" [strokeWidth]="2.25"></svg>
+
+    <!-- Trophies from PlayStation: earned of all with a bar, then each grade (icons, no words). -->
+    @if (!isDlcPage() && trophies(); as tr) {
+      <section class="grouped px-4 py-3" aria-label="Trophies">
+        <div class="num flex items-baseline justify-between gap-3">
+          <p class="flex items-center gap-1.5 text-[17px] leading-[22px] font-semibold">
+            <svg lucideTrophy [size]="16" [strokeWidth]="2.25" class="shrink-0 self-center"></svg>
+            {{ tr.earned }}<span class="text-[13px] font-normal text-muted">/{{ tr.of }}</span>
+          </p>
+          <p class="text-[17px] leading-[22px] font-semibold">{{ tr.progress }}%</p>
+        </div>
+        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-raised" aria-hidden="true">
+          <div class="h-full rounded-full bg-label" [style.width.%]="tr.progress"></div>
+        </div>
+        <p class="num mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted">
+          @for (g of tr.grades; track g.grade) {
+            <span class="flex items-center gap-1" [attr.aria-label]="g.earned + ' ' + g.grade">
+              <!-- The grade's colour on a wrapper: the icon component manages its own classes. -->
+              <span class="flex shrink-0" [class]="'trophy-' + g.grade" aria-hidden="true">
+                <svg lucideTrophy [size]="14" [strokeWidth]="2.25"></svg>
+              </span>
+              <span aria-hidden="true">{{ g.earned }}<span class="text-faint">/{{ g.of }}</span></span>
             </span>
-            <span aria-hidden="true">{{ g.earned }}</span>
-          </span>
-        }
-      </p>
+          }
+        </p>
+      </section>
     }
-  }
-  <!-- What others think, in one line: OpenCritic's Top Critic Average (its ring, as on Library
-       covers, opening the reviews) and the players' score, each with how many rated it. Then
-       HowLongToBeat: a link, in blue with its own icon, so it reads as something else. -->
-  @if (name()) {
-    <ul
-      class="num mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] leading-5 text-muted"
-      aria-label="Scores"
-    >
-      @if (openCritic(); as oc) {
-        <li>
+
+    <!-- The scores: OpenCritic's Top Critic Average (its ring, opening the reviews), the players'
+         score, yours, then HowLongToBeat: a link, in blue with its own icon. -->
+    @if (name()) {
+      <section class="grouped px-4 py-3" aria-label="Scores">
+        <div class="num grid grid-cols-4 gap-2">
+          @if (openCritic(); as oc) {
+            <a
+              [href]="oc.url"
+              target="_blank"
+              rel="noopener"
+              class="min-w-0 active:opacity-60"
+              [attr.aria-label]="
+                oc.topCriticScore !== null
+                  ? 'OpenCritic ' + oc.topCriticScore + ', ' + oc.topCritics
+                  : 'OpenCritic: not enough critic reviews yet'
+              "
+            >
+              <span class="flex h-[26px] items-center" aria-hidden="true">
+                @if (oc.topCriticScore !== null) {
+                  <app-score-ring [score]="oc.topCriticScore" [size]="26" />
+                } @else {
+                  <span class="text-[17px] font-semibold">–</span>
+                }
+              </span>
+              <span class="mt-0.5 block truncate text-[13px] leading-[18px] text-muted" aria-hidden="true">
+                {{ oc.topCriticScore !== null ? oc.topCritics : 'No critics yet' }}
+              </span>
+            </a>
+            @if (oc.playerRating !== null) {
+              <div class="min-w-0" [attr.aria-label]="'Players ' + oc.playerRating + ', ' + oc.players">
+                <p class="flex h-[26px] items-center text-[17px] font-semibold" aria-hidden="true">
+                  {{ oc.playerRating }}
+                </p>
+                <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-[18px] text-muted" aria-hidden="true">
+                  <svg lucideUsers [size]="12" [strokeWidth]="2.25" class="shrink-0"></svg>
+                  <span class="truncate">{{ oc.playerCount }}</span>
+                </p>
+              </div>
+            }
+          } @else if (openCriticLimit(); as limit) {
+            <!-- Not looked up yet, and OpenCritic's daily allowance is used up. -->
+            <div class="col-span-2 min-w-0">
+              <p class="flex h-[26px] items-center text-[17px] font-semibold">–</p>
+              <p class="mt-0.5 text-[13px] leading-[18px] text-muted">OpenCritic {{ limit.when }}</p>
+            </div>
+          }
+          @if (myRating(); as mine) {
+            <div
+              class="min-w-0"
+              [attr.aria-label]="mine.rating ? 'My rating ' + mine.rating + '/10' : 'Not rated yet'"
+            >
+              <p class="flex h-[26px] items-center text-[17px] font-semibold" aria-hidden="true">
+                @if (mine.rating) {
+                  {{ mine.rating }}<span class="text-[13px] font-normal text-muted">/10</span>
+                } @else {
+                  –
+                }
+              </p>
+              <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-[18px] text-muted" aria-hidden="true">
+                <svg lucideStar [size]="12" [strokeWidth]="2.25" class="shrink-0"></svg>
+                <span class="truncate">Mine</span>
+              </p>
+            </div>
+          }
+          <!-- HowLongToBeat has no API, so this opens its search for the game. -->
           <a
-            [href]="oc.url"
+            [href]="hltbUrl()"
             target="_blank"
             rel="noopener"
-            class="flex items-center gap-1.5 active:opacity-60"
-            [attr.aria-label]="
-              oc.topCriticScore !== null
-                ? 'OpenCritic ' + oc.topCriticScore + ', ' + oc.topCritics
-                : 'OpenCritic: not enough critic reviews yet'
-            "
+            class="col-start-4 min-w-0 text-accent active:opacity-60"
+            aria-label="HowLongToBeat"
           >
-            @if (oc.topCriticScore !== null) {
-              <app-score-ring [score]="oc.topCriticScore" [size]="24" aria-hidden="true" />
-              <span aria-hidden="true">{{ oc.topCritics }}</span>
-            } @else {
-              <span aria-hidden="true">No critic score yet</span>
-            }
+            <span class="flex h-[26px] items-center gap-1.5" aria-hidden="true">
+              <img src="icons/hltb.png" alt="" class="size-[18px] shrink-0 rounded-[4px]" />
+              <svg lucideExternalLink [size]="14" [strokeWidth]="2.25" class="shrink-0"></svg>
+            </span>
+            <span class="mt-0.5 block truncate text-[13px] leading-[18px]" aria-hidden="true">HLTB</span>
           </a>
-        </li>
-        @if (oc.playerRating !== null) {
-          <li
-            class="flex items-center gap-1.5"
-            [attr.aria-label]="'Players ' + oc.playerRating + ', ' + oc.players"
-          >
-            <svg lucideUsers [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-            <span aria-hidden="true"
-              ><span class="text-label">{{ oc.playerRating }}</span> · {{ oc.players }}</span
-            >
-          </li>
-        }
-      } @else if (openCriticLimit(); as limit) {
-        <!-- Not looked up yet, and OpenCritic's daily allowance is used up. -->
-        <li class="flex items-center gap-1.5">
-          <svg lucideClock [size]="15" [strokeWidth]="2" class="shrink-0"></svg>
-          OpenCritic {{ limit.when }}
-        </li>
-      }
-      <li>
-        <!-- HowLongToBeat has no API, so this opens its search for the game. -->
-        <a
-          [href]="hltbUrl()"
-          target="_blank"
-          rel="noopener"
-          class="flex items-center gap-1.5 text-accent active:opacity-60"
-        >
-          <img src="icons/hltb.png" alt="" class="size-[15px] shrink-0 rounded-[3px]" />
-          HLTB
-          <svg lucideExternalLink [size]="13" [strokeWidth]="2.25" class="shrink-0"></svg>
-        </a>
-      </li>
-    </ul>
-  }
+        </div>
+      </section>
+    }
+
+    @if (!isDlcPage() && purchase().length) {
+      <section class="grouped px-4 py-3" aria-label="Purchase">
+        <div class="grid grid-cols-2 gap-x-3 gap-y-3">
+          @for (s of purchase(); track s.caption) {
+            <div class="min-w-0">
+              <p class="num truncate text-[17px] leading-[22px] font-semibold">{{ s.value }}</p>
+              <p class="flex items-center gap-1 text-[13px] leading-[18px] text-muted">
+                <span class="truncate">{{ s.caption }}</span>
+              </p>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
   @if (isDlcPage() && parent(); as p) {
     <a
       [routerLink]="['/game', p.id]"

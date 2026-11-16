@@ -116,6 +116,12 @@ async function render(
   };
 }
 
+/** A card's values with their captions: "Completed / 4 Mar 2026". */
+const stats = (el: HTMLElement, card: string) =>
+  [...el.querySelectorAll(`section[aria-label=${card}] .grid > div`)].map((d) =>
+    [...d.querySelectorAll('p')].map((p) => p.textContent!.replace(/\s+/g, ' ').trim()).join(' / '),
+  );
+
 /** The pencil by the name: "Edit my data". */
 const pencil = (el: HTMLElement) =>
   el.querySelector('button[aria-label="Edit my data"]') as HTMLButtonElement;
@@ -151,7 +157,7 @@ describe('GamePage', () => {
     expect(el.querySelector('button[aria-labelledby=playing-label]')).toBeNull();
     // The status is changed in Edit my data only.
     expect(el.querySelector('[aria-label=Status]')).toBeNull();
-    expect(el.querySelector('li.num')?.textContent?.trim()).toBe('Wishlist');
+    expect(stats(el, 'Progress')).toEqual(['Wishlist / Status']);
   });
   it('shows the events the game was shown at as cards, each opening its page', async () => {
     const { el } = await render(
@@ -360,7 +366,7 @@ describe('GamePage', () => {
     expect(edits[1]).toEqual(data);
   });
 
-  it('shows your data at the top, skipping what is empty', async () => {
+  it('shows your data in cards at the top, skipping what is empty', async () => {
     const { el } = await render(
       tracked({
         status: 'completed',
@@ -374,19 +380,22 @@ describe('GamePage', () => {
         physical: true,
       }),
     );
-    // Two lines: status, how far and how long; then bought on, where and for how much.
-    const lines = [...el.querySelectorAll('ul')]
-      .filter((ul) => ul.querySelector('li.num'))
-      .map((ul) => [...ul.querySelectorAll('li')].map((li) => li.textContent!.trim()));
-    expect(lines.slice(0, 2)).toEqual([
-      ['Completed 4 Mar 2026', 'Main + sides', '34h 21m playtime'],
-      ['Bought 10 Jan 2026', 'Germanos', '69.90', 'Physical copy'],
+    expect(stats(el, 'Progress')).toEqual([
+      '4 Mar 2026 / Completed',
+      'Main + sides / Completion',
+      '34h 21m / Playtime',
     ]);
-    // The other platforms line is gone.
+    expect(stats(el, 'Purchase')).toEqual([
+      '€69.90 / Paid',
+      'Germanos / Store',
+      '10 Jan 2026 / Bought',
+      'Physical / Copy',
+    ]);
+    // The other platforms line is gone, and so is last played.
     expect(el.textContent).not.toContain('On PS5');
+    expect(el.textContent).not.toContain('Last played');
   });
-
-  it('shows PlayStation’s playtime, last played and trophies, and keeps the hours out of the sheet', async () => {
+  it('shows PlayStation’s playtime and trophies, and keeps the hours out of the sheet', async () => {
     const { el, sheet2 } = await render(
       tracked({
         status: 'completed',
@@ -408,14 +417,14 @@ describe('GamePage', () => {
         },
       }),
     );
-    const firstLine = [...el.querySelectorAll('ul')]
-      .find((ul) => ul.querySelector('li.num'))!
-      .textContent!.replace(/\s+/g, ' ');
-    expect(firstLine).toContain('45h 30m playtime');
-    expect(firstLine).toContain('Last played 3 Nov 2026');
-    expect(el.querySelector('[aria-label="From PlayStation"]')).not.toBeNull();
+    expect(stats(el, 'Progress')).toContain('45h 30m / Playtime');
+    expect(el.querySelector('[aria-label=Progress] [aria-label="From PlayStation"]')).not.toBeNull();
     const trophies = el.querySelector('[aria-label=Trophies]')!;
-    expect(trophies.textContent!.replace(/\s+/g, ' ')).toContain('37/54 · 72%');
+    const text = trophies.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('37/54');
+    expect(text).toContain('72%');
+    // The bar is as full as the progress.
+    expect((trophies.querySelector('[style]') as HTMLElement).style.width).toBe('72%');
     // Grades as icons with counts, Platinum first.
     expect(
       [...trophies.querySelectorAll('[aria-label]')].map((s) => s.getAttribute('aria-label')),
@@ -424,8 +433,7 @@ describe('GamePage', () => {
     expect(sheet2.request()?.fields).toEqual({ purchase: true, hours: false, completed: true });
     expect(sheet2.request()?.statusEdit?.hoursFromPsn).toBe(true);
   });
-
-  it('uses the last trophy as last played when PlayStation has no playtime for the game', async () => {
+  it('keeps your own hours when PlayStation has no playtime for the game', async () => {
     const { el } = await render(
       tracked({
         status: 'completed',
@@ -446,14 +454,12 @@ describe('GamePage', () => {
         },
       }),
     );
-    expect(el.textContent).toContain('Last played 2 May 2019');
     // No Platinum in the game: no Platinum icon.
     expect(el.querySelector('[aria-label="0 platinum"]')).toBeNull();
     // Hours still yours to edit: PlayStation has none.
-    expect(el.textContent).toContain('12h playtime');
+    expect(stats(el, 'Progress')).toContain('12h / Playtime');
     expect(el.querySelector('[aria-label="From PlayStation"]')).toBeNull();
   });
-
   it('edits hours, completed date and purchase details in a sheet', async () => {
     const { el, edits, sheet2 } = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', hoursPlayed: 10 }),
@@ -485,7 +491,8 @@ describe('GamePage', () => {
   });
   it('keeps a pre-ordered game on the wishlist', async () => {
     const { el } = await render(tracked({ status: 'wishlist', preordered: true, pricePaid: 80 }));
-    expect(el.querySelector('li.num')?.textContent?.trim()).toBe('Wishlist');
+    expect(stats(el, 'Progress')).toEqual(['Wishlist / Status']);
+    expect(stats(el, 'Purchase')).toEqual(['€80.00 / Paid', 'Digital / Copy']);
   });
   it('lists DLC on the main game and shows owned / completed switches on a DLC', async () => {
     const main = await render(null, {
@@ -510,7 +517,7 @@ describe('GamePage', () => {
     expect(dlc.edits).toEqual([{ add: 'wishlist', parent: { id: 1, name: 'Test Game' } }]);
   });
 
-  it('shows OpenCritic, the players’ score and HowLongToBeat in one line, then details and links', async () => {
+  it('shows OpenCritic, the players’ score, yours and HowLongToBeat in one card, then details and links', async () => {
     const { el, fixture } = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main_sides' }),
       {
@@ -534,9 +541,15 @@ describe('GamePage', () => {
     );
     const text = el.textContent!.replace(/\s+/g, ' ');
     const scores = el.querySelector('[aria-label=Scores]')!;
-    const labels = [...scores.querySelectorAll(':scope > li > [aria-label], :scope > li[aria-label]')]
-      .map((x) => x.getAttribute('aria-label'));
-    expect(labels).toEqual(['OpenCritic 95, 139 critics', 'Players 93, 2,333 players']);
+    const labels = [...scores.querySelectorAll('.grid > [aria-label]')].map((x) =>
+      x.getAttribute('aria-label'),
+    );
+    expect(labels).toEqual([
+      'OpenCritic 95, 139 critics',
+      'Players 93, 2,333 players',
+      'Not rated yet',
+      'HowLongToBeat',
+    ]);
     const links = [...scores.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(links).toEqual([
       'https://opencritic.com/game/12090/elden-ring',
@@ -558,16 +571,14 @@ describe('GamePage', () => {
     expect(opened).toContain('EngineDantelion');
     expect(opened).toContain('PlayStation Store');
   });
-  it('shows the rating by the release date; it is changed in Edit my data only', async () => {
+  it('shows your rating in the scores card; it is changed in Edit my data only', async () => {
     const { el, sheet2 } = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', rating: 8 }),
     );
     expect(el.querySelector('[role=slider]')).toBeNull();
-    // Under the name: the release date · your rating.
-    expect(el.querySelector('header [aria-label="My rating 8/10"]')).not.toBeNull();
-    expect([...el.querySelectorAll('li.num')].some((li) => li.textContent!.includes('8/10'))).toBe(
-      false,
-    );
+    expect(el.querySelector('[aria-label=Scores] [aria-label="My rating 8/10"]')).not.toBeNull();
+    // Not by the release date any more.
+    expect(el.querySelector('header')!.textContent).not.toContain('8/10');
     pencil(el).click();
     expect(sheet2.request()?.statusEdit?.rating).toBe(8);
     sheet2.finish(null);

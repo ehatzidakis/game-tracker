@@ -3,24 +3,12 @@ import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import {
-  LucideArchive,
-  LucideBookmark,
-  LucideCalendarCheck,
   LucideChevronRight,
-  LucideCircleCheck,
-  LucideClock,
-  LucideDisc3,
-  LucideEuro,
   LucideExternalLink,
-  LucideLibraryBig,
   LucidePencil,
-  LucidePlay,
   LucidePlus,
   LucideStar,
-  LucideStore,
   LucideTrophy,
-  LucideFlag,
-  LucideGamepad2,
   LucideUsers,
 } from '@lucide/angular';
 import { eventCompany, igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
@@ -84,6 +72,14 @@ const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
 
 const COMMON_STORES = ['PlayStation Store', 'Amazon'];
 
+/** One value in a game's cards: big, with a small caption under it. */
+interface Stat {
+  value: string;
+  caption: string;
+  /** Time played from PlayStation: its logo by the caption. */
+  psn?: boolean;
+}
+
 @Component({
   selector: 'app-game',
   imports: [
@@ -94,25 +90,13 @@ const COMMON_STORES = ['PlayStation Store', 'Amazon'];
     FitWidth,
     Grow,
     ScoreRing,
-    LucideArchive,
-    LucideBookmark,
-    LucideLibraryBig,
-    LucidePlay,
     LucideStar,
     LucideUsers,
-    LucideCalendarCheck,
     LucideChevronRight,
-    LucideCircleCheck,
-    LucideClock,
-    LucideDisc3,
-    LucideEuro,
     LucideExternalLink,
     LucidePencil,
     LucidePlus,
-    LucideStore,
     LucideTrophy,
-    LucideFlag,
-    LucideGamepad2,
   ],
   templateUrl: './game.html',
 })
@@ -300,54 +284,61 @@ export class GamePage {
     return fields.hours || fields.completed || fields.purchase ? fields : null;
   });
 
-  /**
-   * "34h 21m playtime", "Last played 3 Nov 2026", "Completed 7 Nov 2026", "€69.99", … Only what
-   * there is: yours, and what PlayStation says.
+/**
+   * Your progress, as big values with a small caption under each: when you completed it
+   * ("6 Nov 2026" over "Completed") or your status, how far you got ("Main + sides"), and time played (PlayStation's, with its
+   * logo, or yours). Only what there is.
    */
-  protected readonly myData = computed(() => {
+  protected readonly progress = computed((): Stat[] => {
     const t = this.tracked();
-    const fields = this.editableFields() ?? { hours: false, completed: false, purchase: false };
     if (!t) return [];
-    type Item = { icon: string; label: string };
-    // Line 1: your status (changed in "Edit my data"), how far you got (Platinum is the trophy by
-    // the name), how long, when. Your rating sits by the release date.
-    const progress: Item[] = [];
+    const fields = this.editableFields() ?? { hours: false, completed: false, purchase: false };
+    const stats: Stat[] = [];
     if (t.status === 'completed') {
-      const when = t.completedAt ? ` ${SHORT_DATE.format(t.completedAt)}` : '';
-      progress.push({ icon: 'completed', label: `Completed${when}` });
+      // The day you finished it, over "Completed" (or just "Completed" without a date).
+      stats.push(
+        t.completedAt
+          ? { value: SHORT_DATE.format(t.completedAt), caption: 'Completed' }
+          : { value: 'Completed', caption: 'Status' },
+      );
+      if (t.completion) {
+        stats.push({ value: completionLabel(t.completion) ?? '', caption: 'Completion' });
+      }
     } else if (t.status === 'backlog' && t.playing) {
-      progress.push({ icon: 'playing', label: 'Playing' });
+      stats.push({ value: 'Playing', caption: 'Backlog' });
     } else {
-      progress.push({ icon: t.status, label: statusLabel(t.status) });
-    }
-    if (fields.completed && t.completion && t.completion !== 'platinum') {
-      progress.push({ icon: 'level', label: completionLabel(t.completion) ?? '' });
+      stats.push({ value: statusLabel(t.status), caption: 'Status' });
     }
     const played = formatPlaytime(t.hoursPlayed);
-    if (this.hoursFromPsn() && played) {
-      // From PlayStation: its logo instead of the clock.
-      progress.push({ icon: 'psn', label: `${played} playtime` });
-    } else if (fields.hours && played) {
-      progress.push({ icon: 'hours', label: `${played} playtime` });
+    if (played && (this.hoursFromPsn() || fields.hours)) {
+      stats.push({ value: played, caption: 'Playtime', psn: this.hoursFromPsn() });
     }
-    // Last played: PlayStation's date, or else when the last trophy was earned.
-    const ps = t.playstation;
-    const lastPlayed = ps?.lastPlayedAt ?? ps?.trophies?.lastEarnedAt ?? null;
-    if (lastPlayed) {
-      progress.push({ icon: 'played', label: `Last played ${SHORT_DATE.format(lastPlayed)}` });
+    return stats;
+  });
+
+  /** What you paid, where, when, and the copy: two by two, only what there is. */
+  protected readonly purchase = computed((): Stat[] => {
+    const t = this.tracked();
+    if (!t || !this.editableFields()?.purchase) return [];
+    const stats: Stat[] = [];
+    if (t.pricePaid) stats.push({ value: `€${t.pricePaid.toFixed(2)}`, caption: 'Paid' });
+    if (t.boughtFrom) stats.push({ value: t.boughtFrom, caption: 'Store' });
+    if (t.orderedOn) {
+      stats.push({
+        value: SHORT_DATE.format(new Date(`${t.orderedOn}T12:00:00`)),
+        caption: t.preordered ? 'Preordered' : 'Bought',
+      });
     }
-    // Line 2: when, where and for how much you bought it.
-    const purchase: Item[] = [];
-    if (fields.purchase) {
-      if (t.orderedOn) {
-        const when = SHORT_DATE.format(new Date(`${t.orderedOn}T12:00:00`));
-        purchase.push({ icon: 'date', label: `${t.preordered ? 'Preordered' : 'Bought'} ${when}` });
-      }
-      if (t.boughtFrom) purchase.push({ icon: 'store', label: t.boughtFrom });
-      if (t.pricePaid) purchase.push({ icon: 'price', label: t.pricePaid.toFixed(2) });
-      if (t.physical) purchase.push({ icon: 'physical', label: 'Physical copy' });
+    if (stats.length || t.physical) {
+      stats.push({ value: t.physical ? 'Physical' : 'Digital', caption: 'Copy' });
     }
-    return [progress, purchase].filter((line) => line.length);
+    return stats;
+  });
+
+  /** Your rating, in the scores card once a game is completed. */
+  protected readonly myRating = computed(() => {
+    const t = this.tracked();
+    return t?.status === 'completed' ? { rating: t.rating } : null;
   });
 
   /**
@@ -490,6 +481,8 @@ export class GamePage {
       topCritics: `${COUNT.format(critics)} ${critics === 1 ? 'critic' : 'critics'}`,
       playerRating: players ? Math.round(d!.rating!) : null,
       players: `${COUNT.format(players)} ${players === 1 ? 'player' : 'players'}`,
+      /** Just the number, by the people icon in the scores card. */
+      playerCount: COUNT.format(players),
     };
   });
 
