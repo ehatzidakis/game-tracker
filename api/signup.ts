@@ -5,7 +5,7 @@
 // and links the PlayStation account if an Online ID was given. The app then signs in.
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { adminAuth, adminDb } from './_lib/admin.js';
+import { AccountError, adminDb, createAccount } from './_lib/admin.js';
 import { json } from './_lib/auth.js';
 import { linkPsnAccount, PSN_ONLINE_ID, psnLinkError } from './_lib/psn.js';
 import {
@@ -23,14 +23,20 @@ const SignupBody = z.object({
   onlineId: z.union([z.literal(''), z.string().trim().regex(PSN_ONLINE_ID)]).optional(),
 });
 
+/** Firebase Authentication's reasons (its message starts with one, like "WEAK_PASSWORD : …"). */
 const AUTH_MESSAGES: Record<string, { status: number; message: string }> = {
-  'auth/email-already-exists': {
+  EMAIL_EXISTS: {
     status: 409,
     message: 'There’s already an account with that email. Sign in instead.',
   },
-  'auth/invalid-email': { status: 400, message: 'That doesn’t look like an email address.' },
-  'auth/invalid-password': { status: 400, message: 'That password doesn’t meet the rules.' },
+  INVALID_EMAIL: { status: 400, message: 'That doesn’t look like an email address.' },
+  WEAK_PASSWORD: { status: 400, message: 'That password doesn’t meet the rules.' },
 };
+
+function authMessage(error: unknown): { status: number; message: string } | undefined {
+  if (!(error instanceof AccountError)) return undefined;
+  return AUTH_MESSAGES[error.code.split(/[\s:]/)[0]];
+}
 
 export async function GET(request: Request): Promise<Response> {
   const code = new URL(request.url).searchParams.get('invite') ?? '';
@@ -72,11 +78,11 @@ export async function POST(request: Request): Promise<Response> {
 
   let uid: string;
   try {
-    ({ uid } = await adminAuth().createUser({ email, password }));
+    uid = await createAccount(email, password);
   } catch (error) {
     // Free the invite again so they can retry with another email.
     await inviteRef.update({ claimedAt: FieldValue.delete() });
-    const known = AUTH_MESSAGES[(error as { code?: string }).code ?? ''];
+    const known = authMessage(error);
     if (!known) console.error(error);
     return json(
       { error: known?.message ?? 'Couldn’t make the account. Try again in a moment.' },
