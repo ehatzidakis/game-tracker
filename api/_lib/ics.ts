@@ -52,7 +52,7 @@ export function buildCalendar(
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Game Tracker//Releases//EN',
+    'PRODID:-//Questloggd//Releases//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'X-WR-CALNAME:Game releases',

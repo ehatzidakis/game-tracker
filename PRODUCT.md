@@ -14,7 +14,7 @@ The owner, a PS5-first player who also plays on Xbox, PC and Switch 2, plus a fe
 
 ## Product Purpose
 
-Game Tracker puts two things in one place: a calendar of upcoming releases the owner cares about, and a library of the games they own and play, with how far they got (Main story, Main + sides, Platinum). Both jobs matter about equally. Success: the owner never misses a release they wanted, and always knows what they're playing, what's in the backlog and what they finished.
+Questloggd puts two things in one place: a calendar of upcoming releases the owner cares about, and a library of the games they own and play, with how far they got (Main story, Main + sides, Platinum). Both jobs matter about equally. Success: the owner never misses a release they wanted, and always knows what they're playing, what's in the backlog and what they finished.
 
 ## Positioning
 
@@ -36,7 +36,7 @@ A personal tracker shaped around one player's habits rather than a social catalo
 
 ## Brand Commitments
 
-- Name: Game Tracker.
+- Name: Questloggd.
 - Dark, cool interface with one accent colour: PlayStation blue. Glow only on press or focus, never as decoration.
 - Standing preference (chosen 2026-11-07): the category standard, a native-feeling iOS app, rather than an invented visual world. Quality bar: Letterboxd and Things 3.
 - Must not look like a copy of the PS5 interface or use Sony's branding. Not flashy or "gamer" styled: no neon, RGB effects or "epic" language.

@@ -1,5 +1,5 @@
 ---
-name: Game Tracker
+name: Questloggd
 description: A native-feeling iOS dark app for one player's release calendar and game library.
 colors:
   ground: "#000000"
@@ -171,13 +171,13 @@ components:
     textColor: "{colors.accent}"
 ---
 
-# Design System: Game Tracker
+# Design System: Questloggd
 
 ## Overview
 
 **Creative North Star: "The Native Shelf"**
 
-Game Tracker is the category standard on purpose: it behaves and looks like a well-made iOS app in dark mode, so the owner's hands already know it. Large titles that hand off to a small centred title, inset grouped lists, segmented controls, switches, action sheets and a four-tab bar are used as iOS uses them, finished to the polish of Letterboxd and Things 3. Nothing is invented for its own sake.
+Questloggd is the category standard on purpose: it behaves and looks like a well-made iOS app in dark mode, so the owner's hands already know it. Large titles that hand off to a small centred title, inset grouped lists, segmented controls, switches, action sheets and a four-tab bar are used as iOS uses them, finished to the polish of Letterboxd and Things 3. Nothing is invented for its own sake.
 
 The interface is quiet and the game art is loud. Covers lead every list row and fill the Library grid; the Game screen opens on a full-bleed screenshot that fades into the black page under a see-through top bar. Everything else is true black, iOS dark greys, white labels and one blue accent, used sparingly enough that the next release's countdown is the thing your eye lands on.
 
@@ -305,6 +305,7 @@ The backbone of every screen, as in iOS Settings.
 ### Navigation
 - **Top bar (Game screen only):** see-through at rest; turns into a 90% near-black blurred bar with a hairline at the same moment its small centred 17px semibold title fades in (200ms). Back button: a 36px blurred dark circle over art, plain Tint Blue chevron once solid.
 - **Tab bar:** four tabs (Calendar, Library, Search, Settings) in a floating Tab Glass capsule (fully round, 0.5px white outline, soft shadow, faint top highlight), 24px Lucide icons over 10.5px semibold labels. The active tab is Tint Blue over a single lighter pill (10% white) that slides between tabs (transform, 320ms, iOS spring-like ease) and hides off the tabs (a game's page). The bar itself never animates.
+- **Logo:** the loggd mark, a joined "gg" whose first bowl is a progress ring three-quarters full (clockwise from the top; the last quarter a 30% track), in rounded strokes like Lucide. In the app it lives inside the **Questloggd wordmark** (shared/wordmark.ts): "Questlo", the mark in Tint Blue, then "d", 24px bold, the mark sized in ex so its bowls match the x-height. The four tab screens (Calendar, Library, Search, Settings) open with one row (shared/tab-title.ts): the wordmark on the left and the 34px large title pinned right, on one baseline. Pushed screens keep a plain large title. The login page heads with the wordmark at 28px. The home-screen icon, favicon and login mark are the mark alone in white (35% track) on Fill Blue, full bleed (public/icons/icon.svg; iOS rounds the corners).
 
 ### Action Sheet
 iOS action sheet from the bottom: choices in one 14px-rounded raised group (94% Raised Grey with blur), Cancel in its own group below, 57px rows, Sheet Blue text, a muted 13px heading with the game's name in semibold. Slides up over 280ms; the backdrop dims to 50% black and dismisses on tap.

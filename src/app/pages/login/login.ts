@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { Wordmark } from '../../shared/wordmark';
 
 const MESSAGES: Record<string, string> = {
   'auth/invalid-credential': 'Wrong email or password.',
@@ -12,16 +13,17 @@ const MESSAGES: Record<string, string> = {
 
 @Component({
   selector: 'app-login',
+  imports: [Wordmark],
   template: `
     <main class="grid min-h-dvh place-items-center bg-ground px-4">
       <form class="w-full max-w-sm" (submit)="signIn($event)">
         <div class="text-center">
           <img
-            src="icons/apple-touch-icon.png"
+            src="icons/apple-touch-icon.png?v=3"
             alt=""
             class="mx-auto size-18 rounded-2xl ring-[0.5px] ring-white/15"
           />
-          <h1 class="mt-4 text-[28px] leading-8.5 font-bold">Game Tracker</h1>
+          <h1 class="mt-4 text-[28px] leading-8.5 font-bold"><app-wordmark /></h1>
           <p class="mt-1 text-[15px] leading-5 text-muted">
             Upcoming releases and the games you're playing.
           </p>

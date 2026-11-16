@@ -12,7 +12,7 @@ self.addEventListener('push', (event) => {
     data = { body: event.data ? event.data.text() : '' };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Game Tracker', {
+    self.registration.showNotification(data.title || 'Questloggd', {
       body: data.body || '',
       tag: data.tag,
       icon: data.icon || '/icons/icon-192.png',

@@ -14,10 +14,12 @@ import { LibraryService } from '../../core/library.service';
 import { PsnService } from '../../core/psn.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
+import { TabTitle } from '../../shared/tab-title';
 
 @Component({
   selector: 'app-settings',
   imports: [
+    TabTitle,
     RouterLink,
     LucideCalendarPlus,
     LucideChevronRight,

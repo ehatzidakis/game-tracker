@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- loggd home-screen icon: the mark (src/app/shared/logo.ts) in white on Fill Blue.
+       Full bleed: iOS rounds the corners itself. The PNGs and favicon.ico are made from this. -->
+  <rect width="160" height="160" fill="#2462e8" />
+  <g transform="translate(30 27)" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="36" cy="44" r="14" stroke-opacity="0.35" />
+    <path d="M36 30A14 14 0 1 1 22 44" />
+    <path d="M50 30v32a14 14 0 0 1-14 14h-4" />
+    <circle cx="64" cy="44" r="14" />
+    <path d="M78 30v32a14 14 0 0 1-14 14h-4" />
+  </g>
+</svg>

@@ -50,6 +50,7 @@ import {
   searchLibrary,
   type Sort,
 } from './library-sort';
+import { TabTitle } from '../../shared/tab-title';
 
 /** A sort: its name in the menu, and a shorter one for the pill where the full one is long. */
 const SORTS: { key: Sort; label: string; short?: string }[] = [
@@ -119,6 +120,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
 @Component({
   selector: 'app-library',
   imports: [
+    TabTitle,
     RouterLink,
     NgTemplateOutlet,
     Cover,

@@ -26,6 +26,7 @@ import {
   vagueDateWithYear,
   type CalendarItem,
 } from './calendar-groups';
+import { TabTitle } from '../../shared/tab-title';
 
 const WEEKDAY_DAY = new Intl.DateTimeFormat('en-GB', {
   weekday: 'short',
@@ -55,6 +56,7 @@ const MONTH_ONLY = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: '
 @Component({
   selector: 'app-calendar',
   imports: [
+    TabTitle,
     RouterLink,
     Cover,
     EventArt,
