@@ -25,7 +25,7 @@ Values marked 🔒 are secrets. They live in the local `.env` file (git-ignored)
 - [x] **Firestore Database:** created in production mode, in Warsaw (`europe-central2`).
 - [x] **Publish the security rules:** Firestore → Rules, replace everything with the contents of [firestore.rules](firestore.rules), then Publish. Done 2026-11-07.
 - [x] **Service account private key** downloaded. 🔒 Saved in `.env` as `FIREBASE_SERVICE_ACCOUNT`.
-- [x] Vercel domain `game-tracker-teal-sigma.vercel.app` added under **Authentication → Settings → Authorized domains**.
+- [x] Vercel domain `game-tracker-teal-sigma.vercel.app` added under **Authentication → Settings → Authorized domains**, then `loggd.quest` (2026-11-16).
 
 ### 2. Twitch developer app (for IGDB)
 
@@ -35,7 +35,7 @@ Values marked 🔒 are secrets. They live in the local `.env` file (git-ignored)
 ### 3. GitHub and Vercel
 
 - [x] GitHub repo: `ehatzidakis/game-tracker`, initial commit pushed.
-- [x] Vercel project live at `game-tracker-teal-sigma.vercel.app`.
+- [x] Vercel project live at `game-tracker-teal-sigma.vercel.app`, and at **`loggd.quest`** (bought at Porkbun; DNS stays at Porkbun with an `A` record on the bare domain and a `CNAME` on `www` for Vercel; `www.loggd.quest` redirects to `loggd.quest`). The vercel.app address still works.
 - [x] **Environment variables added to Vercel**, all as type Secret. `FIREBASE_SERVICE_ACCOUNT` holds the whole JSON object as its value.
 
 ### 4. Your decisions
@@ -367,3 +367,4 @@ Left as rows: the Calendar (kept compact on purpose) and Search's results (each 
 - **2026-11-16:** Game page: what matters is now four cards under the header, with more room and big values over small captions, filling the first screen so Shown at needs a scroll: Progress (Completed with its date, how far, playtime; Last played is gone), Trophies (earned of all, %, a progress bar, each grade with earned/total), Scores (OpenCritic ring, players' score with its count, your rating, which moved here from the header, and the HowLongToBeat link), Purchase (paid, store, bought on, physical or digital). Only what there is; DLC pages keep their own switches. 170 tests pass. Committed and pushed.
 - **2026-11-16:** Game page, Progress card: the completed date is the big value with "Completed" under it; "How far" is now "Completion". Committed and pushed.
 - **2026-11-16:** Tailwind classes tidied to the standard ones Tailwind suggests, at the same sizes (e.g. `leading-[18px]` → `leading-4.5`, `rounded-[8px]` → `rounded-lg`, `aspect-[3/4]` → `aspect-3/4`, `[color-scheme:dark]` → `scheme-dark`, `bg-gradient-to-b` → `bg-linear-to-b`). Sizes Tailwind has no class for (`text-[13px]`, `rounded-[5px]`, `rounded-[14px]`) stay as they are. 170 tests pass. Committed and pushed.
+- **2026-11-16:** The app has its own domain, **loggd.quest** (Porkbun, pointed at Vercel; www redirects to it; HTTPS from Vercel). Added to Firebase's authorized domains. The hourly Cloudflare Worker now calls https://loggd.quest (worker/wrangler.toml), and push alerts name it as their contact (api/_lib/jobs.ts). The old vercel.app address still works. On the new domain the phone counts as a new app: sign in, add to the home screen and turn on notifications again. Committed and pushed.

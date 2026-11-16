@@ -3,7 +3,7 @@ main = "notify-trigger.js"
 compatibility_date = "2026-10-01"
 
 [vars]
-APP_URL = "https://game-tracker-teal-sigma.vercel.app"
+APP_URL = "https://loggd.quest"
 
 # Every hour at minute 2 (UTC).
 [triggers]

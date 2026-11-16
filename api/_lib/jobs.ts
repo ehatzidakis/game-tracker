@@ -33,7 +33,7 @@ let vapidReady = false;
 function setUpVapid(): void {
   if (vapidReady) return;
   setVapidDetails(
-    'https://game-tracker-teal-sigma.vercel.app',
+    'https://loggd.quest',
     process.env.VAPID_PUBLIC_KEY ?? '',
     process.env.VAPID_PRIVATE_KEY ?? '',
   );
