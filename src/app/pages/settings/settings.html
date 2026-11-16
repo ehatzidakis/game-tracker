@@ -166,6 +166,17 @@
           class="-mr-1 shrink-0 text-faint"
         ></svg>
       </a>
+      <!-- Games found on IGDB that aren't in the library: all in at once (PsnAddAll). -->
+      @if (addAll.addable().length; as count) {
+        <button
+          type="button"
+          class="row text-accent disabled:opacity-40"
+          [disabled]="addAll.busy()"
+          (click)="addAll.addAll()"
+        >
+          {{ addAll.busy() ? 'Adding…' : 'Add all ' + count + ' to Library' }}
+        </button>
+      }
       <!-- When playtime and trophies were last read; runs by itself every 8 hours. -->
       <div class="row">
         <div class="min-w-0 flex-1">

@@ -18,6 +18,8 @@ export interface Choice<T extends string> {
 interface ChoiceRequest {
   /** Heading in three parts; the middle one (the game's name) is bold. */
   heading: readonly [string, string, string];
+  /** A few words under the heading, for what happens next ("Add all"). */
+  message?: string;
   choices: readonly Choice<string>[];
   suggested: string | null;
   resolve: (key: string | null) => void;
@@ -32,11 +34,13 @@ export class ChoiceSheet {
     heading: readonly [string, string, string],
     choices: readonly Choice<T>[],
     suggested: T | null = null,
+    message?: string,
   ): Promise<T | null> {
     this.request()?.resolve(null);
     return new Promise<T | null>((resolve) =>
       this.request.set({
         heading,
+        message,
         choices,
         suggested,
         resolve: resolve as (key: string | null) => void,
@@ -88,6 +92,11 @@ export class ChoiceSheet {
               {{ req.heading[0] }}<span class="font-semibold">{{ req.heading[1] }}</span
               >{{ req.heading[2] }}
             </h2>
+            @if (req.message) {
+              <p class="-mt-2 px-4 pb-3.5 text-center text-[13px] leading-4.5 text-muted">
+                {{ req.message }}
+              </p>
+            }
             <!-- Long lists (your gaming events) scroll inside the sheet. -->
             <div class="group-scroll max-h-[60dvh] overflow-y-auto overscroll-contain">
               @for (c of req.choices; track c.key) {

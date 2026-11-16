@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { LucideChevronRight, LucideTrophy } from '@lucide/angular';
+import { LucideChevronRight, LucideListPlus, LucideTrophy } from '@lucide/angular';
 import { statusLabel, type PsnGameRecord, type TrackedGame } from '../../../../api/_lib/models.js';
 import { defaultChoice, type ImportStatus } from '../../../../api/_lib/psn-import.js';
 import { comparableName } from '../../../../api/_lib/psn-match.js';
@@ -7,6 +7,7 @@ import { today } from '../../core/dates';
 import { IgdbService, type GameSearchResult } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
 import { formatPlaytime } from '../../core/playtime';
+import { PsnAddAll } from '../../core/psn-add-all.service';
 import { PsnService } from '../../core/psn.service';
 import { ToastService } from '../../core/toast.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
@@ -38,17 +39,25 @@ function played(seconds: number): string {
  */
 @Component({
   selector: 'app-playstation',
-  imports: [Cover, LucideChevronRight, LucideTrophy],
+  imports: [Cover, LucideChevronRight, LucideListPlus, LucideTrophy],
   template: `
     <h1 class="large-title">PlayStation games</h1>
     <p class="mt-2 text-[15px] leading-5 text-muted">
       Playtime and trophies go to the library game each one is matched to. Tap a game that isn't in
       your library to add it, or a matched one to change its match.
     </p>
-    @if (adding()) {
+    @if (adding() || addAll.busy()) {
       <p class="mt-2 text-[15px] leading-5 text-muted" role="status">
         Adding and syncing with PlayStation…
       </p>
+    } @else if (addAll.addable().length; as count) {
+      <div class="grouped mt-4">
+        <button type="button" class="row text-accent" (click)="addAll.addAll()">
+          <svg lucideListPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
+          Add all {{ count }} to Library
+        </button>
+      </div>
+      <p class="group-footer">Platinumed games go to Completed, the rest to the Backlog.</p>
     }
 
     @for (group of groups(); track group.title) {
@@ -109,6 +118,7 @@ export class PlaystationPage {
   private readonly sheet = inject(ChoiceSheet);
   protected readonly played = played;
 
+  protected readonly addAll = inject(PsnAddAll);
   private readonly details = inject(DetailsSheet);
   private readonly igdb = inject(IgdbService);
   private readonly toast = inject(ToastService);
@@ -138,7 +148,7 @@ export class PlaystationPage {
    * say which library game it is. A matched game: change its match.
    */
   protected async pick(game: PsnGameRecord): Promise<void> {
-    if (this.adding()) return;
+    if (this.adding() || this.addAll.busy()) return;
     if (game.igdbId !== null) return this.changeMatch(game);
     const found = game.igdb;
     const choice = await this.sheet.choose(

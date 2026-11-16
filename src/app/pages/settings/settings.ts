@@ -13,6 +13,7 @@ import { PLATFORMS, type PlatformKey } from '../../../../api/_lib/platforms.js';
 import { AuthService } from '../../core/auth.service';
 import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
+import { PsnAddAll } from '../../core/psn-add-all.service';
 import { PsnService } from '../../core/psn.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
@@ -42,6 +43,7 @@ export class SettingsPage {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly psn = inject(PsnService);
+  protected readonly addAll = inject(PsnAddAll);
   protected readonly psnGames = this.psn;
   /** Checking or removing the PlayStation link. */
   protected readonly psnBusy = signal(false);
