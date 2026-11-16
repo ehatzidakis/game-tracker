@@ -280,7 +280,7 @@ Every list of picture rows (cover or logo, title, grey line, arrow) becomes the 
 
 Left as rows: the Calendar (kept compact on purpose) and Search's results (each has the + Add button, in search order).
 
-## PlayStation games into the Library: plan, 2026-11-16
+## PlayStation games into the Library: plan, 2026-11-16 (built 2026-11-16)
 
 Goal: your PlayStation games go into the Library without adding them one by one. Platinumed games go to Completed, the rest to the Backlog (or, the first time, wherever you put them), and from then on the sync keeps their playtime and trophies up to date as it does now.
 
@@ -311,7 +311,7 @@ Goal: your PlayStation games go into the Library without adding them one by one.
   3. **Backlog:** "Which have you promised yourself you'll finish?" Only the games not marked in steps 1 and 2.
   Each step has Back and Next. Then a summary: "Add 120 games: 30 Completed, 10 Shelved, 80 Backlog". Adding takes you to the Library. "Not now" skips it, and it stays offered in Settings → PlayStation.
   *As built:* /setup (src/app/pages/setup/setup.ts, rules in setup-steps.ts), full screen without the tab bar. Its pool is the games "Add all" would add (found on IGDB, not in the library), most played first, as a three-a-row cover grid: tap to mark (an iOS photo-picker check and a blue outline), Platinum badge, "N of M marked" and Mark all / Clear. Back and Next in a bar at the bottom; the summary lists Completed, Shelved and Backlog counts and how many are left out, then "Add N games" (one call to api/psn-import.ts; hand-marked Completed is Main story) and lands in the Library. "Not now" goes to the Calendar. Opened after sign-up when the PlayStation name linked, and after linking PlayStation in Settings with an empty library; while the library is empty, Settings → PlayStation shows "Set up your Library from PlayStation" instead of "Add all".
-- [ ] **Step 5. Tests and docs.** Tests for the IGDB lookup rules, the status rules and the setup steps; DESIGN.md (setup screen, sheet) and this plan.
+- [x] **Step 5. Tests and docs.** *(Done 2026-11-16.)* Tests for the IGDB lookup rules, the status rules and the setup steps; DESIGN.md (setup screen, sheet) and this plan. *As done:* tests for the IGDB lookup (psn-igdb.spec.ts), adding a game (psn-import.spec.ts), the sync dating a Platinum quietly (psn-sync.spec.ts), what "Add all" says (psn-add-all.spec.ts) and the setup steps (setup-steps.spec.ts). DESIGN.md: PlayStation games, First-time setup, Sign-up and invites, the action sheet's message line and the add mode of "Edit my data"; the tab screens' header row (wordmark and title) in Do's.
 
 **Decided (2026-11-16):**
 1. Games left unmarked after the three setup steps are left out. They stay under Settings → PlayStation as "Not in your library" and can be added later.
@@ -416,3 +416,4 @@ Goal: your PlayStation games go into the Library without adding them one by one.
 - **2026-11-16:** PlayStation into the Library, Step 2 built: add one PlayStation game from Settings → PlayStation → Games, with its list and your data (api/psn-import.ts), or as another IGDB game, or say it's already in the Library. The sync dates Platinum games added without a date. 203 tests pass.
 - **2026-11-16:** PlayStation into the Library, Step 3 built: "Add all N to Library" on the Games page and in Settings → PlayStation (Platinum → Completed, the rest → Backlog), after a sheet that says what goes where. 206 tests pass.
 - **2026-11-16:** PlayStation into the Library, Step 4 built: the first-time setup (/setup): Completed (Platinums marked), Shelved, Backlog over your PlayStation catalog, each step hiding what you marked before, then a summary and Add. After sign-up with a PlayStation name, and after linking one in Settings with an empty library. 213 tests pass.
+- **2026-11-16:** PlayStation into the Library, Step 5 done: DESIGN.md has the PlayStation games page, the first-time setup and sign-up; all five steps are built. 213 tests pass. Steps 1–5 committed and pushed.
