@@ -87,7 +87,7 @@ type Fact = { icon: 'country' | 'founded' | 'size' | 'status'; label: string };
           </div>
         }
 
-        <h1 class="mt-4 text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance">
+        <h1 class="mt-4 text-[24px] leading-7.25 font-bold tracking-[0.005em] text-balance">
           {{ c.name }}
         </h1>
 

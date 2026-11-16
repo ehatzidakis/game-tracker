@@ -19,9 +19,9 @@ const MESSAGES: Record<string, string> = {
           <img
             src="icons/apple-touch-icon.png"
             alt=""
-            class="mx-auto size-[72px] rounded-[16px] ring-[0.5px] ring-white/15"
+            class="mx-auto size-18 rounded-2xl ring-[0.5px] ring-white/15"
           />
-          <h1 class="mt-4 text-[28px] leading-[34px] font-bold">Game Tracker</h1>
+          <h1 class="mt-4 text-[28px] leading-8.5 font-bold">Game Tracker</h1>
           <p class="mt-1 text-[15px] leading-5 text-muted">
             Upcoming releases and the games you're playing.
           </p>

@@ -77,7 +77,7 @@ export function gameMarks(game: TrackedGame | undefined): Pick<GridCard, 'status
     <div class="mt-6 flex min-h-8 items-center gap-2">
       @if (title(); as t) {
         <!-- Named like the page's other sections. -->
-        <h2 class="num min-w-0 truncate text-[13px] leading-[18px] text-muted uppercase">
+        <h2 class="num min-w-0 truncate text-[13px] leading-4.5 text-muted uppercase">
           {{ t }} · {{ filtered().length }}
         </h2>
       } @else {
@@ -124,7 +124,7 @@ export function gameMarks(game: TrackedGame | undefined): Pick<GridCard, 'status
           <a [routerLink]="card.link" class="block active:opacity-70" [attr.aria-label]="label(card)">
             @if (card.event; as e) {
               <app-event-art
-                class="aspect-[3/4] rounded-[6px]"
+                class="aspect-3/4 rounded-md"
                 fit="contain"
                 [class.dimmed]="card.dim"
                 [logoId]="e.logoId"

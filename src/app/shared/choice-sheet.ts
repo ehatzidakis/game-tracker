@@ -83,7 +83,7 @@ export class ChoiceSheet {
           <div class="grouped rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
             <h2
               id="choice-sheet-title"
-              class="truncate px-4 py-3.5 text-center text-[13px] leading-[18px] text-muted"
+              class="truncate px-4 py-3.5 text-center text-[13px] leading-4.5 text-muted"
             >
               {{ req.heading[0] }}<span class="font-semibold">{{ req.heading[1] }}</span
               >{{ req.heading[2] }}
@@ -91,11 +91,11 @@ export class ChoiceSheet {
             <!-- Long lists (your gaming events) scroll inside the sheet. -->
             <div class="group-scroll max-h-[60dvh] overflow-y-auto overscroll-contain">
               @for (c of req.choices; track c.key) {
-                <button type="button" class="row min-h-[57px]!" (click)="sheet.finish(c.key)">
+                <button type="button" class="row min-h-14.25!" (click)="sheet.finish(c.key)">
                   <span class="min-w-0 flex-1">
                     <span class="block text-[17px]">{{ c.label }}</span>
                     @if (c.hint) {
-                      <span class="block text-[13px] leading-[18px] text-muted">{{ c.hint }}</span>
+                      <span class="block text-[13px] leading-4.5 text-muted">{{ c.hint }}</span>
                     }
                   </span>
                   @if (c.key === req.suggested) {
@@ -108,7 +108,7 @@ export class ChoiceSheet {
           <div class="grouped mt-2 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
             <button
               type="button"
-              class="row min-h-[57px]! justify-center text-[17px] font-semibold text-accent-raised"
+              class="row min-h-14.25! justify-center text-[17px] font-semibold text-accent-raised"
               (click)="sheet.finish(null)"
             >
               Cancel

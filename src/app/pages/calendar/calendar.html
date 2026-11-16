@@ -98,7 +98,7 @@
             >
               <div class="relative">
                 <app-event-art
-                  class="aspect-[3/4] rounded-[6px]"
+                  class="aspect-3/4 rounded-md"
                   fit="contain"
                   [logoId]="event.logoId"
                   [kind]="event.kind"
@@ -106,7 +106,7 @@
                 />
                 @if (eventBadge(item.date); as left) {
                   <span
-                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
                     aria-hidden="true"
                     >{{ left }}</span
                   >
@@ -162,7 +162,7 @@
                 }
                 @if (countdown(game); as c) {
                   <span
-                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
                     [class.text-accent]="game.igdbId === nextId()"
                     aria-hidden="true"
                     >{{ badge(c) }}</span
@@ -227,7 +227,7 @@
                   <!-- The Library's event card at list size: the whole logo over a blur of it, or
                      the host's icon on grey for an event of your own. -->
                   <app-event-art
-                    class="aspect-[3/4] w-10 shrink-0 rounded-[5px]"
+                    class="aspect-3/4 w-10 shrink-0 rounded-[5px]"
                     fit="contain"
                     [logoId]="event.logoId"
                     [kind]="event.kind"

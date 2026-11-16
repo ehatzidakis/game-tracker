@@ -35,7 +35,7 @@ import { LucideCircleX, LucideSearch } from '@lucide/angular';
         (pointerdown)="$event.preventDefault()"
         (click)="query.set(''); field.focus()"
       >
-        <svg lucideCircleX [size]="18" class="fill-current [&>*]:stroke-group"></svg>
+        <svg lucideCircleX [size]="18" class="fill-current *:stroke-group"></svg>
       </button>
     }
   `,

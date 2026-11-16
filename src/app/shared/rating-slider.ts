@@ -51,7 +51,7 @@ export function ratingAt(ratio: number): number {
           class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white transition-[width,height,border-radius] duration-200"
           [class]="
             disabled()
-              ? 'h-5 w-[3px] rounded-full'
+              ? 'h-5 w-0.75 rounded-full'
               : 'size-7 rounded-full shadow-[0_2px_8px_rgb(0_0_0/0.35)]'
           "
           [style.left.%]="percent()"

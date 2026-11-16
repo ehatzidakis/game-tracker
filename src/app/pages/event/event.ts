@@ -70,7 +70,7 @@ const dayTime = (ms: number) => DAY_TIME.format(ms).replace(',', '');
           <app-event-art class="size-20 rounded-[14px]" [kind]="e.kind" [iconSize]="80" />
         }
 
-        <h1 class="mt-4 text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance">
+        <h1 class="mt-4 text-[24px] leading-7.25 font-bold tracking-[0.005em] text-balance">
           {{ e.title }}
         </h1>
         <p class="num mt-1 text-[15px] leading-5 text-muted">

@@ -355,20 +355,20 @@
                 : '';
             @if (clock) {
               <span
-                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
                 [attr.aria-label]="formatPlaytime(game.hoursPlayed) + ' played'"
               >
                 {{ clock }}
               </span>
             } @else if (isDlc(game)) {
               <span
-                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
               >
                 {{ game.preordered ? 'DLC · Pre-ordered' : 'DLC' }}
               </span>
             } @else if (game.preordered && countdown(game) !== null) {
               <span
-                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-[3px] text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
               >
                 Pre-ordered
               </span>
@@ -424,7 +424,7 @@
       <li>
         <a [routerLink]="['/event', event.id]" class="block active:opacity-70">
           <app-event-art
-            class="aspect-[3/4] rounded-[6px]"
+            class="aspect-3/4 rounded-md"
             fit="contain"
             [logoId]="event.logoId"
             [kind]="event.kind"

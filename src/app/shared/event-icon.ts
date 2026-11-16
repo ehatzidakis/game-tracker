@@ -27,7 +27,7 @@ const CALM = '#2c2c2e';
   selector: 'app-event-icon',
   imports: [LucideMic, LucideGamepad2],
   host: {
-    class: 'grid shrink-0 place-items-center rounded-[8px] text-white',
+    class: 'grid shrink-0 place-items-center rounded-lg text-white',
     '[style.background]': 'background()',
     '[style.width.px]': 'size()',
     '[style.height.px]': 'size()',

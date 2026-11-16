@@ -169,7 +169,7 @@ export class EventSheet {
           <div class="grouped rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
             <h2
               id="event-sheet-title"
-              class="px-4 pt-3.5 pb-3 text-center text-[13px] leading-[18px] font-semibold text-muted"
+              class="px-4 pt-3.5 pb-3 text-center text-[13px] leading-4.5 font-semibold text-muted"
             >
               {{ req.event ? 'Edit gaming event' : 'New gaming event' }}
             </h2>
@@ -191,7 +191,7 @@ export class EventSheet {
             </label>
             <!-- Paste the time as the announcement writes it; it's turned into your time. -->
             <div class="row flex-col items-stretch! gap-1! py-2.5!">
-              <label for="event-announced" class="text-[13px] leading-[18px] text-muted">
+              <label for="event-announced" class="text-[13px] leading-4.5 text-muted">
                 Time from the announcement
               </label>
               <input
@@ -206,7 +206,7 @@ export class EventSheet {
               />
               @if (announcedNote(); as note) {
                 <p
-                  class="text-[13px] leading-[18px]"
+                  class="text-[13px] leading-4.5"
                   [class]="note.ok ? 'text-accent-raised' : 'text-muted'"
                   aria-live="polite"
                 >
@@ -221,7 +221,7 @@ export class EventSheet {
                 name="startsAt"
                 type="datetime-local"
                 required
-                class="num rounded-[8px] bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
+                class="num rounded-lg bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
                 [value]="dateTimeFieldValue(req.initial.startsAt)"
               />
             </label>
@@ -229,19 +229,19 @@ export class EventSheet {
             <label class="row">
               <span class="flex-1">
                 Duration
-                <span class="block text-[13px] leading-[18px] text-muted"
+                <span class="block text-[13px] leading-4.5 text-muted"
                   >Hours and minutes, if known</span
                 >
               </span>
               <input
                 name="duration"
                 type="time"
-                class="num rounded-[8px] bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
+                class="num rounded-lg bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
                 [value]="durationFieldValue(req.initial.durationMinutes)"
               />
             </label>
             <div class="row flex-col items-start! gap-2! py-2.5!">
-              <span id="event-kind-label" class="text-[13px] leading-[18px] text-muted"
+              <span id="event-kind-label" class="text-[13px] leading-4.5 text-muted"
                 >Hosted by</span
               >
               <div
@@ -283,7 +283,7 @@ export class EventSheet {
               <div class="row">
                 <div class="min-w-0 flex-1">
                   <p id="event-archived-label">Archived</p>
-                  <p class="text-[13px] leading-[18px] text-muted">
+                  <p class="text-[13px] leading-4.5 text-muted">
                     Hidden from the Calendar and the Library. Still listed in Settings.
                   </p>
                 </div>
@@ -309,7 +309,7 @@ export class EventSheet {
             <div class="grouped mt-2 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
               <button
                 type="button"
-                class="row min-h-[50px]! justify-center text-[17px] text-danger"
+                class="row min-h-12.5! justify-center text-[17px] text-danger"
                 (click)="confirmDelete()"
               >
                 {{ deleting() ? 'Tap again to delete' : 'Delete event' }}
@@ -319,14 +319,14 @@ export class EventSheet {
           <div class="mt-2 grid grid-cols-2 gap-2">
             <button
               type="button"
-              class="grouped min-h-[57px] rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
+              class="grouped min-h-14.25 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
               (click)="sheet.finish(null)"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="min-h-[57px] rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
+              class="min-h-14.25 rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
             >
               Save
             </button>

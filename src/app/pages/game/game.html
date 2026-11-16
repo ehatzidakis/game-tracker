@@ -15,14 +15,14 @@
 
 <article>
   <!-- Artwork, full width under the see-through top bar, fading into the page. -->
-  <div class="relative -mx-4 h-[300px] overflow-hidden bg-group">
+  <div class="relative -mx-4 h-75 overflow-hidden bg-group">
     @if (heroUrl(); as url) {
       <img [src]="url" alt="" class="size-full object-cover" />
     }
     <div
       class="absolute inset-0 bg-[linear-gradient(to_top,#000_0%,rgb(0_0_0/0.55)_35%,rgb(0_0_0/0)_70%)]"
     ></div>
-    <div class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/50 to-transparent"></div>
+    <div class="absolute inset-x-0 top-0 h-28 bg-linear-to-b from-black/50 to-transparent"></div>
   </div>
 
   <header class="relative -mt-28 flex items-end gap-4">
@@ -37,7 +37,7 @@
       <div class="flex items-start gap-2">
         @if (name()) {
           <h1
-            class="min-w-0 flex-1 text-[24px] leading-[29px] font-bold tracking-[0.005em] text-balance"
+            class="min-w-0 flex-1 text-[24px] leading-7.25 font-bold tracking-[0.005em] text-balance"
           >
             {{ name() }}
             @if (platinum()) {
@@ -53,7 +53,7 @@
           <!-- 44px to tap; the negative margins keep it to the title's line. -->
           <button
             type="button"
-            class="-my-[7.5px] -mr-3 ml-auto grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
+            class="my-[-7.5px] -mr-3 ml-auto grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
             aria-label="Edit my data"
             (click)="editMyData()"
           >
@@ -96,7 +96,7 @@
   @if (release().label) {
     <!-- The dates it had before, saved each time the date moved. Latest change first. -->
     @if (earlierDates().length) {
-      <ul class="mt-4 text-[13px] leading-[18px] text-muted" aria-label="Earlier release dates">
+      <ul class="mt-4 text-[13px] leading-4.5 text-muted" aria-label="Earlier release dates">
         @for (was of earlierDates(); track was.key) {
           <li class="num">
             Was {{ was.label }}
@@ -128,8 +128,8 @@
         <div class="grid grid-cols-3 gap-3">
           @for (s of progress(); track s.caption) {
             <div class="min-w-0">
-              <p class="num truncate text-[17px] leading-[22px] font-semibold">{{ s.value }}</p>
-              <p class="flex items-center gap-1 text-[13px] leading-[18px] text-muted">
+              <p class="num truncate text-[17px] leading-5.5 font-semibold">{{ s.value }}</p>
+              <p class="flex items-center gap-1 text-[13px] leading-4.5 text-muted">
                 @if (s.psn) {
                   <svg
                     viewBox="0 0 24 24"
@@ -154,11 +154,11 @@
     @if (!isDlcPage() && trophies(); as tr) {
       <section class="grouped px-4 py-3" aria-label="Trophies">
         <div class="num flex items-baseline justify-between gap-3">
-          <p class="flex items-center gap-1.5 text-[17px] leading-[22px] font-semibold">
+          <p class="flex items-center gap-1.5 text-[17px] leading-5.5 font-semibold">
             <svg lucideTrophy [size]="16" [strokeWidth]="2.25" class="shrink-0 self-center"></svg>
             {{ tr.earned }}<span class="text-[13px] font-normal text-muted">/{{ tr.of }}</span>
           </p>
-          <p class="text-[17px] leading-[22px] font-semibold">{{ tr.progress }}%</p>
+          <p class="text-[17px] leading-5.5 font-semibold">{{ tr.progress }}%</p>
         </div>
         <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-raised" aria-hidden="true">
           <div class="h-full rounded-full bg-label" [style.width.%]="tr.progress"></div>
@@ -194,23 +194,23 @@
                   : 'OpenCritic: not enough critic reviews yet'
               "
             >
-              <span class="flex h-[26px] items-center" aria-hidden="true">
+              <span class="flex h-6.5 items-center" aria-hidden="true">
                 @if (oc.topCriticScore !== null) {
                   <app-score-ring [score]="oc.topCriticScore" [size]="26" />
                 } @else {
                   <span class="text-[17px] font-semibold">–</span>
                 }
               </span>
-              <span class="mt-0.5 block truncate text-[13px] leading-[18px] text-muted" aria-hidden="true">
+              <span class="mt-0.5 block truncate text-[13px] leading-4.5 text-muted" aria-hidden="true">
                 {{ oc.topCriticScore !== null ? oc.topCritics : 'No critics yet' }}
               </span>
             </a>
             @if (oc.playerRating !== null) {
               <div class="min-w-0" [attr.aria-label]="'Players ' + oc.playerRating + ', ' + oc.players">
-                <p class="flex h-[26px] items-center text-[17px] font-semibold" aria-hidden="true">
+                <p class="flex h-6.5 items-center text-[17px] font-semibold" aria-hidden="true">
                   {{ oc.playerRating }}
                 </p>
-                <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-[18px] text-muted" aria-hidden="true">
+                <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-4.5 text-muted" aria-hidden="true">
                   <svg lucideUsers [size]="12" [strokeWidth]="2.25" class="shrink-0"></svg>
                   <span class="truncate">{{ oc.playerCount }}</span>
                 </p>
@@ -219,8 +219,8 @@
           } @else if (openCriticLimit(); as limit) {
             <!-- Not looked up yet, and OpenCritic's daily allowance is used up. -->
             <div class="col-span-2 min-w-0">
-              <p class="flex h-[26px] items-center text-[17px] font-semibold">–</p>
-              <p class="mt-0.5 text-[13px] leading-[18px] text-muted">OpenCritic {{ limit.when }}</p>
+              <p class="flex h-6.5 items-center text-[17px] font-semibold">–</p>
+              <p class="mt-0.5 text-[13px] leading-4.5 text-muted">OpenCritic {{ limit.when }}</p>
             </div>
           }
           @if (myRating(); as mine) {
@@ -228,14 +228,14 @@
               class="min-w-0"
               [attr.aria-label]="mine.rating ? 'My rating ' + mine.rating + '/10' : 'Not rated yet'"
             >
-              <p class="flex h-[26px] items-center text-[17px] font-semibold" aria-hidden="true">
+              <p class="flex h-6.5 items-center text-[17px] font-semibold" aria-hidden="true">
                 @if (mine.rating) {
                   {{ mine.rating }}<span class="text-[13px] font-normal text-muted">/10</span>
                 } @else {
                   –
                 }
               </p>
-              <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-[18px] text-muted" aria-hidden="true">
+              <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-4.5 text-muted" aria-hidden="true">
                 <svg lucideStar [size]="12" [strokeWidth]="2.25" class="shrink-0"></svg>
                 <span class="truncate">Mine</span>
               </p>
@@ -249,11 +249,11 @@
             class="col-start-4 min-w-0 text-accent active:opacity-60"
             aria-label="HowLongToBeat"
           >
-            <span class="flex h-[26px] items-center gap-1.5" aria-hidden="true">
-              <img src="icons/hltb.png" alt="" class="size-[18px] shrink-0 rounded-[4px]" />
+            <span class="flex h-6.5 items-center gap-1.5" aria-hidden="true">
+              <img src="icons/hltb.png" alt="" class="size-4.5 shrink-0 rounded-sm" />
               <svg lucideExternalLink [size]="14" [strokeWidth]="2.25" class="shrink-0"></svg>
             </span>
-            <span class="mt-0.5 block truncate text-[13px] leading-[18px]" aria-hidden="true">HLTB</span>
+            <span class="mt-0.5 block truncate text-[13px] leading-4.5" aria-hidden="true">HLTB</span>
           </a>
         </div>
       </section>
@@ -264,8 +264,8 @@
         <div class="grid grid-cols-2 gap-x-3 gap-y-3">
           @for (s of purchase(); track s.caption) {
             <div class="min-w-0">
-              <p class="num truncate text-[17px] leading-[22px] font-semibold">{{ s.value }}</p>
-              <p class="flex items-center gap-1 text-[13px] leading-[18px] text-muted">
+              <p class="num truncate text-[17px] leading-5.5 font-semibold">{{ s.value }}</p>
+              <p class="flex items-center gap-1 text-[13px] leading-4.5 text-muted">
                 <span class="truncate">{{ s.caption }}</span>
               </p>
             </div>
@@ -364,7 +364,7 @@
           <div class="row">
             <div class="min-w-0 flex-1">
               <p id="alert-label">Release alert</p>
-              <p class="text-[13px] leading-[18px] text-muted">
+              <p class="text-[13px] leading-4.5 text-muted">
                 @if (t.releasePrecision !== 'day') {
                   Sent once there’s an exact date.
                 } @else {
@@ -435,7 +435,7 @@
           <div class="row">
             <div class="min-w-0 flex-1">
               <p id="alert-label">Release alert</p>
-              <p class="text-[13px] leading-[18px] text-muted">
+              <p class="text-[13px] leading-4.5 text-muted">
                 @if (t.releasePrecision !== 'day') {
                   Sent once there’s an exact date.
                 } @else {
@@ -583,7 +583,7 @@
         appGrow
         placeholder="Add a note"
         aria-label="Notes"
-        class="grouped block w-full resize-none overflow-hidden px-4 py-3 text-[17px] leading-[22px] outline-none"
+        class="grouped block w-full resize-none overflow-hidden px-4 py-3 text-[17px] leading-5.5 outline-none"
         [value]="t.notes"
         (change)="setNotes($event)"
       ></textarea>

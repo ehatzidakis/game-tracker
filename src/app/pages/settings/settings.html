@@ -9,7 +9,7 @@
     <div class="row">
       <div class="min-w-0 flex-1">
         <p id="push-label">Notifications on this phone</p>
-        <p class="text-[13px] leading-[18px] text-muted">
+        <p class="text-[13px] leading-4.5 text-muted">
           @switch (push.state()) {
             @case ('unsupported') {
               Open the app from its home-screen icon to turn these on.
@@ -62,7 +62,7 @@
       <input
         type="time"
         step="900"
-        class="num rounded-[8px] bg-raised px-2.5 py-1 text-[17px] outline-none [color-scheme:dark]"
+        class="num rounded-lg bg-raised px-2.5 py-1 text-[17px] outline-none scheme-dark"
         [value]="s.notifyTime"
         (change)="setTime($event)"
       />
@@ -107,7 +107,7 @@
   <h2 id="calendar-title" class="group-header">Calendar subscription</h2>
   @if (calendarUrl(); as url) {
     <div class="grouped" style="--sep-inset: 52px">
-      <p class="row text-[13px] leading-[18px] break-all text-muted select-all">{{ url }}</p>
+      <p class="row text-[13px] leading-4.5 break-all text-muted select-all">{{ url }}</p>
       <a [href]="webcalUrl()" class="row text-accent">
         <svg lucideCalendarPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
         Add to Calendar app
@@ -171,7 +171,7 @@
         <div class="min-w-0 flex-1">
           <p>Synced</p>
           <p
-            class="num text-[13px] leading-[18px]"
+            class="num text-[13px] leading-4.5"
             [class]="s.psnSync?.ok === false ? 'text-danger' : 'text-muted'"
           >
             {{ syncedLine() }}

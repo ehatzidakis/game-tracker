@@ -170,17 +170,17 @@ export function parsePrice(text: string): number | null | undefined {
           <div class="grouped rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
             <h2
               id="details-sheet-title"
-              class="px-4 pt-3.5 pb-1 text-center text-[13px] leading-[18px] text-muted"
+              class="px-4 pt-3.5 pb-1 text-center text-[13px] leading-4.5 text-muted"
             >
               {{ req.title }}<span class="font-semibold">{{ req.name }}</span>
             </h2>
-            <p class="px-4 pb-3 text-center text-[13px] leading-[18px] text-muted">
+            <p class="px-4 pb-3 text-center text-[13px] leading-4.5 text-muted">
               All optional. Leave anything you don't know empty.
             </p>
             @if (req.statusEdit) {
               <!-- The status is only changed here, so it can't be changed by a stray tap. -->
               <div class="row flex-col items-stretch! gap-2! py-2.5!">
-                <span id="sheet-status-label" class="text-[13px] leading-[18px] text-muted"
+                <span id="sheet-status-label" class="text-[13px] leading-4.5 text-muted"
                   >Status</span
                 >
                 <div class="segmented" role="radiogroup" aria-labelledby="sheet-status-label">
@@ -236,7 +236,7 @@ export function parsePrice(text: string): number | null | undefined {
             }
             @if (fields.completed) {
               <div class="row flex-col items-stretch! gap-2! py-2.5!">
-                <span id="sheet-completion-label" class="text-[13px] leading-[18px] text-muted"
+                <span id="sheet-completion-label" class="text-[13px] leading-4.5 text-muted"
                   >How far you got</span
                 >
                 <div class="segmented" role="radiogroup" aria-labelledby="sheet-completion-label">
@@ -258,7 +258,7 @@ export function parsePrice(text: string): number | null | undefined {
                 <!-- Slide along the bar (or tap), 1 to 10 in half points. -->
                 @let shown = ratingPreview() ?? rating();
                 <div class="row flex-col items-stretch! gap-2! py-2.5!">
-                  <div class="flex items-baseline gap-3 text-[13px] leading-[18px] text-muted">
+                  <div class="flex items-baseline gap-3 text-[13px] leading-4.5 text-muted">
                     <span id="sheet-rating-label">Rating</span>
                     <span class="num ml-auto">
                       @if (shown) {
@@ -336,7 +336,7 @@ export function parsePrice(text: string): number | null | undefined {
                 <input
                   name="ordered"
                   type="date"
-                  class="num rounded-[8px] bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
+                  class="num rounded-lg bg-pressed px-2.5 py-1 text-[17px] outline-none scheme-dark"
                   [value]="req.initial.orderedOn ?? ''"
                   [max]="req.today"
                 />
@@ -364,14 +364,14 @@ export function parsePrice(text: string): number | null | undefined {
           <div class="mt-2 grid grid-cols-2 gap-2">
             <button
               type="button"
-              class="grouped min-h-[57px] rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
+              class="grouped min-h-14.25 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
               (click)="sheet.finish(null)"
             >
               {{ req.dismiss }}
             </button>
             <button
               type="submit"
-              class="min-h-[57px] rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
+              class="min-h-14.25 rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
             >
               Save
             </button>
