@@ -62,6 +62,13 @@ export class LibraryService {
   readonly games = computed(() => this.gamesState() ?? []);
   readonly loading = computed(() => this.gamesState() === null);
   readonly byId = computed(() => new Map(this.games().map((g) => [g.igdbId, g])));
+  /** Stores you've bought from before, then common ones: suggestions in the purchase fields. */
+  readonly stores = computed(() => {
+    const used = this.games()
+      .map((g) => g.boughtFrom)
+      .filter((s): s is string => !!s);
+    return [...new Set([...used, 'PlayStation Store', 'Amazon'])];
+  });
   readonly settings = this.settingsState.asReadonly();
   readonly loadError = signal<string | null>(null);
 

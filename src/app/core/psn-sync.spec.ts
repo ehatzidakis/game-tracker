@@ -170,8 +170,8 @@ describe('a Platinum completes its game', () => {
   it('finds games with a Platinum that aren’t Completed with Platinum yet', () => {
     const library = [
       game(1, { status: 'backlog', playing: true }),
-      game(2, { status: 'completed', completion: 'main' }),
-      game(3, { status: 'completed', completion: 'platinum' }),
+      game(2, { status: 'completed', completion: 'main', completedAt: now }),
+      game(3, { status: 'completed', completion: 'platinum', completedAt: now }),
       game(4, { status: 'shelved' }),
     ];
     const moves = platinumMoves(
@@ -185,9 +185,24 @@ describe('a Platinum completes its game', () => {
       ]),
     );
     expect(moves).toEqual([
-      { igdbId: 1, listId: 'A', serviceName: 'trophy2', completes: true },
-      { igdbId: 2, listId: 'B', serviceName: 'trophy', completes: false },
+      { igdbId: 1, listId: 'A', serviceName: 'trophy2', completes: true, dates: false },
+      { igdbId: 2, listId: 'B', serviceName: 'trophy', completes: false, dates: false },
     ]);
+  });
+
+  it('dates a game added from PlayStation as Completed with its Platinum, quietly', () => {
+    const added = game(3, { status: 'completed', completion: 'platinum', completedAt: null });
+    const moves = platinumMoves([added], [plat('C', 1)], new Map([[3, ['C']]]));
+    expect(moves).toEqual([
+      { igdbId: 3, listId: 'C', serviceName: 'trophy2', completes: false, dates: true },
+    ]);
+    const platinumAt = Date.parse('2026-11-10T21:30:00Z');
+    expect(platinumUpdate(added, platinumAt, now)).toEqual({
+      completion: 'platinum',
+      completedAt: platinumAt,
+      purchasedAt: added.purchasedAt ?? platinumAt,
+      updatedAt: now,
+    });
   });
 
   it('moves it to Completed on the day of the Platinum, and stops Playing', () => {

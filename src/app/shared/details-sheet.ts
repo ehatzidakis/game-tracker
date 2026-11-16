@@ -47,6 +47,8 @@ export interface StatusEdit {
   /** PlayStation has the playtime, so it isn't typed in. */
   hoursFromPsn: boolean;
   preordered: boolean;
+  /** The statuses offered (all of them when missing). */
+  statuses?: readonly Status[];
 }
 
 /** Which fields the sheet asks for. */
@@ -65,6 +67,8 @@ interface SheetRequest {
   dateLabel: string;
   /** "Skip" when asked as you buy or pre-order, "Cancel" when editing. */
   dismiss: string;
+  /** The button that saves: "Save", or "Add" when adding a game. */
+  confirm?: string;
   fields: SheetFields;
   initial: Partial<MyData>;
   /** Present for "Edit my data": the status and rating, with what the fields depend on. */
@@ -134,6 +138,38 @@ export class DetailsSheet {
     });
   }
 
+  /**
+   * Adding a PlayStation game to the library: where it goes (Backlog, Shelved or Completed; never
+   * the Wishlist, you've played it) and your data on it, filled in with where it would go anyway.
+   * PlayStation has its playtime.
+   */
+  addFromPsn(
+    name: string,
+    initial: { status: Status; completion: Completion | null },
+    today: string,
+    stores: string[],
+  ): Promise<SheetResult | null> {
+    return this.open({
+      title: 'Add to Library: ',
+      name,
+      dateLabel: 'Bought on',
+      dismiss: 'Cancel',
+      confirm: 'Add',
+      fields: { purchase: true, hours: false, completed: initial.status === 'completed' },
+      initial: { completion: initial.completion, physical: false },
+      statusEdit: {
+        status: initial.status,
+        rating: null,
+        released: true,
+        hoursFromPsn: true,
+        preordered: false,
+        statuses: ['backlog', 'shelved', 'completed'],
+      },
+      stores,
+      today,
+    });
+  }
+
   finish(data: SheetResult | null): void {
     this.request()?.resolve(data);
     this.request.set(null);
@@ -184,7 +220,7 @@ export function parsePrice(text: string): number | null | undefined {
                   >Status</span
                 >
                 <div class="segmented" role="radiogroup" aria-labelledby="sheet-status-label">
-                  @for (s of statuses; track s.key) {
+                  @for (s of statusesFor(req.statusEdit); track s.key) {
                     <button
                       type="button"
                       role="radio"
@@ -262,7 +298,8 @@ export function parsePrice(text: string): number | null | undefined {
                     <span id="sheet-rating-label">Rating</span>
                     <span class="num ml-auto">
                       @if (shown) {
-                        <span class="text-[17px] font-semibold text-label">{{ shown }}</span>/10
+                        <span class="text-[17px] font-semibold text-label">{{ shown }}</span
+                        >/10
                       } @else {
                         Slide to rate
                       }
@@ -373,7 +410,7 @@ export function parsePrice(text: string): number | null | undefined {
               type="submit"
               class="min-h-14.25 rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
             >
-              Save
+              {{ req.confirm ?? 'Save' }}
             </button>
           </div>
         </form>
@@ -400,6 +437,9 @@ export class DetailsSheetOutlet {
   protected readonly completion = signal<Completion | null>(null);
   protected readonly completions = COMPLETIONS;
   protected readonly statuses = STATUSES;
+  protected statusesFor(edit: StatusEdit): typeof STATUSES {
+    return edit.statuses ? STATUSES.filter((s) => edit.statuses!.includes(s.key)) : STATUSES;
+  }
   /** The status picked in the sheet ("Edit my data" only). */
   protected readonly status = signal<Status | null>(null);
   protected readonly rating = signal<number | null>(null);

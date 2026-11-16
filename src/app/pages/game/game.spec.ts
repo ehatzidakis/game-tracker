@@ -88,6 +88,7 @@ async function render(
         useValue: {
           games,
           byId: computed(() => new Map(games().map((g) => [g.igdbId, g]))),
+          stores: computed(() => ['PlayStation Store', 'Amazon']),
           settings: signal(DEFAULT_SETTINGS),
           refresh: () => undefined,
           edit: (_: TrackedGame, e: unknown) => edits.push(e),

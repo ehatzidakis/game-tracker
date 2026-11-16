@@ -141,11 +141,17 @@ export interface PlatinumMove {
   serviceName: 'trophy' | 'trophy2';
   /** It isn't Completed yet: it moves there (otherwise only its completion goes up to Platinum). */
   completes: boolean;
+  /**
+   * It's Completed but has no completed date (added from PlayStation with its Platinum): it gets
+   * the Platinum's date, quietly (no notification).
+   */
+  dates: boolean;
 }
 
 /**
  * The games a Platinum completes: any of their trophy lists has the Platinum earned, and they
- * aren't Completed with Platinum yet. DLC has no Platinum, so it never shows up here.
+ * aren't Completed with Platinum yet, or are but without a completed date. DLC has no Platinum,
+ * so it never shows up here.
  */
 export function platinumMoves(
   library: readonly TrackedGame[],
@@ -155,7 +161,8 @@ export function platinumMoves(
   const listById = new Map(lists.map((l) => [l.npCommunicationId, l]));
   const moves: PlatinumMove[] = [];
   for (const game of library) {
-    if (game.status === 'completed' && game.completion === 'platinum') continue;
+    const dates = game.status === 'completed' && game.completedAt == null;
+    if (game.status === 'completed' && game.completion === 'platinum' && !dates) continue;
     const withPlatinum = (listsByGame.get(game.igdbId) ?? [])
       .map((id) => listById.get(id))
       .filter((l) => l !== undefined && l.earnedTrophies.platinum > 0);
@@ -167,6 +174,7 @@ export function platinumMoves(
       serviceName:
         list.npServiceName ?? (/PS5/i.test(list.trophyTitlePlatform) ? 'trophy2' : 'trophy'),
       completes: game.status !== 'completed',
+      dates,
     });
   }
   return moves;
@@ -174,11 +182,19 @@ export function platinumMoves(
 
 /**
  * What a Platinum changes on a game: Completed, with Platinum, completed the day the Platinum was
- * earned (`platinumAt`), no longer Playing. Already Completed: only how far you got, its date
- * stays.
+ * earned (`platinumAt`), no longer Playing. Already Completed: only how far you got, and its date
+ * if it has none.
  */
 export function platinumUpdate(game: TrackedGame, platinumAt: number, now: number): PsnGameUpdate {
-  if (game.status === 'completed') return { completion: 'platinum', updatedAt: now };
+  if (game.status === 'completed') {
+    return {
+      completion: 'platinum',
+      ...(game.completedAt == null
+        ? { completedAt: platinumAt, purchasedAt: game.purchasedAt ?? platinumAt }
+        : {}),
+      updatedAt: now,
+    };
+  }
   return {
     status: 'completed',
     completion: 'platinum',

@@ -1,6 +1,7 @@
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { collection, doc, onSnapshot, updateDoc, type FirestoreError } from 'firebase/firestore';
 import type { PsnGameRecord, PsnLink, PsnSyncState } from '../../../api/_lib/models.js';
+import type { ImportChoice } from '../../../api/_lib/psn-import.js';
 import { AuthService } from './auth.service';
 import { db } from './db';
 import { ToastService } from './toast.service';
@@ -63,6 +64,31 @@ export class PsnService {
   async unlink(): Promise<void> {
     const res = await this.call('DELETE');
     if (!res.ok) throw new Error('Couldn’t disconnect. Try again in a moment.');
+  }
+
+  /**
+   * Adds PlayStation games to the library, then syncs them (api/psn-import.ts). Games already in
+   * the library are skipped. Throws with a message to show.
+   */
+  async importGames(
+    games: readonly ImportChoice[],
+  ): Promise<{ added: number; skipped: number; synced: boolean }> {
+    const res = await fetch('/api/psn-import', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${await this.auth.idToken()}`,
+      },
+      body: JSON.stringify({ games }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      added?: number;
+      skipped?: number;
+      synced?: boolean;
+      error?: string;
+    };
+    if (!res.ok) throw new Error(body.error ?? 'Couldn’t add the games. Try again in a moment.');
+    return { added: body.added ?? 0, skipped: body.skipped ?? 0, synced: !!body.synced };
   }
 
   /** Says which library game a PlayStation game is (null: none). Kept on every later sync. */

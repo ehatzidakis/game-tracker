@@ -368,9 +368,10 @@ export async function syncPsnUser(
     const completed: string[] = [];
     for (const move of moves) {
       const game = byId.get(move.igdbId)!;
-      const at = move.completes
-        ? await platinumEarnedAt(db, read.link.accountId, move, read.snapshot.lists, now)
-        : now;
+      const at =
+        move.completes || move.dates
+          ? await platinumEarnedAt(db, read.link.accountId, move, read.snapshot.lists, now)
+          : now;
       updates.set(move.igdbId, {
         ...(updates.get(move.igdbId) ?? {}),
         ...platinumUpdate(game, at, now),

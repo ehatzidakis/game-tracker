@@ -21,11 +21,7 @@ import {
   statusLabel,
   type Release,
 } from '../../../../api/_lib/models.js';
-import {
-  PLATFORMS,
-  platformIgdbId,
-  type PlatformKey,
-} from '../../../../api/_lib/platforms.js';
+import { PLATFORMS, platformIgdbId, type PlatformKey } from '../../../../api/_lib/platforms.js';
 import { daysBetween, pickRelease } from '../../../../api/_lib/release.js';
 import { countdown, isReleased, today } from '../../core/dates';
 import { formatPlaytime } from '../../core/playtime';
@@ -69,8 +65,6 @@ const SHORT_DATE = new Intl.DateTimeFormat('en-GB', {
   month: 'short',
   year: 'numeric',
 });
-
-const COMMON_STORES = ['PlayStation Store', 'Amazon'];
 
 /** One value in a game's cards: big, with a small caption under it. */
 interface Stat {
@@ -284,7 +278,7 @@ export class GamePage {
     return fields.hours || fields.completed || fields.purchase ? fields : null;
   });
 
-/**
+  /**
    * Your progress, as big values with a small caption under each: when you completed it
    * ("6 Nov 2026" over "Completed") or your status, how far you got ("Main + sides"), and time played (PlayStation's, with its
    * logo, or yours). Only what there is.
@@ -362,13 +356,7 @@ export class GamePage {
   });
 
   /** Stores you've bought from before, then common ones, as suggestions. */
-  protected readonly stores = computed(() => {
-    const used = this.library
-      .games()
-      .map((g) => g.boughtFrom)
-      .filter((s): s is string => !!s);
-    return [...new Set([...used, ...COMMON_STORES])];
-  });
+  protected readonly stores = this.library.stores;
 
   /** A DLC or expansion: it gets owned / completed switches instead of the full game controls. */
   protected readonly isDlcPage = computed(
@@ -393,9 +381,7 @@ export class GamePage {
     const d = this.details.data();
     if (!d) return [];
     const expansions = new Set((d.expansions ?? []).map((e) => e.id));
-    return dlcsOf(d).map((g) =>
-      this.gameCard(g, [expansions.has(g.id) ? 'expansions' : 'dlc']),
-    );
+    return dlcsOf(d).map((g) => this.gameCard(g, [expansions.has(g.id) ? 'expansions' : 'dlc']));
   });
   protected readonly dlcFilters: GridFilter[] = [
     { key: 'expansions', title: 'Expansions' },
