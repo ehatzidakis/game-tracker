@@ -1,36 +1,38 @@
-<app-tab-title>Search</app-tab-title>
-
-<div class="relative mt-2">
-  <svg
-    lucideSearch
-    [size]="17"
-    [strokeWidth]="2.25"
-    class="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted"
-  ></svg>
-  <!-- 17px text: 16px or more stops iOS zooming in on focus. -->
-  <input
-    #searchInput
-    type="search"
-    placeholder="Games and events"
-    aria-label="Search games and events"
-    autocomplete="off"
-    enterkeyhint="search"
-    class="search-field h-9 w-full rounded-[10px] bg-fill pr-9 pl-8 text-[17px] outline-none"
-    [value]="term()"
-    (input)="onInput($event)"
-  />
-  @if (term()) {
-    <!-- Clears the search and keeps the keyboard up, as in iOS. -->
-    <button
-      type="button"
-      class="absolute top-0 right-0 grid h-9 w-9 place-items-center text-muted active:opacity-60"
-      aria-label="Clear search"
-      (pointerdown)="$event.preventDefault()"
-      (click)="term.set(''); searchInput.focus()"
-    >
-      <svg lucideCircleX [size]="18" class="fill-current *:stroke-group"></svg>
-    </button>
-  }
+<!-- Pinned: the title and search field stay at the top while results scroll under. -->
+<div class="pinned-top">
+  <app-tab-title>Search</app-tab-title>
+  <div class="relative mt-2">
+    <svg
+      lucideSearch
+      [size]="17"
+      [strokeWidth]="2.25"
+      class="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted"
+    ></svg>
+    <!-- 17px text: 16px or more stops iOS zooming in on focus. -->
+    <input
+      #searchInput
+      type="search"
+      placeholder="Games and events"
+      aria-label="Search games and events"
+      autocomplete="off"
+      enterkeyhint="search"
+      class="search-field h-9 w-full rounded-[10px] bg-fill pr-9 pl-8 text-[17px] outline-none"
+      [value]="term()"
+      (input)="onInput($event)"
+    />
+    @if (term()) {
+      <!-- Clears the search and keeps the keyboard up, as in iOS. -->
+      <button
+        type="button"
+        class="absolute top-0 right-0 grid h-9 w-9 place-items-center text-muted active:opacity-60"
+        aria-label="Clear search"
+        (pointerdown)="$event.preventDefault()"
+        (click)="term.set(''); searchInput.focus()"
+      >
+        <svg lucideCircleX [size]="18" class="fill-current *:stroke-group"></svg>
+      </button>
+    }
+  </div>
 </div>
 
 <div class="mt-2" aria-live="polite">
@@ -83,15 +85,21 @@
           @for (event of upcomingEvents(); track event.id) {
             <li class="w-44 shrink-0 snap-start">
               <a [routerLink]="['/event', eventDocId(event.id)]" class="block active:opacity-70">
-                <app-event-art class="aspect-video rounded-lg" [logoId]="event.logoId" />
+                <!-- In your calendar: a badge like the games' Backlog / Wishlist. -->
+                <app-event-art class="aspect-video rounded-lg" [logoId]="event.logoId">
+                  @if (events.byId().has(eventDocId(event.id))) {
+                    <span
+                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    >
+                      In Calendar
+                    </span>
+                  }
+                </app-event-art>
                 <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
                   {{ event.name }}
                 </p>
                 <p class="num mt-0.5 text-[12px] leading-4 tracking-normal text-muted">
                   {{ eventWhen(event) }}
-                  @if (events.byId().has(eventDocId(event.id))) {
-                    · Added
-                  }
                 </p>
               </a>
             </li>
@@ -184,7 +192,7 @@
                 </div>
               </a>
               @if (events.byId().has(docId)) {
-                <span class="shrink-0 pr-2 text-[15px] text-muted">Added</span>
+                <span class="shrink-0 pr-2 text-[15px] text-muted">In Calendar</span>
               } @else if (addingEvents().has(event.id)) {
                 <span
                   class="grid size-11 shrink-0 place-items-center text-muted"
@@ -209,7 +217,9 @@
           <button
             type="button"
             class="group-footer text-accent! active:opacity-60"
-            (click)="eventCount.set(eventCount() + more(shownEvents().length, foundEvents().length))"
+            (click)="
+              eventCount.set(eventCount() + more(shownEvents().length, foundEvents().length))
+            "
           >
             Show {{ more(shownEvents().length, foundEvents().length) }} more
           </button>
@@ -261,7 +271,11 @@
           <button
             type="button"
             class="group-footer text-accent! active:opacity-60"
-            (click)="companyCount.set(companyCount() + more(shownCompanies().length, foundCompanies().length))"
+            (click)="
+              companyCount.set(
+                companyCount() + more(shownCompanies().length, foundCompanies().length)
+              )
+            "
           >
             Show {{ more(shownCompanies().length, foundCompanies().length) }} more
           </button>

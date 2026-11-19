@@ -43,6 +43,8 @@ import { EventIcon } from './event-icon';
       class="pointer-events-none absolute inset-0 rounded-[inherit] ring-[0.5px] ring-white/15 ring-inset"
       aria-hidden="true"
     ></span>
+    <!-- Badges laid over the picture, as on covers ("In Calendar" in Search). -->
+    <ng-content />
   `,
 })
 export class EventArt {

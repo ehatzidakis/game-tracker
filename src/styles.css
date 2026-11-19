@@ -377,3 +377,33 @@ dialog.sheet[open]::backdrop {
 .shots::-webkit-scrollbar {
   display: none;
 }
+
+/*
+ * A tab screen's top (title, search, toolbar) stays at the top of the screen while the rest
+ * scrolls under it. It reaches up over <main>'s top padding and out to its side padding, so it
+ * sits exactly where it would anyway; once the page scrolls (main.is-scrolled), the content fades
+ * out under it, with no hard edge (like the top bar on back screens).
+ */
+.pinned-top {
+  position: sticky;
+  /* Sticky offsets count from <main>'s padding edge: minus that padding is its very top. */
+  top: calc(-12px - env(safe-area-inset-top));
+  z-index: 10;
+  margin: calc(-12px - env(safe-area-inset-top)) -1rem -0.5rem;
+  padding: calc(12px + env(safe-area-inset-top)) 1rem 0.5rem;
+  background: var(--color-ground);
+}
+.pinned-top::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  height: 1rem;
+  background: linear-gradient(var(--color-ground), rgb(0 0 0 / 0));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms;
+}
+.is-scrolled .pinned-top::after {
+  opacity: 1;
+}

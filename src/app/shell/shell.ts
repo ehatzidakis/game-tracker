@@ -86,6 +86,8 @@ export class Shell {
     () => this.scrollTop() > (this.route().hero ? TITLE_AFTER_HERO : TITLE_AFTER),
   );
   protected readonly scrolled = this.titleShown;
+  /** Not scrolled at all: a tab's pinned top shows no fade under it. */
+  protected readonly atTop = computed(() => this.scrollTop() <= 0);
   protected readonly title = computed(() => this.pageTitle.override() ?? this.route().title ?? '');
 
   constructor() {
