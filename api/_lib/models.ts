@@ -4,6 +4,20 @@ export type Status = 'wishlist' | 'backlog' | 'shelved' | 'completed';
 export type Completion = 'main' | 'main_sides' | 'platinum';
 export type ReleasePrecision = 'day' | 'month' | 'quarter' | 'year' | 'tbd';
 
+/** HowLongToBeat's three times for a game, in hours (34h 21m is 34.35); null where not known. */
+export interface HltbTimes {
+  main: number | null;
+  extra: number | null;
+  completionist: number | null;
+}
+
+/** HowLongToBeat's kinds of time, in its order, with our names for them. */
+export const HLTB_TIMES: readonly { key: keyof HltbTimes; label: string }[] = [
+  { key: 'main', label: 'Main story' },
+  { key: 'extra', label: 'Main + extra' },
+  { key: 'completionist', label: 'Completionist' },
+];
+
 /** Display order everywhere (Library filters, status pickers). */
 export const STATUSES: readonly { key: Status; label: string; hint: string }[] = [
   { key: 'backlog', label: 'Backlog', hint: 'Own it, not finished' },
@@ -105,6 +119,9 @@ export interface TrackedGame {
   orderedOn?: string | null;
   /** You own (or pre-ordered) it on disc rather than as a download. */
   physical?: boolean;
+
+  /** HowLongToBeat's times, typed in from its page (it has no API). */
+  hltb?: HltbTimes | null;
 
   // DLC and expansions are stored like games, plus the main game's IGDB ID and name. DLC on your
   // wishlist shows in Wishlist and the Calendar; owned DLC shows only on the main game's page.

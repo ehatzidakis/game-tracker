@@ -186,6 +186,8 @@ export interface GameDetails extends IgdbSyncGame {
   first_release_date?: number;
   artworks?: { image_id: string }[];
   screenshots?: { image_id: string }[];
+  /** Trailers and gameplay videos, as YouTube ids. */
+  videos?: { video_id: string; name?: string }[];
   platforms?: { id: number; abbreviation?: string; name: string }[];
   game_type?: number;
   /** The main game of a DLC, or the original of a remake or remaster. */
@@ -584,7 +586,7 @@ export function linksOf(details: GameDetails): { label: string; url: string }[] 
 export function buildDetailsQuery(id: number): string {
   return [
     `fields ${SYNC_FIELDS}, platforms.abbreviation, platforms.name, first_release_date,`,
-    'artworks.image_id, screenshots.image_id,',
+    'artworks.image_id, screenshots.image_id, videos.video_id, videos.name,',
     'game_type, parent_game.name, parent_game.first_release_date, game_engines.name,',
     'dlcs.name, dlcs.cover.image_id, dlcs.first_release_date,',
     'expansions.name, expansions.cover.image_id, expansions.first_release_date,',

@@ -64,6 +64,7 @@ async function render(
   openCritic: OpenCriticScore = NO_OPENCRITIC,
   others: TrackedGame[] = [],
   shownAt: EventSummary[] = [],
+  openCriticExtra: object = {},
 ) {
   const games = signal(game ? [game, ...others] : others);
   const edits: unknown[] = [];
@@ -80,7 +81,11 @@ async function render(
       },
       {
         provide: OpenCriticService,
-        useValue: { score: async () => openCritic, cachedScore: () => undefined },
+        useValue: {
+          score: async () => openCritic,
+          cachedScore: () => undefined,
+          ...openCriticExtra,
+        },
       },
       { provide: PushService, useValue: { enabledHere: () => false } },
       {
@@ -120,6 +125,12 @@ async function render(
 /** A card's values with their captions: "Completed / 4 Mar 2026". */
 const stats = (el: HTMLElement, card: string) =>
   [...el.querySelectorAll(`section[aria-label=${card}] .grid > div`)].map((d) =>
+    [...d.querySelectorAll('p')].map((p) => p.textContent!.replace(/\s+/g, ' ').trim()).join(' / '),
+  );
+
+/** HowLongToBeat's times with their captions: "23h / Main story". */
+const hltbTimes = (el: HTMLElement) =>
+  [...el.querySelectorAll('section[aria-label=HowLongToBeat] .grid > div')].map((d) =>
     [...d.querySelectorAll('p')].map((p) => p.textContent!.replace(/\s+/g, ' ').trim()).join(' / '),
   );
 
@@ -279,8 +290,8 @@ describe('GamePage', () => {
     const { el } = await render(null);
     expect(el.textContent).toContain('Add to Library');
     expect(el.textContent).toContain('1 Mar 2099');
-    expect(el.textContent).not.toContain('Trailer');
-    expect(el.textContent).toContain('HLTB');
+    // Unreleased, no scores yet: no scores card, no HowLongToBeat.
+    expect(el.textContent).not.toContain('HowLongToBeat');
     // Nothing to edit: the game isn't yours.
     expect(pencil(el)).toBeNull();
   });
@@ -419,7 +430,9 @@ describe('GamePage', () => {
       }),
     );
     expect(stats(el, 'Progress')).toContain('45h 30m / Playtime');
-    expect(el.querySelector('[aria-label=Progress] [aria-label="From PlayStation"]')).not.toBeNull();
+    expect(
+      el.querySelector('[aria-label=Progress] [aria-label="From PlayStation"]'),
+    ).not.toBeNull();
     const trophies = el.querySelector('[aria-label=Trophies]')!;
     const text = trophies.textContent!.replace(/\s+/g, ' ');
     expect(text).toContain('37/54');
@@ -518,7 +531,7 @@ describe('GamePage', () => {
     expect(dlc.edits).toEqual([{ add: 'wishlist', parent: { id: 1, name: 'Test Game' } }]);
   });
 
-  it('shows OpenCritic, the players’ score, yours and HowLongToBeat in one card, then details and links', async () => {
+  it('shows OpenCritic, the players’ score and yours in one card, HowLongToBeat under it, then details and links', async () => {
     const { el, fixture } = await render(
       tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main_sides' }),
       {
@@ -538,6 +551,9 @@ describe('GamePage', () => {
         percentRecommended: 97,
         numReviews: 219,
         numTopCriticReviews: 139,
+        manual: false,
+        playerScore: null,
+        playerCount: null,
       },
     );
     const text = el.textContent!.replace(/\s+/g, ' ');
@@ -549,19 +565,19 @@ describe('GamePage', () => {
       'OpenCritic 95, 139 critics',
       'Players 93, 2,333 players',
       'Not rated yet',
-      'HowLongToBeat',
     ]);
     const links = [...scores.querySelectorAll('a')].map((a) => a.getAttribute('href'));
-    expect(links).toEqual([
-      'https://opencritic.com/game/12090/elden-ring',
-      'https://howlongtobeat.com/?q=Test%20Game',
-    ]);
+    expect(links).toEqual(['https://opencritic.com/game/12090/elden-ring']);
+    // No HowLongToBeat card until times are typed in (its link is in Edit my data).
+    expect(el.querySelector('section[aria-label=HowLongToBeat]')).toBeNull();
+    expect(el.querySelector('a[href*="howlongtobeat"]')).toBeNull();
     // The old sections are gone.
     expect(el.querySelector('section[aria-label=OpenCritic]')).toBeNull();
     expect(el.querySelector('section[aria-label="Time to beat"]')).toBeNull();
-    // Details and Links start folded; their headings open them.
+    // Screenshots, Details and Links start folded; their headings open them.
     expect(text).not.toContain('PEGI 16');
-    for (const name of ['Details', 'Links']) {
+    expect(el.querySelector('[aria-label=Screenshots] img')).toBeNull();
+    for (const name of ['Screenshots', 'Details', 'Links']) {
       const heading = el.querySelector(`[aria-label=${name}] h2 button`) as HTMLButtonElement;
       expect(heading.getAttribute('aria-expanded')).toBe('false');
       heading.click();
@@ -571,6 +587,150 @@ describe('GamePage', () => {
     expect(opened).toContain('PEGI 16');
     expect(opened).toContain('EngineDantelion');
     expect(opened).toContain('PlayStation Store');
+    expect(el.querySelector('[aria-label=Screenshots] img')!.getAttribute('src')).toContain('sc1');
+  });
+
+  it('hides the scores and HowLongToBeat without a critic or players’ score', async () => {
+    const { el } = await render(
+      tracked({ status: 'backlog', releaseDate: '2026-11-19' }),
+      details,
+      {
+        status: 'found',
+        url: 'https://opencritic.com/game/1/gta-vi',
+        tier: null,
+        topCriticScore: null,
+        percentRecommended: null,
+        numReviews: 0,
+        numTopCriticReviews: 0,
+        manual: false,
+        playerScore: null,
+        playerCount: null,
+      },
+    );
+    expect(el.querySelector('section[aria-label=Scores]')).toBeNull();
+    expect(el.querySelector('section[aria-label=HowLongToBeat]')).toBeNull();
+  });
+
+  it('shows the players’ score without OpenCritic, and HowLongToBeat’s times typed in', async () => {
+    const { el } = await render(
+      tracked({
+        status: 'backlog',
+        releaseDate: '2020-01-01',
+        hltb: { main: 23.5, extra: null, completionist: 80 },
+      }),
+      { ...details, rating: 81.2, rating_count: 40 },
+    );
+    expect(stats(el, 'Scores')).toEqual(['81 / 40']);
+    expect(el.querySelector('section[aria-label=HowLongToBeat] a')).toBeNull();
+    expect(hltbTimes(el)).toEqual([
+      '23h 30m / Main story',
+      '– / Main + extra',
+      '80h / Completionist',
+    ]);
+  });
+
+  it('shows scores typed in by hand like OpenCritic’s, without the count or the link', async () => {
+    const { el } = await render(
+      tracked({ status: 'backlog', releaseDate: '2009-01-01' }),
+      { ...details, rating: 60, rating_count: 12 },
+      {
+        status: 'found',
+        url: null,
+        tier: 'Mighty',
+        topCriticScore: 88,
+        percentRecommended: null,
+        numReviews: 0,
+        numTopCriticReviews: 0,
+        manual: true,
+        playerScore: 81,
+        playerCount: null,
+      },
+    );
+    // Without how many: "Critics" and "Players" as captions.
+    const scores = el.querySelector('[aria-label=Scores]')!;
+    const labels = [...scores.querySelectorAll('.grid > [aria-label]')].map((x) =>
+      x.getAttribute('aria-label'),
+    );
+    expect(labels).toEqual(['Critic score 88', 'User score 81']);
+    expect(scores.querySelector('a')!.hasAttribute('href')).toBe(false);
+    expect(scores.textContent).toContain('Critics');
+    expect(scores.textContent).toContain('Players');
+    expect(scores.textContent).not.toContain('12');
+  });
+
+  it('shows how many critics and users typed-in scores are from', async () => {
+    const { el } = await render(
+      tracked({ status: 'backlog', releaseDate: '2009-01-01' }),
+      details,
+      {
+        status: 'found',
+        url: null,
+        tier: 'Strong',
+        topCriticScore: 80,
+        percentRecommended: null,
+        numReviews: 45,
+        numTopCriticReviews: 45,
+        manual: true,
+        playerScore: 74,
+        playerCount: 1520,
+      },
+    );
+    const scores = el.querySelector('[aria-label=Scores]')!;
+    const labels = [...scores.querySelectorAll('.grid > [aria-label]')].map((x) =>
+      x.getAttribute('aria-label'),
+    );
+    expect(labels).toEqual(['Critic score 80, 45 critics', 'User score 74, 1,520 players']);
+    expect(scores.textContent).toContain('45 critics');
+    expect(scores.textContent).toContain('1,520');
+  });
+
+  it('edits the scores and HowLongToBeat’s times in Edit my data', async () => {
+    const saved: unknown[] = [];
+    const { el, edits, sheet2 } = await render(
+      tracked({ status: 'backlog', releaseDate: '2020-01-01' }),
+      { ...details, rating: 81.2, rating_count: 40 },
+      undefined,
+      [],
+      [],
+      {
+        setOwnScores: async (id: number, own: object) => {
+          saved.push({ id, ...own });
+          return { status: 'none' };
+        },
+      },
+    );
+    pencil(el).click();
+    const extras = sheet2.request()!.extras!;
+    expect(extras.scores).toEqual({
+      own: { critic: null, critics: null, players: null, users: null },
+      shown: { critic: null, critics: null, players: 81, users: 40 },
+    });
+    expect(extras.hltbUrl).toBe('https://howlongtobeat.com/?q=Test%20Game');
+    sheet2.finish({
+      scores: { critic: 77, critics: 30, players: null, users: null },
+      hltb: { main: 12, extra: 20, completionist: null },
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(saved).toEqual([{ id: 7, critic: 77, critics: 30, players: null, users: null }]);
+    expect(edits).toEqual([{ hltb: { main: 12, extra: 20, completionist: null } }]);
+  });
+
+  it('keeps Screenshots and Videos folded until opened; a video plays in place', async () => {
+    const { el, fixture } = await render(tracked({ status: 'backlog' }), {
+      ...details,
+      videos: [{ video_id: 'abcDEF12345', name: 'Launch Trailer' }],
+    });
+    const heading = el.querySelector('[aria-label=Videos] h2 button') as HTMLButtonElement;
+    expect(heading.getAttribute('aria-expanded')).toBe('false');
+    heading.click();
+    await fixture.whenStable();
+    const play = el.querySelector('button[aria-label="Play Launch Trailer"]') as HTMLButtonElement;
+    expect(play.querySelector('img')!.getAttribute('src')).toContain('abcDEF12345');
+    play.click();
+    await fixture.whenStable();
+    expect(el.querySelector('[aria-label=Videos] iframe')!.getAttribute('src')).toContain(
+      'youtube-nocookie.com/embed/abcDEF12345',
+    );
   });
   it('shows your rating in the scores card; it is changed in Edit my data only', async () => {
     const { el, sheet2 } = await render(

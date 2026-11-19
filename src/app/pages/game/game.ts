@@ -1,11 +1,13 @@
 import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { RouterLink } from '@angular/router';
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import {
   LucideChevronRight,
   LucideExternalLink,
   LucidePencil,
+  LucidePlay,
   LucidePlus,
   LucideStar,
   LucideTrophy,
@@ -17,6 +19,7 @@ import {
   type TrophyCounts,
   MAX_PLAYING,
   completionLabel,
+  HLTB_TIMES,
   isDlc,
   statusLabel,
   type Release,
@@ -35,7 +38,7 @@ import {
   seriesOf,
   type GameSummary,
 } from '../../core/igdb';
-import { OpenCriticService } from '../../core/opencritic';
+import { describeCheck, OpenCriticService } from '../../core/opencritic';
 import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
 import { PLAYSTATION } from '../../shared/event-icon';
 import { LibraryService } from '../../core/library.service';
@@ -52,7 +55,12 @@ import {
 } from '../../shared/card-grid';
 import { Cover } from '../../shared/cover';
 import { ChoiceSheet } from '../../shared/choice-sheet';
-import { DetailsSheet, parsePrice, type SheetFields } from '../../shared/details-sheet';
+import {
+  DetailsSheet,
+  parsePrice,
+  type OwnScores,
+  type SheetFields,
+} from '../../shared/details-sheet';
 import { FitWidth, Grow } from '../../shared/fit-content';
 import { ScoreRing } from '../../shared/score-ring';
 
@@ -89,6 +97,7 @@ interface Stat {
     LucideChevronRight,
     LucideExternalLink,
     LucidePencil,
+    LucidePlay,
     LucidePlus,
     LucideTrophy,
   ],
@@ -100,9 +109,11 @@ export class GamePage {
 
   private readonly igdb = inject(IgdbService);
   private readonly openCriticService = inject(OpenCriticService);
+  private readonly queryClient = inject(QueryClient);
   private readonly sheet = inject(ChoiceSheet);
   private readonly detailsSheet = inject(DetailsSheet);
   private readonly toast = inject(ToastService);
+  private readonly sanitizer = inject(DomSanitizer);
   protected readonly library = inject(LibraryService);
   protected readonly push = inject(PushService);
 
@@ -451,26 +462,89 @@ export class GamePage {
   );
 
   /**
-   * OpenCritic's Top Critic Average with a link to the reviews, and the players' score from IGDB
-   * (OpenCritic has none). Null when OpenCritic has no page for the game (or can't be asked
-   * today): the section hides.
+   * The scores card: OpenCritic's Top Critic Average (its ring, opening the reviews), the players'
+   * score from IGDB (OpenCritic has none), each replaced by a score typed in by hand in "Edit my
+   * data" for games OpenCritic gets wrong, and your rating. Null without a critic or players'
+   * score (an unreleased game): the card, and HowLongToBeat's, hide. While OpenCritic's daily
+   * allowance is used up before the game was looked up, it shows saying when it comes back.
    */
-  protected readonly openCritic = computed(() => {
+  protected readonly scores = computed(() => {
     const score = this.openCriticQuery.data();
-    if (score?.status !== 'found') return null;
-    const critics = score.numTopCriticReviews;
+    const found = score?.status === 'found' ? score : null;
     const d = this.details.data();
-    const players = d?.rating && d.rating_count ? d.rating_count : 0;
-    return {
-      url: score.url,
-      topCriticScore: score.topCriticScore,
-      topCritics: `${COUNT.format(critics)} ${critics === 1 ? 'critic' : 'critics'}`,
-      playerRating: players ? Math.round(d!.rating!) : null,
-      players: `${COUNT.format(players)} ${players === 1 ? 'player' : 'players'}`,
-      /** Just the number, by the people icon in the scores card. */
-      playerCount: COUNT.format(players),
-    };
+    const count = (n: number, one: string) => `${COUNT.format(n)} ${n === 1 ? one : `${one}s`}`;
+
+    // Typed in by hand: no link, and "Critics" / "Players" when how many wasn't typed in.
+    const critics =
+      found && (!found.manual || found.numTopCriticReviews) ? found.numTopCriticReviews : null;
+    const critic = found
+      ? {
+          url: found.manual ? null : found.url,
+          score: found.topCriticScore,
+          count: critics,
+          caption:
+            found.topCriticScore === null && !found.manual
+              ? 'No critics yet'
+              : critics !== null
+                ? count(critics, 'critic')
+                : 'Critics',
+          label:
+            found.topCriticScore === null
+              ? found.manual
+                ? 'No critic score'
+                : 'OpenCritic: not enough critic reviews yet'
+              : `${found.manual ? 'Critic score' : 'OpenCritic'} ${found.topCriticScore}${
+                  critics !== null ? `, ${count(critics, 'critic')}` : ''
+                }`,
+        }
+      : null;
+
+    const own = found?.playerScore != null ? found : null;
+    const igdbCount = d?.rating && d.rating_count ? d.rating_count : 0;
+    const playerScore = own ? own.playerScore! : igdbCount ? Math.round(d!.rating!) : null;
+    const users = own ? (own.playerCount ?? null) : igdbCount || null;
+    const players =
+      playerScore === null
+        ? null
+        : {
+            score: playerScore,
+            count: users,
+            /** Just the number, by the people icon. */
+            caption: users !== null ? COUNT.format(users) : 'Players',
+            label: `${own ? 'User score' : 'Players'} ${playerScore}${
+              users !== null ? `, ${count(users, 'player')}` : ''
+            }`,
+          };
+
+    const mine = this.myRating();
+    const hasScore = critic?.score != null || players !== null;
+    if (!hasScore && !mine?.rating && !this.openCriticLimit()) return null;
+    return { critic: hasScore ? critic : null, players, mine, hasScore };
   });
+
+  /**
+   * HowLongToBeat's three times, under the scores, as typed in from it in "Edit my data" (which
+   * has the link to its search): "–" for one not typed in, none at all: no card.
+   */
+  protected readonly hltb = computed(() => {
+    const times = this.tracked()?.hltb;
+    if (!times || !Object.values(times).some((t) => t)) return null;
+    return HLTB_TIMES.map((t) => ({ label: t.label, value: formatPlaytime(times[t.key]) || '–' }));
+  });
+
+  /** Screenshots, in a strip that scrolls sideways (inside itself). */
+  protected readonly screenshots = computed(() => this.details.data()?.screenshots ?? []);
+  /** Trailers and gameplay videos from YouTube, in IGDB's order. */
+  protected readonly videos = computed(() =>
+    (this.details.data()?.videos ?? []).filter((v) => /^[\w-]{6,20}$/.test(v.video_id)),
+  );
+  /** The video playing (in place of its thumbnail), by YouTube id. */
+  protected readonly playingVideo = signal<string | null>(null);
+  protected videoEmbed(id: string): SafeResourceUrl {
+    return this.sanitizer.bypassSecurityTrustResourceUrl(
+      `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0`,
+    );
+  }
 
   /** Other games in the same series, as cards: main games, or remakes and remasters. */
   protected readonly series = computed(() => {
@@ -488,7 +562,7 @@ export class GamePage {
     { key: 'remakes', title: 'Remakes and remasters' },
     { key: 'mine', title: 'In my library' },
   ];
-  /** Details and Links start folded on every game; tap the heading to open. */
+  /** Screenshots, Videos, Details and Links start folded on every game; tap the heading to open. */
   private readonly opened = signal<ReadonlySet<string>>(new Set());
   protected isOpen(section: string): boolean {
     return this.opened().has(section);
@@ -544,6 +618,7 @@ export class GamePage {
     effect(() => {
       this.gameId();
       this.opened.set(new Set());
+      this.playingVideo.set(null);
     });
 
     // Keep your copy of the IGDB data current (e.g. a release date that moved).
@@ -651,22 +726,84 @@ export class GamePage {
     const t = this.tracked();
     if (!t || this.isDlcPage()) return;
     const fields = this.editableFields() ?? { hours: false, completed: false, purchase: false };
-    const data = await this.detailsSheet.edit(t, fields, today(), this.stores(), {
-      status: t.status,
-      rating: t.rating,
-      released: this.released(),
-      hoursFromPsn: this.hoursFromPsn(),
-      preordered: !!t.preordered,
-    });
+    const data = await this.detailsSheet.edit(
+      t,
+      fields,
+      today(),
+      this.stores(),
+      {
+        status: t.status,
+        rating: t.rating,
+        released: this.released(),
+        hoursFromPsn: this.hoursFromPsn(),
+        preordered: !!t.preordered,
+      },
+      {
+        scores: { own: this.ownScores(), shown: this.shownScores() },
+        hltbUrl: this.hltbUrl(),
+        action: {
+          label: 'Check OpenCritic now',
+          busyLabel: 'Checking OpenCritic…',
+          run: () => this.checkOpenCritic(t.igdbId),
+        },
+      },
+    );
     const now = this.tracked();
     if (!data || !now) return;
-    const { status, ...edits } = data;
+    const { status, scores, ...edits } = data;
+    if (scores) void this.saveScores(now.igdbId, scores);
     if (status && status !== now.status) {
       // Completing dates it from PlayStation's last played day (or today); leaving Backlog stops
       // "Playing".
       this.library.setStatus(now, status, edits.completion ?? undefined);
     }
     if (Object.keys(edits).length) this.library.edit(now, edits);
+  }
+
+  /** The scores typed in by hand for this game, with how many they're from, if it has them. */
+  private ownScores(): OwnScores {
+    const score = this.openCriticQuery.data();
+    return score?.status === 'found' && score.manual
+      ? {
+          critic: score.topCriticScore,
+          critics: score.numTopCriticReviews || null,
+          players: score.playerScore,
+          users: score.playerCount,
+        }
+      : { critic: null, critics: null, players: null, users: null };
+  }
+
+  /** The scores the game shows now, as hints in the empty score fields of "Edit my data". */
+  private shownScores(): OwnScores {
+    const s = this.scores();
+    return {
+      critic: s?.critic?.score ?? null,
+      critics: s?.critic?.count ?? null,
+      players: s?.players?.score ?? null,
+      users: s?.players?.count ?? null,
+    };
+  }
+
+  /** Saves scores typed in by hand (all empty: OpenCritic's again) and shows them at once. */
+  private async saveScores(igdbId: number, own: OwnScores): Promise<void> {
+    try {
+      const score = await this.openCriticService.setOwnScores(igdbId, own);
+      this.queryClient.setQueryData(['opencritic', igdbId], score);
+      // The Library's covers show the new score next time they're asked.
+      void this.queryClient.invalidateQueries({ queryKey: ['opencritic-scores'] });
+    } catch {
+      this.toast.error('Couldn’t save the scores. Try again in a moment.');
+    }
+  }
+
+  /**
+   * "Check OpenCritic now" (Edit my data): asks OpenCritic whatever the refresh schedule says, and
+   * shows the answer on the page at once. Says how it went.
+   */
+  private async checkOpenCritic(igdbId: number): Promise<string> {
+    const check = await this.openCriticService.check(igdbId);
+    this.queryClient.setQueryData(['opencritic', igdbId], check.score);
+    return describeCheck(check);
   }
 
   protected setNotes(event: Event): void {

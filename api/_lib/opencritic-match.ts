@@ -38,6 +38,27 @@ export interface OpenCriticEntry {
   releaseDate: string | null;
   /** When OpenCritic was last asked (ms). */
   checkedAt: number;
+  /**
+   * The scores were typed in by hand ("Edit my data"), for the few games OpenCritic matches wrong
+   * or doesn't have: topCriticScore (and its tier) and playerScore are someone's, and OpenCritic
+   * isn't asked again until they're cleared. ocId is kept, so clearing goes back to the match.
+   */
+  manual?: boolean;
+  /** Typed-in players' score, 0–100, in place of IGDB's (null: IGDB's). */
+  playerScore?: number | null;
+  /** Typed in with it: how many players rated it (null: not known). */
+  playerCount?: number | null;
+}
+
+/**
+ * Scores typed in by hand in "Edit my data", with how many critics and users they're from (null:
+ * not known). All null: OpenCritic's and IGDB's.
+ */
+export interface OwnScores {
+  critic: number | null;
+  critics: number | null;
+  players: number | null;
+  users: number | null;
 }
 
 /** What the game page gets from /api/opencritic. */
@@ -50,6 +71,11 @@ export type OpenCriticScore =
       percentRecommended: number | null;
       numReviews: number;
       numTopCriticReviews: number;
+      /** Typed in by hand: no critic count or reviews link. */
+      manual: boolean;
+      /** Typed-in players' score, shown in place of IGDB's (null: IGDB's), and from how many. */
+      playerScore: number | null;
+      playerCount: number | null;
     }
   /** OpenCritic has no page for this game. */
   | { status: 'none' }
@@ -59,11 +85,37 @@ export type OpenCriticScore =
    */
   | { status: 'later'; limit: boolean; retryAt: number | null };
 
+/**
+ * "Check OpenCritic now": the score, when OpenCritic was last really asked about it (so a stored
+ * score isn't passed off as fresh), and whether the allowance stopped the check.
+ */
+export interface OpenCriticCheck {
+  score: OpenCriticScore;
+  /** ms; null when it was never looked up. */
+  checkedAt: number | null;
+  limit: boolean;
+  retryAt: number | null;
+}
+
 export function toScore(
   entry: OpenCriticEntry | null,
   later: { limit: boolean; retryAt: number | null } = { limit: false, retryAt: null },
 ): OpenCriticScore {
   if (!entry) return { status: 'later', ...later };
+  if (entry.manual) {
+    return {
+      status: 'found',
+      url: null,
+      tier: entry.tier,
+      topCriticScore: entry.topCriticScore,
+      percentRecommended: null,
+      numReviews: entry.numTopCriticReviews,
+      numTopCriticReviews: entry.numTopCriticReviews,
+      manual: true,
+      playerScore: entry.playerScore ?? null,
+      playerCount: entry.playerCount ?? null,
+    };
+  }
   if (!entry.ocId) return { status: 'none' };
   return {
     status: 'found',
@@ -73,6 +125,52 @@ export function toScore(
     percentRecommended: entry.percentRecommended,
     numReviews: entry.numReviews,
     numTopCriticReviews: entry.numTopCriticReviews,
+    manual: false,
+    playerScore: null,
+    playerCount: null,
+  };
+}
+
+/** OpenCritic's tier for a Top Critic Average: Mighty 84+, Strong 75+, Fair 66+, else Weak. */
+export function tierFor(score: number): string {
+  return score >= 84 ? 'Mighty' : score >= 75 ? 'Strong' : score >= 66 ? 'Fair' : 'Weak';
+}
+
+/**
+ * Scores typed in by hand, over what's stored (its OpenCritic match is kept for when they're
+ * cleared). Both null: back to OpenCritic, due for a look-up at once.
+ */
+export function withOwnScores(
+  igdbId: number,
+  stored: OpenCriticEntry | null,
+  own: OwnScores,
+  now: number,
+): OpenCriticEntry {
+  const base = stored ?? entryFrom(igdbId, null, null, 0);
+  if (Object.values(own).every((v) => v === null)) {
+    if (!base.manual) return base;
+    // Without the typed-in scores, and due: OpenCritic is asked again right away.
+    const { manual: _manual, playerScore: _playerScore, playerCount: _playerCount, ...rest } = base;
+    return {
+      ...rest,
+      tier: null,
+      topCriticScore: null,
+      percentRecommended: null,
+      numReviews: 0,
+      numTopCriticReviews: 0,
+      checkedAt: 0,
+    };
+  }
+  return {
+    ...base,
+    manual: true,
+    topCriticScore: own.critic,
+    tier: own.critic === null ? null : tierFor(own.critic),
+    numReviews: own.critics ?? 0,
+    numTopCriticReviews: own.critics ?? 0,
+    playerScore: own.players,
+    playerCount: own.users,
+    checkedAt: now,
   };
 }
 
@@ -165,5 +263,6 @@ export function maxAgeDays(entry: OpenCriticEntry, now: number): number {
 
 /** Due for a refresh. Two hours' slack so the daily job catches yesterday's daily ones. */
 export function isStale(entry: OpenCriticEntry, now: number): boolean {
+  if (entry.manual) return false;
   return now - entry.checkedAt >= maxAgeDays(entry, now) * DAY - 2 * 3_600_000;
 }

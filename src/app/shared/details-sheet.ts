@@ -10,11 +10,15 @@ import {
 } from '@angular/core';
 import {
   COMPLETIONS,
+  HLTB_TIMES,
   STATUSES,
   type Completion,
+  type HltbTimes,
   type Status,
   type TrackedGame,
 } from '../../../api/_lib/models.js';
+import { LucideExternalLink } from '@lucide/angular';
+import type { OwnScores } from '../../../api/_lib/opencritic-match.js';
 import { parsePlaytime, splitPlaytime } from '../core/playtime';
 import { FitWidth } from './fit-content';
 import { RatingSlider } from './rating-slider';
@@ -30,10 +34,20 @@ export interface MyData {
   /** Milliseconds. */
   completedAt: number | null;
   completion: Completion | null;
+  hltb: HltbTimes | null;
 }
 
-/** What "Edit my data" saves: your data, and the status and rating it also edits. */
-export type SheetResult = Partial<MyData> & { status?: Status; rating?: number | null };
+export type { OwnScores };
+
+/**
+ * What "Edit my data" saves: your data, and the status and rating it also edits. `scores` only
+ * when they changed.
+ */
+export type SheetResult = Partial<MyData> & {
+  status?: Status;
+  rating?: number | null;
+  scores?: OwnScores;
+};
 
 /**
  * For "Edit my data" on a game's page: the status and rating are edited here too, and the other
@@ -59,6 +73,34 @@ export interface SheetFields {
   completed: boolean;
 }
 
+/**
+ * A button under the fields that does something right away, without closing the sheet ("Check
+ * OpenCritic now"). `run` answers with what to show under it.
+ */
+export interface SheetAction {
+  label: string;
+  busyLabel: string;
+  run: () => Promise<string>;
+}
+
+/**
+ * The scores in "Edit my data", for games OpenCritic gets wrong: the ones typed in before (if
+ * any), and the ones the game shows now, as hints in the empty fields.
+ */
+export interface ScoresEdit {
+  own: OwnScores;
+  shown: OwnScores;
+}
+
+/** "Edit my data" on a game's page, beyond your own fields. */
+export interface EditExtras {
+  scores?: ScoresEdit;
+  /** HowLongToBeat's search for the game, over its three times. */
+  hltbUrl?: string;
+  /** Under the scores: "Check OpenCritic now". */
+  action?: SheetAction;
+}
+
 interface SheetRequest {
   /** "Pre-order details", "Purchase details", "Your data". */
   title: string;
@@ -76,6 +118,7 @@ interface SheetRequest {
   /** Stores you've used before, then common ones, as buttons. */
   stores: string[];
   today: string;
+  extras?: EditExtras;
   resolve: (data: SheetResult | null) => void;
 }
 
@@ -116,9 +159,11 @@ export class DetailsSheet {
     today: string,
     stores: string[],
     statusEdit?: StatusEdit,
+    extras?: EditExtras,
   ): Promise<SheetResult | null> {
     return this.open({
       title: 'Your data for ',
+      extras,
       name: game.name,
       dateLabel: game.preordered ? 'Preordered on' : 'Bought on',
       dismiss: 'Cancel',
@@ -131,6 +176,7 @@ export class DetailsSheet {
         hoursPlayed: game.hoursPlayed,
         completedAt: game.completedAt,
         completion: game.completion,
+        hltb: game.hltb ?? null,
       },
       statusEdit,
       stores,
@@ -181,6 +227,20 @@ export class DetailsSheet {
   }
 }
 
+/** A score out of 100: "86" → 86. Empty → null. Anything else (or over 100) → undefined. */
+export function parseScore(text: string): number | null | undefined {
+  const clean = text.trim();
+  if (clean === '') return null;
+  return /^\d{1,3}$/.test(clean) && Number(clean) <= 100 ? Number(clean) : undefined;
+}
+
+/** How many: "1,234" or "1234" → 1234. Empty → null. Anything else → undefined. */
+export function parseCount(text: string): number | null | undefined {
+  const clean = text.trim().replace(/[,.\s]/g, '');
+  if (clean === '') return null;
+  return /^\d{1,9}$/.test(clean) && Number(clean) <= 100_000_000 ? Number(clean) : undefined;
+}
+
 /** "69,99" or "69.99" → 69.99. Empty → null. Anything else → undefined (invalid). */
 export function parsePrice(text: string): number | null | undefined {
   const clean = text.trim().replace('€', '').replace(',', '.').trim();
@@ -192,7 +252,7 @@ export function parsePrice(text: string): number | null | undefined {
 /** Rendered once, in the shell. */
 @Component({
   selector: 'app-details-sheet',
-  imports: [FitWidth, RatingSlider],
+  imports: [FitWidth, RatingSlider, LucideExternalLink],
   template: `
     <dialog
       #dialog
@@ -393,12 +453,155 @@ export function parsePrice(text: string): number | null | undefined {
               </div>
             }
           </div>
+          @let extras = req.extras;
+          @if (extras?.scores || extras?.action) {
+            <!-- Scores: for the few games OpenCritic matches wrong (old ones, some editions). -->
+            <div class="grouped mt-2 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
+              <h3 class="px-4 pt-3 pb-1 text-[13px] leading-4.5 text-muted">Scores</h3>
+              @if (extras?.scores; as scores) {
+                <!-- Each score, then how many it's from (shown as the card's caption). -->
+                <label class="row">
+                  <span class="flex-1">Critic score</span>
+                  <span class="flex items-baseline gap-0.5">
+                    <input
+                      appFitWidth
+                      name="critic"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      class="num bg-transparent text-right text-[17px] outline-none"
+                      [placeholder]="scores.shown.critic ?? '–'"
+                      [value]="scores.own.critic ?? ''"
+                    />
+                    <span class="text-muted">/100</span>
+                  </span>
+                </label>
+                <label class="row">
+                  <span class="flex-1">Critics</span>
+                  <span class="flex items-baseline gap-0.5">
+                    <input
+                      appFitWidth
+                      name="critics"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      class="num bg-transparent text-right text-[17px] outline-none"
+                      [placeholder]="scores.shown.critics ?? '–'"
+                      [value]="scores.own.critics ?? ''"
+                    />
+                    <span class="text-muted">&nbsp;critics</span>
+                  </span>
+                </label>
+                <label class="row">
+                  <span class="flex-1">User score</span>
+                  <span class="flex items-baseline gap-0.5">
+                    <input
+                      appFitWidth
+                      name="players"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      class="num bg-transparent text-right text-[17px] outline-none"
+                      [placeholder]="scores.shown.players ?? '–'"
+                      [value]="scores.own.players ?? ''"
+                    />
+                    <span class="text-muted">/100</span>
+                  </span>
+                </label>
+                <label class="row">
+                  <span class="flex-1">Users</span>
+                  <span class="flex items-baseline gap-0.5">
+                    <input
+                      appFitWidth
+                      name="users"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      class="num bg-transparent text-right text-[17px] outline-none"
+                      [placeholder]="scores.shown.users ?? '–'"
+                      [value]="scores.own.users ?? ''"
+                    />
+                    <span class="text-muted">&nbsp;users</span>
+                  </span>
+                </label>
+              }
+              @if (extras?.action; as action) {
+                <button
+                  type="button"
+                  class="row text-accent-raised disabled:opacity-40"
+                  [disabled]="actionBusy()"
+                  (click)="runAction(action)"
+                >
+                  {{ actionBusy() ? action.busyLabel : action.label }}
+                </button>
+                @if (actionResult()) {
+                  <p class="px-4 pb-3 text-[13px] leading-4.5 text-muted" role="status">
+                    {{ actionResult() }}
+                  </p>
+                }
+              }
+              @if (extras?.scores) {
+                <p class="px-4 pb-3 text-[13px] leading-4.5 text-muted">
+                  Only for games OpenCritic gets wrong. Typed-in scores replace OpenCritic’s for
+                  everyone with the game; leave both empty to use OpenCritic’s.
+                </p>
+              }
+            </div>
+          }
+          @if (extras?.hltbUrl; as hltbUrl) {
+            <!-- HowLongToBeat has no API: its page is a tap away, its times typed in here. -->
+            @let times = req.initial.hltb;
+            <div class="grouped mt-2 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
+              <a [href]="hltbUrl" target="_blank" rel="noopener" class="row text-accent-raised">
+                <img src="icons/hltb.png" alt="" class="size-5 shrink-0 rounded-sm" />
+                <span class="flex-1">HowLongToBeat</span>
+                <svg lucideExternalLink [size]="16" [strokeWidth]="2" class="shrink-0"></svg>
+              </a>
+              @for (t of hltbTimes; track t.key) {
+                @let time = times?.[t.key] ? splitPlaytime(times![t.key]!) : null;
+                <div class="row">
+                  <span class="flex-1">{{ t.label }}</span>
+                  <label class="flex items-baseline gap-0.5">
+                    <input
+                      appFitWidth
+                      [name]="'hltb-' + t.key + '-h'"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="0"
+                      autocomplete="off"
+                      [attr.aria-label]="t.label + ', hours'"
+                      class="num bg-transparent text-right text-[17px] outline-none"
+                      [value]="time?.hours || ''"
+                    />
+                    <span class="text-muted">h</span>
+                  </label>
+                  <label class="ml-0.5 flex items-baseline gap-0.5">
+                    <input
+                      appFitWidth
+                      [name]="'hltb-' + t.key + '-m'"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="0"
+                      autocomplete="off"
+                      [attr.aria-label]="t.label + ', minutes'"
+                      class="num bg-transparent text-right text-[17px] outline-none"
+                      [value]="time?.minutes || ''"
+                    />
+                    <span class="text-muted">m</span>
+                  </label>
+                </div>
+              }
+            </div>
+          }
           @if (error()) {
             <p class="px-4 pt-2 text-center text-[13px] text-[#ff6961]" role="alert">
               {{ error() }}
             </p>
           }
-          <div class="mt-2 grid grid-cols-2 gap-2">
+          <!-- Stays at the foot of the screen when the sheet is taller than it. -->
+          <div
+            class="sticky bottom-[max(env(safe-area-inset-bottom),8px)] mt-2 grid grid-cols-2 gap-2"
+          >
             <button
               type="button"
               class="grouped min-h-14.25 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
@@ -444,6 +647,22 @@ export class DetailsSheetOutlet {
   protected readonly status = signal<Status | null>(null);
   protected readonly rating = signal<number | null>(null);
   protected readonly ratingPreview = signal<number | null>(null);
+  /** The extra action (req.action) is running, and what it said. */
+  protected readonly actionBusy = signal(false);
+  protected readonly actionResult = signal('');
+
+  protected async runAction(action: SheetAction): Promise<void> {
+    if (this.actionBusy()) return;
+    this.actionBusy.set(true);
+    this.actionResult.set('');
+    try {
+      this.actionResult.set(await action.run());
+    } catch {
+      this.actionResult.set('That didn’t work. Try again in a moment.');
+    } finally {
+      this.actionBusy.set(false);
+    }
+  }
   /** The fields shown: fixed, or following the status picked in "Edit my data". */
   protected readonly shownFields = computed((): SheetFields => {
     const req = this.sheet.request();
@@ -459,6 +678,7 @@ export class DetailsSheetOutlet {
     };
   });
   protected readonly splitPlaytime = splitPlaytime;
+  protected readonly hltbTimes = HLTB_TIMES;
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
   constructor() {
@@ -473,6 +693,8 @@ export class DetailsSheetOutlet {
         this.status.set(req.statusEdit?.status ?? null);
         this.rating.set(req.statusEdit?.rating ?? null);
         this.ratingPreview.set(null);
+        this.actionBusy.set(false);
+        this.actionResult.set('');
         el.showModal();
       }
       if (!req && el.open) el.close();
@@ -514,6 +736,34 @@ export class DetailsSheetOutlet {
       data.boughtFrom = field('store').trim().slice(0, 60) || null;
       data.orderedOn = /^\d{4}-\d{2}-\d{2}$/.test(ordered) ? ordered : null;
       data.physical = this.physical();
+    }
+    const extras = req.extras;
+    if (extras?.scores) {
+      const critic = parseScore(field('critic'));
+      const players = parseScore(field('players'));
+      const critics = parseCount(field('critics'));
+      const users = parseCount(field('users'));
+      if (critic === undefined || players === undefined) {
+        return this.error.set('Scores should be whole numbers from 0 to 100.');
+      }
+      if (critics === undefined || users === undefined) {
+        return this.error.set('Critics and users should be whole numbers.');
+      }
+      const own: OwnScores = { critic, critics, players, users };
+      if (JSON.stringify(own) !== JSON.stringify(extras.scores.own)) data.scores = own;
+    }
+    if (extras?.hltbUrl) {
+      const times: HltbTimes = { main: null, extra: null, completionist: null };
+      for (const { key } of HLTB_TIMES) {
+        const hours = parsePlaytime(field(`hltb-${key}-h`), field(`hltb-${key}-m`));
+        if (hours === undefined) {
+          return this.error.set('Times should be whole hours and minutes, up to 59 minutes.');
+        }
+        times[key] = hours;
+      }
+      const hltb = Object.values(times).some((t) => t !== null) ? times : null;
+      const before = req.initial.hltb ?? null;
+      if (JSON.stringify(hltb) !== JSON.stringify(before)) data.hltb = hltb;
     }
     this.sheet.finish(data);
   }

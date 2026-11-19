@@ -163,14 +163,18 @@
         <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-raised" aria-hidden="true">
           <div class="h-full rounded-full bg-label" [style.width.%]="tr.progress"></div>
         </div>
-        <p class="num mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted">
+        <p
+          class="num mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[15px] leading-5 text-muted"
+        >
           @for (g of tr.grades; track g.grade) {
             <span class="flex items-center gap-1" [attr.aria-label]="g.earned + ' ' + g.grade">
               <!-- The grade's colour on a wrapper: the icon component manages its own classes. -->
               <span class="flex shrink-0" [class]="'trophy-' + g.grade" aria-hidden="true">
                 <svg lucideTrophy [size]="14" [strokeWidth]="2.25"></svg>
               </span>
-              <span aria-hidden="true">{{ g.earned }}<span class="text-faint">/{{ g.of }}</span></span>
+              <span aria-hidden="true"
+                >{{ g.earned }}<span class="text-faint">/{{ g.of }}</span></span
+              >
             </span>
           }
         </p>
@@ -178,52 +182,57 @@
     }
 
     <!-- The scores: OpenCritic's Top Critic Average (its ring, opening the reviews), the players'
-         score, yours, then HowLongToBeat: a link, in blue with its own icon. -->
-    @if (name()) {
+         score and yours. Scores typed in by hand (for games OpenCritic gets wrong) look the same,
+         without the counts or the link. No critic or players' score (unreleased): no card. -->
+    @if (scores(); as sc) {
       <section class="grouped px-4 py-3" aria-label="Scores">
-        <div class="num grid grid-cols-4 gap-2">
-          @if (openCritic(); as oc) {
+        <div class="num grid grid-cols-3 gap-3">
+          @if (sc.critic; as c) {
             <a
-              [href]="oc.url"
+              [attr.href]="c.url"
               target="_blank"
               rel="noopener"
-              class="min-w-0 active:opacity-60"
-              [attr.aria-label]="
-                oc.topCriticScore !== null
-                  ? 'OpenCritic ' + oc.topCriticScore + ', ' + oc.topCritics
-                  : 'OpenCritic: not enough critic reviews yet'
-              "
+              [class]="c.url ? 'min-w-0 active:opacity-60' : 'min-w-0'"
+              [attr.aria-label]="c.label"
             >
               <span class="flex h-6.5 items-center" aria-hidden="true">
-                @if (oc.topCriticScore !== null) {
-                  <app-score-ring [score]="oc.topCriticScore" [size]="26" />
+                @if (c.score !== null) {
+                  <app-score-ring [score]="c.score" [size]="26" />
                 } @else {
                   <span class="text-[17px] font-semibold">–</span>
                 }
               </span>
-              <span class="mt-0.5 block truncate text-[13px] leading-4.5 text-muted" aria-hidden="true">
-                {{ oc.topCriticScore !== null ? oc.topCritics : 'No critics yet' }}
+              <span
+                class="mt-0.5 block truncate text-[13px] leading-4.5 text-muted"
+                aria-hidden="true"
+              >
+                {{ c.caption }}
               </span>
             </a>
-            @if (oc.playerRating !== null) {
-              <div class="min-w-0" [attr.aria-label]="'Players ' + oc.playerRating + ', ' + oc.players">
-                <p class="flex h-6.5 items-center text-[17px] font-semibold" aria-hidden="true">
-                  {{ oc.playerRating }}
-                </p>
-                <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-4.5 text-muted" aria-hidden="true">
-                  <svg lucideUsers [size]="12" [strokeWidth]="2.25" class="shrink-0"></svg>
-                  <span class="truncate">{{ oc.playerCount }}</span>
-                </p>
-              </div>
-            }
           } @else if (openCriticLimit(); as limit) {
             <!-- Not looked up yet, and OpenCritic's daily allowance is used up. -->
-            <div class="col-span-2 min-w-0">
+            <div class="min-w-0">
               <p class="flex h-6.5 items-center text-[17px] font-semibold">–</p>
-              <p class="mt-0.5 text-[13px] leading-4.5 text-muted">OpenCritic {{ limit.when }}</p>
+              <p class="mt-0.5 truncate text-[13px] leading-4.5 text-muted">
+                OpenCritic {{ limit.when }}
+              </p>
             </div>
           }
-          @if (myRating(); as mine) {
+          @if (sc.players; as pl) {
+            <div class="min-w-0" [attr.aria-label]="pl.label">
+              <p class="flex h-6.5 items-center text-[17px] font-semibold" aria-hidden="true">
+                {{ pl.score }}
+              </p>
+              <p
+                class="mt-0.5 flex items-center gap-1 text-[13px] leading-4.5 text-muted"
+                aria-hidden="true"
+              >
+                <svg lucideUsers [size]="12" [strokeWidth]="2.25" class="shrink-0"></svg>
+                <span class="truncate">{{ pl.caption }}</span>
+              </p>
+            </div>
+          }
+          @if (sc.mine; as mine) {
             <div
               class="min-w-0"
               [attr.aria-label]="mine.rating ? 'My rating ' + mine.rating + '/10' : 'Not rated yet'"
@@ -235,26 +244,30 @@
                   –
                 }
               </p>
-              <p class="mt-0.5 flex items-center gap-1 text-[13px] leading-4.5 text-muted" aria-hidden="true">
+              <p
+                class="mt-0.5 flex items-center gap-1 text-[13px] leading-4.5 text-muted"
+                aria-hidden="true"
+              >
                 <svg lucideStar [size]="12" [strokeWidth]="2.25" class="shrink-0"></svg>
                 <span class="truncate">Mine</span>
               </p>
             </div>
           }
-          <!-- HowLongToBeat has no API, so this opens its search for the game. -->
-          <a
-            [href]="hltbUrl()"
-            target="_blank"
-            rel="noopener"
-            class="col-start-4 min-w-0 text-accent active:opacity-60"
-            aria-label="HowLongToBeat"
-          >
-            <span class="flex h-6.5 items-center gap-1.5" aria-hidden="true">
-              <img src="icons/hltb.png" alt="" class="size-4.5 shrink-0 rounded-sm" />
-              <svg lucideExternalLink [size]="14" [strokeWidth]="2.25" class="shrink-0"></svg>
-            </span>
-            <span class="mt-0.5 block truncate text-[13px] leading-4.5" aria-hidden="true">HLTB</span>
-          </a>
+        </div>
+      </section>
+    }
+
+    <!-- HowLongToBeat's times, typed in from it in "Edit my data" (which has the link), in the
+         same three columns as the scores above. Only once a time is in. -->
+    @if (hltb(); as times) {
+      <section class="grouped px-4 py-3" aria-label="HowLongToBeat">
+        <div class="num grid grid-cols-3 gap-3">
+          @for (t of times; track t.label) {
+            <div class="min-w-0">
+              <p class="truncate text-[17px] leading-5.5 font-semibold">{{ t.value }}</p>
+              <p class="truncate text-[13px] leading-4.5 text-muted">{{ t.label }}</p>
+            </div>
+          }
         </div>
       </section>
     }
@@ -485,6 +498,118 @@
         [filters]="seriesFilters"
         [resetKey]="gameId()"
       />
+    </section>
+  }
+
+  @if (screenshots().length) {
+    <section aria-label="Screenshots">
+      <h2 class="group-header">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between gap-3 text-left uppercase active:opacity-60"
+          [attr.aria-expanded]="isOpen('screenshots')"
+          (click)="toggleOpen('screenshots')"
+        >
+          Screenshots
+          <span
+            class="shrink-0 transition-transform duration-200"
+            [class.rotate-90]="isOpen('screenshots')"
+            aria-hidden="true"
+          >
+            <svg lucideChevronRight [size]="16" [strokeWidth]="2.5" class="block"></svg>
+          </span>
+        </button>
+      </h2>
+      @if (isOpen('screenshots')) {
+        <!-- Scrolls sideways inside its own strip; the page itself never does. Each opens full
+             size. -->
+        <ul class="shots -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4">
+          @for (shot of screenshots(); track shot.image_id; let i = $index) {
+            <li class="w-[85%] shrink-0 snap-start">
+              <a
+                [href]="coverUrl(shot.image_id, '1080p')"
+                target="_blank"
+                rel="noopener"
+                class="block active:opacity-70"
+                [attr.aria-label]="'Screenshot ' + (i + 1) + ' of ' + screenshots().length"
+              >
+                <img
+                  [src]="coverUrl(shot.image_id, 'screenshot_med')"
+                  alt=""
+                  loading="lazy"
+                  class="aspect-video w-full rounded-[10px] bg-group object-cover"
+                />
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+
+  @if (videos().length) {
+    <section aria-label="Videos">
+      <h2 class="group-header">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between gap-3 text-left uppercase active:opacity-60"
+          [attr.aria-expanded]="isOpen('videos')"
+          (click)="toggleOpen('videos')"
+        >
+          Videos
+          <span
+            class="shrink-0 transition-transform duration-200"
+            [class.rotate-90]="isOpen('videos')"
+            aria-hidden="true"
+          >
+            <svg lucideChevronRight [size]="16" [strokeWidth]="2.5" class="block"></svg>
+          </span>
+        </button>
+      </h2>
+      @if (isOpen('videos')) {
+        <!-- Trailers and gameplay from YouTube: tap one to play it in place. -->
+        <ul class="shots -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto px-4">
+          @for (v of videos(); track v.video_id) {
+            <li class="w-[85%] shrink-0 snap-start">
+              <div class="relative aspect-video overflow-hidden rounded-[10px] bg-group">
+                @if (playingVideo() === v.video_id) {
+                  <iframe
+                    class="size-full"
+                    [src]="videoEmbed(v.video_id)"
+                    [title]="v.name || 'Video'"
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    allowfullscreen
+                  ></iframe>
+                } @else {
+                  <button
+                    type="button"
+                    class="absolute inset-0 active:opacity-70"
+                    [attr.aria-label]="'Play ' + (v.name || 'video')"
+                    (click)="playingVideo.set(v.video_id)"
+                  >
+                    <img
+                      [src]="'https://i.ytimg.com/vi/' + v.video_id + '/hqdefault.jpg'"
+                      alt=""
+                      loading="lazy"
+                      class="size-full object-cover"
+                    />
+                    <span class="absolute inset-0 grid place-items-center">
+                      <span
+                        class="grid size-12 place-items-center rounded-full bg-black/55 text-white backdrop-blur-md"
+                      >
+                        <svg lucidePlay [size]="22" class="ml-0.5 fill-current"></svg>
+                      </span>
+                    </span>
+                  </button>
+                }
+              </div>
+              @if (v.name) {
+                <p class="mt-1.5 truncate text-[13px] leading-4.5 text-muted">{{ v.name }}</p>
+              }
+            </li>
+          }
+        </ul>
+      }
     </section>
   }
 

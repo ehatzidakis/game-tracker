@@ -12,7 +12,11 @@ import { GET as daily } from '../api/cron/daily.ts';
 import { GET as notify } from '../api/cron/notify.ts';
 import { POST as igdb } from '../api/igdb.ts';
 import { POST as invite } from '../api/invite.ts';
-import { GET as opencritic, POST as opencriticScores } from '../api/opencritic.ts';
+import {
+  GET as opencritic,
+  POST as opencriticScores,
+  PUT as opencriticOwn,
+} from '../api/opencritic.ts';
 import { DELETE as psnUnlink, POST as psnLink } from '../api/psn.ts';
 import { POST as psnImport } from '../api/psn-import.ts';
 import { POST as psnSync } from '../api/psn-sync.ts';
@@ -23,7 +27,7 @@ type Handler = (request: Request) => Promise<Response>;
 // Same paths as on Vercel (vercel.json rewrites /api/calendar.ics to /api/calendar).
 const routes: Record<string, Partial<Record<string, Handler>>> = {
   '/api/igdb': { POST: igdb },
-  '/api/opencritic': { GET: opencritic, POST: opencriticScores },
+  '/api/opencritic': { GET: opencritic, POST: opencriticScores, PUT: opencriticOwn },
   '/api/calendar.ics': { GET: calendar },
   '/api/push-test': { POST: pushTest },
   '/api/psn': { POST: psnLink, DELETE: psnUnlink },

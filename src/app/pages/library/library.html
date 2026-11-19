@@ -348,7 +348,8 @@
                 <svg lucideTrophy [size]="dense ? 13 : 15" [strokeWidth]="2"></svg>
               </span>
             }
-            <!-- Bottom left: time played (or DLC / Pre-ordered). -->
+            <!-- Bottom left: time played (or DLC / Pre-ordered, only while it's on the Wishlist:
+                 a pre-order that's out is just a game you own). -->
             @let clock =
               game.status === 'completed' || game.status === 'shelved'
                 ? coverPlaytime(game.hoursPlayed)
@@ -364,9 +365,9 @@
               <span
                 class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
               >
-                {{ game.preordered ? 'DLC · Pre-ordered' : 'DLC' }}
+                {{ game.preordered && game.status === 'wishlist' ? 'DLC · Pre-ordered' : 'DLC' }}
               </span>
-            } @else if (game.preordered && countdown(game) !== null) {
+            } @else if (game.preordered && game.status === 'wishlist' && countdown(game) !== null) {
               <span
                 class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
               >

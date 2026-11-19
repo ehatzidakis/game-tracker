@@ -14,9 +14,11 @@ import {
   matchCandidates,
   maxAgeDays,
   sameYear,
+  withOwnScores,
   type OcGame,
   type OcSearchResult,
   type OpenCriticEntry,
+  type OwnScores,
 } from './opencritic-match.js';
 
 const HOST = 'opencritic-api.p.rapidapi.com';
@@ -112,15 +114,32 @@ async function match(igdbId: number): Promise<{ game: OcGame | null; releaseDate
   return { game: null, releaseDate };
 }
 
-/** Asks OpenCritic for the latest: by id when matched before, otherwise by name. */
+/** IGDB's first release date now ("YYYY-MM-DD"), or null. Free: not an OpenCritic call. */
+async function igdbReleaseDate(igdbId: number): Promise<string | null> {
+  const [igdb] = await igdbQuery<IgdbNames[]>(
+    'games',
+    `fields first_release_date; where id = ${igdbId}; limit 1;`,
+  );
+  return isoDate(igdb?.first_release_date);
+}
+
+/**
+ * Asks OpenCritic for the latest: by id when matched before, otherwise by name. `freshDate` also
+ * takes the release date from IGDB again (it's otherwise kept from the first match, and a delay
+ * would leave the refresh schedule on the old date).
+ */
 async function lookUp(
   igdbId: number,
   stored: OpenCriticEntry | null,
   now: number,
+  freshDate = false,
 ): Promise<OpenCriticEntry> {
   if (stored?.ocId) {
+    const releaseDate = freshDate
+      ? ((await igdbReleaseDate(igdbId).catch(() => null)) ?? stored.releaseDate)
+      : stored.releaseDate;
     const game = await call<OcGame>(`/game/${stored.ocId}`);
-    return entryFrom(igdbId, game, stored.releaseDate, now);
+    return entryFrom(igdbId, game, releaseDate, now);
   }
   const { game, releaseDate } = await match(igdbId);
   return entryFrom(igdbId, game, releaseDate, now);
@@ -128,25 +147,36 @@ async function lookUp(
 
 const entryRef = (db: Firestore, igdbId: number) => db.collection('opencritic').doc(String(igdbId));
 
+/** "Check OpenCritic now" asks again only if the last check is older than this. */
+export const FORCE_GAP_MS = 10 * 60_000;
+
 /**
- * The stored score for a game, refreshed first when it's due. Falls back to the stored one (or
- * null, if there's none) when OpenCritic can't be asked right now; `limit` says that's because
- * the allowance is used up, and `retryAt` when it comes back.
+ * The stored score for a game, refreshed first when it's due, or when `force`d ("Check OpenCritic
+ * now" in Edit my data: whatever the schedule, unless it was checked in the last 10 minutes, and
+ * with IGDB's current release date). Falls back to the stored one (or null, if there's none) when
+ * OpenCritic can't be asked right now; `limit` says that's because the allowance is used up, and
+ * `retryAt` when it comes back.
  */
 export async function openCriticFor(
   db: Firestore,
   igdbId: number,
   now = Date.now(),
+  force = false,
 ): Promise<{ entry: OpenCriticEntry | null; limit: boolean; retryAt: number | null }> {
   const snap = await entryRef(db, igdbId).get();
   const stored = snap.exists ? (snap.data() as OpenCriticEntry) : null;
-  if (stored && !isStale(stored, now)) return { entry: stored, limit: false, retryAt: null };
+  if (stored) {
+    // Scores typed in by hand are never replaced by OpenCritic's, even when forced.
+    const fresh =
+      stored.manual || (force ? now - stored.checkedAt < FORCE_GAP_MS : !isStale(stored, now));
+    if (fresh) return { entry: stored, limit: false, retryAt: null };
+  }
   await loadQuota(db, now);
   // A game matched before needs a request; a new one a search.
   const limited = () => ({ entry: stored, limit: true, retryAt: remaining.resetAt });
   if (lowOn(stored?.ocId ? 'requests' : 'searches', 0, now)) return limited();
   try {
-    const entry = await lookUp(igdbId, stored, now);
+    const entry = await lookUp(igdbId, stored, now, force);
     await entryRef(db, igdbId).set(entry);
     return { entry, limit: false, retryAt: null };
   } catch (error) {
@@ -156,6 +186,28 @@ export async function openCriticFor(
   } finally {
     await saveQuota(db).catch((error: unknown) => console.error(error));
   }
+}
+
+/**
+ * Saves scores typed in by hand for a game ("Edit my data"), or with both null, goes back to
+ * OpenCritic's. Shared like OpenCritic's: everyone with the game sees them.
+ */
+export async function setOwnScores(
+  db: Firestore,
+  igdbId: number,
+  own: OwnScores,
+  now = Date.now(),
+): Promise<OpenCriticEntry> {
+  const ref = entryRef(db, igdbId);
+  const snap = await ref.get();
+  const entry = withOwnScores(
+    igdbId,
+    snap.exists ? (snap.data() as OpenCriticEntry) : null,
+    own,
+    now,
+  );
+  await ref.set(entry);
+  return entry;
 }
 
 /**

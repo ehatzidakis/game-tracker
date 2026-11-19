@@ -5,7 +5,9 @@ import {
   matchCandidates,
   maxAgeDays,
   sameYear,
+  tierFor,
   toScore,
+  withOwnScores,
   type OpenCriticEntry,
 } from '../../../api/_lib/opencritic-match.js';
 
@@ -87,6 +89,87 @@ describe('OpenCritic matching', () => {
       limit: true,
       retryAt: 123,
     });
+  });
+});
+
+describe('scores typed in by hand', () => {
+  const now = Date.parse('2026-11-19T12:00:00Z');
+  const matched = entryFrom(
+    5,
+    {
+      id: 77,
+      name: 'Wrong Edition',
+      url: 'https://opencritic.com/game/77',
+      tier: 'Weak',
+      topCriticScore: 51,
+    },
+    '2009-03-01',
+    now - 86_400_000,
+  );
+
+  it('replaces the critic score (with its tier) and the players’ score, keeping the match', () => {
+    const own = withOwnScores(5, matched, { critic: 88, critics: 12, players: 81, users: null }, now);
+    expect(own).toMatchObject({
+      manual: true,
+      topCriticScore: 88,
+      tier: 'Mighty',
+      playerScore: 81,
+    });
+    expect(own.ocId).toBe(77);
+    expect(toScore(own)).toEqual({
+      status: 'found',
+      url: null,
+      tier: 'Mighty',
+      topCriticScore: 88,
+      percentRecommended: null,
+      numReviews: 12,
+      numTopCriticReviews: 12,
+      manual: true,
+      playerScore: 81,
+      playerCount: null,
+    });
+    // Never due: OpenCritic isn't asked again while they're in.
+    expect(isStale(own, now + 1000 * 86_400_000)).toBe(false);
+  });
+
+  it('works for a game OpenCritic doesn’t have', () => {
+    const own = withOwnScores(5, null, { critic: null, critics: null, players: 70, users: 340 }, now);
+    expect(toScore(own)).toMatchObject({
+      status: 'found',
+      topCriticScore: null,
+      numTopCriticReviews: 0,
+      playerScore: 70,
+      playerCount: 340,
+    });
+  });
+
+  it('cleared, goes back to OpenCritic’s match, due at once', () => {
+    const own = withOwnScores(5, matched, { critic: 88, critics: 12, players: 81, users: null }, now);
+    const cleared = withOwnScores(5, own, { critic: null, critics: null, players: null, users: null }, now);
+    expect(cleared.manual).toBeUndefined();
+    expect(cleared.playerScore).toBeUndefined();
+    expect(cleared.playerCount).toBeUndefined();
+    expect(cleared).toMatchObject({
+      ocId: 77,
+      topCriticScore: null,
+      tier: null,
+      numTopCriticReviews: 0,
+      checkedAt: 0,
+    });
+    expect(isStale(cleared, now)).toBe(true);
+    // Nothing typed in before: nothing changes.
+    expect(withOwnScores(5, matched, { critic: null, critics: null, players: null, users: null }, now)).toBe(matched);
+  });
+
+  it('gives OpenCritic’s tiers', () => {
+    expect([84, 83, 75, 74, 66, 65].map(tierFor)).toEqual([
+      'Mighty',
+      'Strong',
+      'Strong',
+      'Fair',
+      'Fair',
+      'Weak',
+    ]);
   });
 });
 
