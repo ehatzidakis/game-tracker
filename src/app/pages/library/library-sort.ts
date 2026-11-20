@@ -1,5 +1,6 @@
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
 import {
+  type Completion,
   eventEnd,
   type GamingEvent,
   type HltbTimes,
@@ -249,15 +250,58 @@ export function eventYearGroups(
   return groups;
 }
 
+/** Hours on a cover badge, whole: 23.5 → "24", under half an hour "<1", none "–". */
+export function wholeHours(h: number | null | undefined): string {
+  return !h ? '–' : h < 0.5 ? '<1' : String(Math.round(h));
+}
+
 /**
- * A backlog cover's HowLongToBeat badge: Main story, Main + extra and Completionist in whole
- * hours (["12", "20", "45"]), "–" for a time not typed in, under an hour as "<1". Empty without
- * any time.
+ * A cover's HowLongToBeat times: Main story, Main + extra and Completionist in whole hours
+ * (["12", "20", "45"]), "–" for a time not typed in. Empty without any time.
  */
 export function hltbHours(times: HltbTimes | null | undefined): string[] {
   if (!times || (!times.main && !times.extra && !times.completionist)) return [];
-  const hours = (h: number | null) => (!h ? '–' : h < 0.5 ? '<1' : String(Math.round(h)));
-  return [times.main, times.extra, times.completionist].map(hours);
+  return [times.main, times.extra, times.completionist].map(wholeHours);
+}
+
+/** Covers that show your time played: Completed, Shelved, and Backlog games you're playing. */
+export function showsPlaytime(game: TrackedGame): boolean {
+  return (
+    game.status === 'completed' ||
+    game.status === 'shelved' ||
+    (game.status === 'backlog' && !!game.playing)
+  );
+}
+
+/** Which of HowLongToBeat's times matches how far you got: a Platinum is its Completionist. */
+const COMPLETION_CELL: Record<Completion, number> = { main: 0, main_sides: 1, platinum: 2 };
+
+/** A cover's HowLongToBeat badge, with your own time over the matching one. */
+export interface CoverHltb {
+  /** Main story, Main + extra, Completionist: ["12", "24", "31"]. */
+  cells: string[];
+  /** Your time played in whole hours ("34"), on covers that show it and have one. */
+  mine: string | null;
+  /**
+   * The badge's grid column your time sits in, over the time it compares with: 2, 4 or 6 for
+   * Main story, Main + extra or Completionist (between them are the hairlines), or 1, over the
+   * logo, without a completion style (a game you're playing, or one shelved).
+   */
+  mineColumn: number;
+}
+
+/**
+ * HowLongToBeat's times for a cover, when it has some: on every tab, except Wishlist games not
+ * out yet. Covers that show your time played put it over the matching time instead of in a
+ * badge of its own.
+ */
+export function coverHltb(game: TrackedGame, today: string): CoverHltb | null {
+  if (game.status === 'wishlist' && !isReleased(game, today)) return null;
+  const cells = hltbHours(game.hltb);
+  if (!cells.length) return null;
+  const mine = showsPlaytime(game) && game.hoursPlayed ? wholeHours(game.hoursPlayed) : null;
+  const cell = game.completion ? COMPLETION_CELL[game.completion] : null;
+  return { cells, mine, mineColumn: cell === null ? 1 : 2 + cell * 2 };
 }
 
 /**

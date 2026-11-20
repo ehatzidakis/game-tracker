@@ -171,6 +171,22 @@
             </select>
           </label>
         }
+        <!-- HowLongToBeat's times on the covers, on or off, on every game tab (your own time played
+         stays: over the matching time while on, in its own badge while off). -->
+        <button
+          type="button"
+          class="grid size-8 shrink-0 place-items-center rounded-full"
+          [class]="
+            hltbShown()
+              ? 'bg-accent-fill text-white active:brightness-90'
+              : 'bg-group text-accent active:bg-pressed'
+          "
+          aria-label="HowLongToBeat times"
+          [attr.aria-pressed]="hltbShown()"
+          (click)="toggleHltb()"
+        >
+          <svg lucideHourglass [size]="16" [strokeWidth]="2.25"></svg>
+        </button>
         <!-- Four cards a row instead of three (the same details, smaller). -->
         <button
           type="button"
@@ -357,61 +373,73 @@
                 <app-score-ring [score]="score" [size]="dense ? 24 : 28" />
               </span>
             }
-            <!-- Bottom right: the Platinum trophy, under the disc. -->
+            <!-- Bottom left, while HowLongToBeat's times are on (the hourglass): its logo, then
+                 Main story, Main + extra and Completionist in cells split by hairlines; on every
+                 tab but Wishlist games not out yet. Where the cover shows your time played, it
+                 sits in blue over the time it compares with (your completion style: a Platinum
+                 is HowLongToBeat's Completionist), or over the logo without a completion style.
+                 Otherwise your time played in a badge of its own (Completed, Shelved, and Backlog
+                 games you're playing); or DLC / Pre-ordered, only while it's on the Wishlist (a
+                 pre-order that's out is just a game you own). -->
+            @let hltb = coverHltb(game);
+            @let clock = !hltb && showsPlaytime(game) ? coverPlaytime(game.hoursPlayed) : '';
+            <!-- Bottom right: the Platinum trophy, under the disc. It steps aside when
+                 HowLongToBeat's times leave it no room (FitsBeside measures). -->
             @if (game.status === 'completed' && game.completion === 'platinum') {
               <span
                 class="absolute right-1.5 bottom-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
                 [class]="dense ? 'size-6' : 'size-7'"
                 aria-label="Platinum"
+                [appFitsBeside]="hltb"
               >
                 <svg lucideTrophy [size]="dense ? 13 : 15" [strokeWidth]="2"></svg>
               </span>
             }
-            <!-- Bottom left: time played (Completed, Shelved, and Backlog games you're playing),
-                 or on the rest of the Backlog and on Wishlist games already out
-                 HowLongToBeat's logo and its times, Main story,
-                 Main + extra and Completionist, in cells split by hairlines; or DLC /
-                 Pre-ordered, only while it's on the Wishlist (a pre-order that's out is just a
-                 game you own). -->
-            @let played =
-              game.status === 'completed' ||
-              game.status === 'shelved' ||
-              (game.status === 'backlog' && game.playing);
-            @let clock = played ? coverPlaytime(game.hoursPlayed) : '';
-            @let hltb = played ? [] : coverHltb(game);
-            @if (clock) {
+            @if (hltb) {
+              @let row = hltb.mine ? 2 : 1;
+              <span
+                class="fit-against num absolute bottom-1.5 left-1.5 grid grid-cols-[repeat(6,auto)] items-center justify-items-center gap-y-0.75 rounded-[5px] bg-black/70 py-0.75 pr-1.5 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                [class]="dense ? 'gap-x-1 pl-1' : 'gap-x-1.25 pl-1.25'"
+                [attr.aria-label]="hltbLabel(hltb)"
+              >
+                @if (hltb.mine) {
+                  <span
+                    class="row-start-1 text-accent-raised"
+                    [style.grid-column]="hltb.mineColumn"
+                    aria-hidden="true"
+                    >{{ hltb.mine }}</span
+                  >
+                }
+                <img
+                  src="icons/hltb.png"
+                  alt=""
+                  class="col-start-1 shrink-0 rounded-[2px]"
+                  [class]="dense ? 'size-2.5' : 'size-3'"
+                  [style.grid-row]="row"
+                />
+                @for (hours of hltb.cells; track $index) {
+                  @if (!$first) {
+                    <span
+                      class="h-2.25 w-px bg-white/30"
+                      [style.grid-row]="row"
+                      [style.grid-column]="$index * 2 + 1"
+                      aria-hidden="true"
+                    ></span>
+                  }
+                  <span
+                    [style.grid-row]="row"
+                    [style.grid-column]="$index * 2 + 2"
+                    aria-hidden="true"
+                    >{{ hours }}</span
+                  >
+                }
+              </span>
+            } @else if (clock) {
               <span
                 class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
                 [attr.aria-label]="formatPlaytime(game.hoursPlayed) + ' played'"
               >
                 {{ clock }}
-              </span>
-            } @else if (hltb.length) {
-              <span
-                class="num absolute bottom-1.5 left-1.5 flex items-center rounded-[5px] bg-black/70 py-0.75 pr-1.5 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
-                [class]="dense ? 'gap-1 pl-1' : 'gap-1.25 pl-1.25'"
-                [attr.aria-label]="
-                  'HowLongToBeat: main story ' +
-                  hltb[0] +
-                  ', main plus extra ' +
-                  hltb[1] +
-                  ', completionist ' +
-                  hltb[2] +
-                  ' hours'
-                "
-              >
-                <img
-                  src="icons/hltb.png"
-                  alt=""
-                  class="shrink-0 rounded-[2px]"
-                  [class]="dense ? 'size-2.5' : 'size-3'"
-                />
-                @for (hours of hltb; track $index) {
-                  @if (!$first) {
-                    <span class="h-2.25 w-px shrink-0 bg-white/30" aria-hidden="true"></span>
-                  }
-                  <span aria-hidden="true">{{ hours }}</span>
-                }
               </span>
             } @else if (isDlc(game)) {
               <span

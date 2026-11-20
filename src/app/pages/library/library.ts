@@ -9,6 +9,7 @@ import {
   LucideCloudDownload,
   LucideDisc3,
   LucideGrid3x3,
+  LucideHourglass,
   LucideLibraryBig,
   LucideStar,
   LucideTrophy,
@@ -22,7 +23,7 @@ import {
   type Status,
   type TrackedGame,
 } from '../../../../api/_lib/models.js';
-import { countdown, isReleased, today } from '../../core/dates';
+import { countdown, today } from '../../core/dates';
 import { localDate, nextReleaseId } from '../calendar/calendar-groups';
 import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
@@ -32,6 +33,7 @@ import { OpenCriticService } from '../../core/opencritic';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
 import { EventArt } from '../../shared/event-art';
+import { FitsBeside } from '../../shared/fits-beside';
 import { ScoreRing } from '../../shared/score-ring';
 import { SearchField } from '../../shared/search-field';
 import {
@@ -46,7 +48,9 @@ import {
   type CopyFilter,
   DEFAULT_SORT,
   groupByYear,
-  hltbHours,
+  coverHltb,
+  type CoverHltb,
+  showsPlaytime,
   LIBRARY_TABS,
   searchLibrary,
   splitEvents,
@@ -155,6 +159,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     NgTemplateOutlet,
     Cover,
     EventArt,
+    FitsBeside,
     ScoreRing,
     SearchField,
     LucideArrowUpDown,
@@ -163,6 +168,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     LucideCloudDownload,
     LucideDisc3,
     LucideGrid3x3,
+    LucideHourglass,
     LucideLibraryBig,
     LucideStar,
     LucideTrophy,
@@ -401,14 +407,28 @@ export class LibraryPage {
     remember('library-columns', next);
   }
   /**
-   * HowLongToBeat's times on a cover (Main story, Main + extra, Completionist): Backlog games
-   * you aren't playing, and Wishlist games already out.
+   * Whether covers show HowLongToBeat's times (the hourglass in every game tab's toolbar),
+   * remembered on this device. Your own time played shows either way: over the matching time
+   * while they're on, in its own badge while they're off.
    */
-  protected coverHltb(game: TrackedGame): string[] {
-    const shown =
-      (game.status === 'backlog' && !game.playing) ||
-      (game.status === 'wishlist' && isReleased(game, today()));
-    return shown ? hltbHours(game.hltb) : [];
+  protected readonly hltbShown = signal(remembered('library-hltb', '1', ['0', '1']) === '1');
+  protected toggleHltb(): void {
+    const shown = !this.hltbShown();
+    this.hltbShown.set(shown);
+    remember('library-hltb', shown ? '1' : '0');
+  }
+
+  /** HowLongToBeat's times on a cover, with your time over the matching one; null while off. */
+  protected coverHltb(game: TrackedGame): CoverHltb | null {
+    return this.hltbShown() ? coverHltb(game, today()) : null;
+  }
+  protected readonly showsPlaytime = showsPlaytime;
+
+  /** What a screen reader says for the badge. */
+  protected hltbLabel(hltb: CoverHltb): string {
+    const [main, extra, all] = hltb.cells;
+    const times = `HowLongToBeat: main story ${main}, main plus extra ${extra}, completionist ${all} hours`;
+    return hltb.mine ? `${times}; you played ${hltb.mine} hours` : times;
   }
   /** Time played on a cover: "137h 51m", or at four a row whole hours rounded up ("138h"). */
   protected coverPlaytime(hours: number | null | undefined): string {

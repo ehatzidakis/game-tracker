@@ -7,6 +7,7 @@ import {
   COPY_TABS,
   DEFAULT_SORT,
   groupByYear,
+  coverHltb,
   hltbHours,
   LIBRARY_TABS,
   matchesCopy,
@@ -322,6 +323,48 @@ describe('HowLongToBeat on the Backlog', () => {
     expect(hltbHours({ main: null, extra: null, completionist: null })).toEqual([]);
     expect(hltbHours(null)).toEqual([]);
     expect(hltbHours(undefined)).toEqual([]);
+  });
+});
+
+describe('HowLongToBeat on the covers', () => {
+  const times = { hltb: { main: 12, extra: 24, completionist: 31 } };
+
+  it('puts your time over the time that matches how far you got (a Platinum is Completionist)', () => {
+    const done = (completion: TrackedGame['completion']) =>
+      coverHltb(game('Done', { status: 'completed', hoursPlayed: 34.4, completion, ...times }), today);
+    expect(done('platinum')).toEqual({ cells: ['12', '24', '31'], mine: '34', mineColumn: 6 });
+    expect(done('main_sides')?.mineColumn).toBe(4);
+    expect(done('main')?.mineColumn).toBe(2);
+  });
+
+  it('puts your time over the logo without a completion style', () => {
+    const playing = game('Playing', {
+      status: 'backlog',
+      playing: true,
+      hoursPlayed: 5,
+      completion: null,
+      ...times,
+    });
+    expect(coverHltb(playing, today)).toEqual({
+      cells: ['12', '24', '31'],
+      mine: '5',
+      mineColumn: 1,
+    });
+  });
+
+  it('shows no time of yours where the cover never shows it, or without one', () => {
+    const notPlaying = game('Backlog', { status: 'backlog', hoursPlayed: 3, ...times });
+    expect(coverHltb(notPlaying, today)?.mine).toBeNull();
+    const unplayed = game('Shelved', { status: 'shelved', hoursPlayed: null, ...times });
+    expect(coverHltb(unplayed, today)?.mine).toBeNull();
+  });
+
+  it('shows nothing without any time, or on a Wishlist game not out yet', () => {
+    expect(coverHltb(game('None', { status: 'completed', hoursPlayed: 10 }), today)).toBeNull();
+    const coming = game('Coming', { status: 'wishlist', releaseDate: '2027-01-01', ...times });
+    expect(coverHltb(coming, today)).toBeNull();
+    const out = game('Out', { status: 'wishlist', releaseDate: '2026-01-01', ...times });
+    expect(coverHltb(out, today)?.cells).toEqual(['12', '24', '31']);
   });
 });
 
