@@ -10,6 +10,18 @@
     />
     <meta name="theme-color" content="#000000" />
     <meta name="color-scheme" content="dark" />
+    <!-- The background chosen in Settings (core/ground.ts), set before anything draws so the
+         page never flashes black first. -->
+    <script>
+      try {
+        var g = localStorage.getItem('ground');
+        var c = { charcoal: '#0e0e10', midnight: '#080b12', graphite: '#161618' }[g];
+        if (c) {
+          document.documentElement.dataset.ground = g;
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', c);
+        }
+      } catch (e) {}
+    </script>
     <!-- Home-screen app on iPhone: a solid black status bar, with the app starting below it.
          black-translucent (drawing under the status bar) made iOS 26 size the app 47pt short. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />

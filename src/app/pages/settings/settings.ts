@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
   LucideCalendarPlus,
+  LucideCheck,
   LucideChevronRight,
   LucideChevronsUpDown,
   LucideCopy,
@@ -17,6 +18,7 @@ import { PsnAddAll } from '../../core/psn-add-all.service';
 import { PsnService } from '../../core/psn.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
+import { GROUNDS, GroundService } from '../../core/ground';
 import { PinnedTop } from '../../shared/pinned-top';
 import { TabTitle } from '../../shared/tab-title';
 
@@ -27,6 +29,7 @@ import { TabTitle } from '../../shared/tab-title';
     PinnedTop,
     RouterLink,
     LucideCalendarPlus,
+    LucideCheck,
     LucideChevronRight,
     LucideChevronsUpDown,
     LucideCopy,
@@ -41,6 +44,9 @@ export class SettingsPage {
   protected readonly library = inject(LibraryService);
   protected readonly push = inject(PushService);
   private readonly events = inject(EventsService);
+  /** The background, chosen here and kept on this device. */
+  protected readonly ground = inject(GroundService);
+  protected readonly grounds = GROUNDS;
   protected readonly eventCount = computed(() => this.events.events().length);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);

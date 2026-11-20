@@ -103,6 +103,44 @@
   </p>
 </section>
 
+<!-- Background: the page colour and the greys stepped up from it, on this device
+     (core/ground.ts). Picked like an iOS list: a swatch of the page with a list on it, the name
+     and a line about it, a check on the one in use. Applies at once. -->
+<section aria-labelledby="ground-title">
+  <h2 id="ground-title" class="group-header">Background</h2>
+  <div class="grouped" style="--sep-inset: 60px" role="radiogroup" aria-labelledby="ground-title">
+    @for (g of grounds; track g.key) {
+      @let chosen = ground.current() === g.key;
+      <button
+        type="button"
+        class="row"
+        role="radio"
+        [attr.aria-checked]="chosen"
+        (click)="ground.set(g.key)"
+      >
+        <span
+          class="relative size-8 shrink-0 overflow-hidden rounded-[8px] ring-[0.5px] ring-white/20"
+          [style.background]="g.ground"
+          aria-hidden="true"
+        >
+          <span
+            class="absolute inset-x-1.25 bottom-1.25 h-2.5 rounded-[3px]"
+            [style.background]="g.group"
+          ></span>
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block">{{ g.label }}</span>
+          <span class="block truncate text-[13px] leading-4.5 text-muted">{{ g.hint }}</span>
+        </span>
+        @if (chosen) {
+          <svg lucideCheck [size]="20" [strokeWidth]="2.5" class="shrink-0 text-accent"></svg>
+        }
+      </button>
+    }
+  </div>
+  <p class="group-footer">On this iPhone only. Lists and sheets follow the background you pick.</p>
+</section>
+
 <!-- Calendar subscription -->
 <section aria-labelledby="calendar-title">
   <h2 id="calendar-title" class="group-header">Calendar subscription</h2>

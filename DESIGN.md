@@ -202,6 +202,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 
 ### Neutral
 - **True Black** (ground): the page, the frame behind the tab bar, the status-bar theme colour. Covers sit directly on it.
+- **Other backgrounds** (Settings → Background, kept on this device; core/ground.ts, `:root[data-ground]` in styles.css): Black is the default. Each option moves the ground and the greys stepped up from it together, so lists still read against the page and every text colour stays at 4.5:1 or more: **Charcoal** #0e0e10 (lists #1f1f22, sheets #2e2e31, pressed #3c3c40), **Midnight** #080b12, a hint of the accent's hue kept too low to read as a blue screen (#1a1f2b, #262c3a, #323a4b), **Graphite** #161618 (#242427, #303033, #3d3d41). All stay dark: the home-screen app's status bar is always black, so a lighter ground would leave a band at the top (faint on Graphite). Picked from an iOS-style list: a swatch of the page with a list on it, the name over a one-line hint, a blue check on the one in use. index.html sets the choice before the app draws, so it never flashes black first. Fades into the page (the top bar's, the tab tops') use the ground token, never literal black.
 - **Group Grey** (group): inset grouped lists, notes field, cover placeholders.
 - **Raised Grey** (raised): sheets, toasts, cover placeholders, inline date and time fields on group surfaces.
 - **Pressed Grey** (pressed): a tapped row, and inline fields that sit on an already-raised sheet.
