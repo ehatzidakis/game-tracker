@@ -7,7 +7,7 @@ colors:
   raised: "#2c2c2e"
   pressed: "#3a3a3c"
   segment-thumb: "#2462e8"
-  tab-bar: "#121214"
+  tab-bar: "rgb(36 36 38 / 0.74)"
   separator: "rgb(84 84 88 / 0.65)"
   fill: "rgb(118 118 128 / 0.24)"
   label: "#ffffff"
@@ -73,8 +73,8 @@ typography:
     letterSpacing: "0em"
   tab-label:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"
-    fontSize: "10px"
-    fontWeight: 500
+    fontSize: "10.5px"
+    fontWeight: 600
     lineHeight: 1
     letterSpacing: "0em"
 rounded:
@@ -166,7 +166,8 @@ components:
     backgroundColor: "{colors.tab-bar}"
     textColor: "{colors.muted}"
     typography: "{typography.tab-label}"
-    height: "50px"
+    rounded: "{rounded.pill}"
+    height: "62px"
   tab-bar-active:
     textColor: "{colors.accent}"
 ---
@@ -204,7 +205,7 @@ A near-monochrome dark palette in Apple's grey ladder, cut by one cool, PlayStat
 - **Group Grey** (group): inset grouped lists, notes field, cover placeholders.
 - **Raised Grey** (raised): sheets, toasts, cover placeholders, inline date and time fields on group surfaces.
 - **Pressed Grey** (pressed): a tapped row, and inline fields that sit on an already-raised sheet.
-- **Thumb Grey** (segment-thumb): the selected segment. Grey, not blue, on purpose.
+- **Segment Blue** (segment-thumb): the selected segment, Fill Blue under white text, matching the rating slider (blue at the user's request, 2026-11-08; it was grey before).
 - **Tab Glass** (tab-bar): the floating tab bar, rgb(36 36 38 / 0.74) with a 24px blur and 180% saturation, on its own compositing layer so its look stays constant while pages change underneath.
 - **Hairline** (separator): 0.5px inset separators, the floating tab bar's outline and the top bar's glass back button.
 - **Control Fill** (fill): segmented-control track and the search field.
@@ -344,10 +345,10 @@ Settings → Friends makes a one-time invite link, shown in a grouped row (13px,
 - **Do** show any list of games or events (a company's games, a game's DLC and expansions, Shown at and series, an event's games, Settings → Gaming events) as the shared card grid (shared/card-grid.ts): five cards a row; under a game's cover its year (or Cancelled) and your status, a Platinum trophy on the cover; under an event's logo its name (two lines at most) and date ("13 Dec" this year, "Dec 2024" otherwise); cancelled games and archived events greyed out. A toolbar row above it: the list's name and count (uppercase like a section header, or "80 games" when it's the page's only list) and a filter pill whose menu lists only filters that would leave something out, grouped (Year, Company) where there are many. Rows stay for the Calendar (kept compact) and Search's results (each has its + Add button). A company's details sit in short icon lines like a game's "my data", not a table.
 
 ### Don't:
-- **Don't** colour the selected segment blue; the thumb is Thumb Grey.
+- **Don't** leave a selected segment grey; it's Segment Blue under white, like the rating slider.
 - **Don't** add glow, neon, RGB effects, or anything that echoes the PS5 interface or Sony's branding.
 - **Don't** add imagery other than game art (covers and the game screen's screenshot backdrop).
 - **Don't** use Decoration Grey for text.
-- **Don't** float the tab bar over content with a fixed position or make it translucent; it is an opaque row.
+- **Don't** pin the tab bar to the screen with `position: fixed; bottom: 0` (iOS 26 misplaces those in home-screen apps); it floats as a frosted capsule positioned inside the app frame.
 - **Don't** add shadows to static surfaces; step up the grey ladder instead.
 - **Don't** let anything scroll sideways except the screenshot strip.
