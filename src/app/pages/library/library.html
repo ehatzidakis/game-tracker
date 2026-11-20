@@ -377,38 +377,47 @@
                  Main story, Main + extra and Completionist in cells split by hairlines; on every
                  tab but Wishlist games not out yet. Where the cover shows your time played, it
                  sits in blue over the time it compares with (your completion style: a Platinum
-                 is HowLongToBeat's Completionist), or over the logo without a completion style.
+                 is HowLongToBeat's Completionist, and its trophy sits there too, in the Platinum
+                 colour, even without a time), or over the logo without a completion style.
                  Otherwise your time played in a badge of its own (Completed, Shelved, and Backlog
                  games you're playing); or DLC / Pre-ordered, only while it's on the Wishlist (a
                  pre-order that's out is just a game you own). -->
             @let hltb = coverHltb(game);
             @let clock = !hltb && showsPlaytime(game) ? coverPlaytime(game.hoursPlayed) : '';
-            <!-- Bottom right: the Platinum trophy, under the disc. It steps aside when
-                 HowLongToBeat's times leave it no room (FitsBeside measures). -->
-            @if (game.status === 'completed' && game.completion === 'platinum') {
+            <!-- Bottom right: the Platinum trophy, under the disc; while HowLongToBeat's times
+                 show, it sits in their badge instead, over Completionist. -->
+            @if (!hltb && game.status === 'completed' && game.completion === 'platinum') {
               <span
                 class="absolute right-1.5 bottom-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
                 [class]="dense ? 'size-6' : 'size-7'"
                 aria-label="Platinum"
-                [appFitsBeside]="hltb"
               >
                 <svg lucideTrophy [size]="dense ? 13 : 15" [strokeWidth]="2"></svg>
               </span>
             }
             @if (hltb) {
-              @let row = hltb.mine ? 2 : 1;
+              @let row = hltb.mine || hltb.platinum ? 2 : 1;
               <span
-                class="fit-against num absolute bottom-1.5 left-1.5 grid grid-cols-[repeat(6,auto)] items-center justify-items-center gap-y-0.75 rounded-[5px] bg-black/70 py-0.75 pr-1.5 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="num absolute bottom-1.5 left-1.5 grid grid-cols-[repeat(6,auto)] items-center justify-items-center gap-y-0.75 rounded-[5px] bg-black/70 py-0.75 pr-1.5 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
                 [class]="dense ? 'gap-x-1 pl-1' : 'gap-x-1.25 pl-1.25'"
                 [attr.aria-label]="hltbLabel(hltb)"
               >
-                @if (hltb.mine) {
+                @if (row === 2) {
                   <span
-                    class="row-start-1 text-accent-raised"
+                    class="row-start-1 flex items-center gap-0.5 text-accent-raised"
                     [style.grid-column]="hltb.mineColumn"
                     aria-hidden="true"
-                    >{{ hltb.mine }}</span
                   >
+                    @if (hltb.platinum) {
+                      <svg
+                        lucideTrophy
+                        class="trophy-platinum block shrink-0"
+                        [size]="dense ? 9 : 10"
+                        [strokeWidth]="2.5"
+                      ></svg>
+                    }
+                    {{ hltb.mine }}
+                  </span>
                 }
                 <img
                   src="icons/hltb.png"

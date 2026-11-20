@@ -33,7 +33,6 @@ import { OpenCriticService } from '../../core/opencritic';
 import { remember, remembered } from '../../core/remembered';
 import { Cover } from '../../shared/cover';
 import { EventArt } from '../../shared/event-art';
-import { FitsBeside } from '../../shared/fits-beside';
 import { ScoreRing } from '../../shared/score-ring';
 import { SearchField } from '../../shared/search-field';
 import {
@@ -159,7 +158,6 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     NgTemplateOutlet,
     Cover,
     EventArt,
-    FitsBeside,
     ScoreRing,
     SearchField,
     LucideArrowUpDown,
@@ -428,7 +426,10 @@ export class LibraryPage {
   protected hltbLabel(hltb: CoverHltb): string {
     const [main, extra, all] = hltb.cells;
     const times = `HowLongToBeat: main story ${main}, main plus extra ${extra}, completionist ${all} hours`;
-    return hltb.mine ? `${times}; you played ${hltb.mine} hours` : times;
+    const yours = [hltb.platinum ? 'Platinum' : '', hltb.mine ? `you played ${hltb.mine} hours` : '']
+      .filter(Boolean)
+      .join(', ');
+    return yours ? `${times}; ${yours}` : times;
   }
   /** Time played on a cover: "137h 51m", or at four a row whole hours rounded up ("138h"). */
   protected coverPlaytime(hours: number | null | undefined): string {

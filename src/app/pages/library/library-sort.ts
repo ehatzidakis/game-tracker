@@ -283,7 +283,12 @@ export interface CoverHltb {
   /** Your time played in whole hours ("34"), on covers that show it and have one. */
   mine: string | null;
   /**
-   * The badge's grid column your time sits in, over the time it compares with: 2, 4 or 6 for
+   * A completed game you got the Platinum in: the trophy sits with your time, over
+   * Completionist (it replaces the cover's own trophy badge while the times show).
+   */
+  platinum: boolean;
+  /**
+   * The badge's grid column your time (and trophy) sits in, over the time it compares with: 2, 4 or 6 for
    * Main story, Main + extra or Completionist (between them are the hairlines), or 1, over the
    * logo, without a completion style (a game you're playing, or one shelved).
    */
@@ -293,7 +298,7 @@ export interface CoverHltb {
 /**
  * HowLongToBeat's times for a cover, when it has some: on every tab, except Wishlist games not
  * out yet. Covers that show your time played put it over the matching time instead of in a
- * badge of its own.
+ * badge of its own; a Platinum puts its trophy there too, over Completionist.
  */
 export function coverHltb(game: TrackedGame, today: string): CoverHltb | null {
   if (game.status === 'wishlist' && !isReleased(game, today)) return null;
@@ -301,7 +306,8 @@ export function coverHltb(game: TrackedGame, today: string): CoverHltb | null {
   if (!cells.length) return null;
   const mine = showsPlaytime(game) && game.hoursPlayed ? wholeHours(game.hoursPlayed) : null;
   const cell = game.completion ? COMPLETION_CELL[game.completion] : null;
-  return { cells, mine, mineColumn: cell === null ? 1 : 2 + cell * 2 };
+  const platinum = game.status === 'completed' && game.completion === 'platinum';
+  return { cells, mine, platinum, mineColumn: cell === null ? 1 : 2 + cell * 2 };
 }
 
 /**

@@ -332,8 +332,14 @@ describe('HowLongToBeat on the covers', () => {
   it('puts your time over the time that matches how far you got (a Platinum is Completionist)', () => {
     const done = (completion: TrackedGame['completion']) =>
       coverHltb(game('Done', { status: 'completed', hoursPlayed: 34.4, completion, ...times }), today);
-    expect(done('platinum')).toEqual({ cells: ['12', '24', '31'], mine: '34', mineColumn: 6 });
+    expect(done('platinum')).toEqual({
+      cells: ['12', '24', '31'],
+      mine: '34',
+      platinum: true,
+      mineColumn: 6,
+    });
     expect(done('main_sides')?.mineColumn).toBe(4);
+    expect(done('main_sides')?.platinum).toBe(false);
     expect(done('main')?.mineColumn).toBe(2);
   });
 
@@ -348,6 +354,7 @@ describe('HowLongToBeat on the covers', () => {
     expect(coverHltb(playing, today)).toEqual({
       cells: ['12', '24', '31'],
       mine: '5',
+      platinum: false,
       mineColumn: 1,
     });
   });
@@ -357,6 +364,21 @@ describe('HowLongToBeat on the covers', () => {
     expect(coverHltb(notPlaying, today)?.mine).toBeNull();
     const unplayed = game('Shelved', { status: 'shelved', hoursPlayed: null, ...times });
     expect(coverHltb(unplayed, today)?.mine).toBeNull();
+  });
+
+  it('puts a Platinum’s trophy over Completionist, even without a time of yours', () => {
+    const plat = game('Plat', {
+      status: 'completed',
+      completion: 'platinum',
+      hoursPlayed: null,
+      ...times,
+    });
+    expect(coverHltb(plat, today)).toEqual({
+      cells: ['12', '24', '31'],
+      mine: null,
+      platinum: true,
+      mineColumn: 6,
+    });
   });
 
   it('shows nothing without any time, or on a Wishlist game not out yet', () => {
