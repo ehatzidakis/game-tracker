@@ -1,5 +1,4 @@
 import { eventEnd, type GamingEvent, type TrackedGame } from '../../../../api/_lib/models.js';
-import { addDays } from '../../../../api/_lib/release.js';
 
 /** A row in the Calendar: a game coming out, or a gaming event. */
 export type CalendarItem =
@@ -13,9 +12,6 @@ export interface CalendarGroup {
 }
 
 const MONTH = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-
-/** How long a released game stays at the top under "Just released". */
-export const JUST_RELEASED_DAYS = 7;
 
 /** "YYYY-MM-DD" of a time, in your time zone. */
 export function localDate(ms: number): string {
@@ -90,10 +86,11 @@ const gameItem = (game: TrackedGame): CalendarItem => ({
 });
 
 /**
- * Upcoming games in calendar order: just released, then exact dates by month, then vague dates
+ * Upcoming games in calendar order: exact dates by month (a game stays until the day it comes
+ * out and is gone the day after; it's in the Library all along), then vague dates
  * by year ("Later in 2027"), then TBA. Completed and shelved games are left out.
  * Gaming events join the months on the day they start, each before that day's games, until
- * they're over (they move to the Library's Events tab then). Archived ones are left out.
+ * they're over (the Library's Events tab has them too, and keeps them). Archived ones are left out.
  */
 export function calendarGroups(
   games: readonly TrackedGame[],
@@ -112,15 +109,6 @@ export function calendarGroups(
     if (!group) groups.push((group = { key, title, items: [] }));
     group.items.push(item);
   };
-
-  const since = addDays(today, -JUST_RELEASED_DAYS);
-  const recent = relevant
-    .filter(
-      (g) => g.releasePrecision === 'day' && g.releaseDate! < today && g.releaseDate! >= since,
-    )
-    .sort(byDate)
-    .reverse();
-  for (const g of recent) add('recent', 'Just released', gameItem(g));
 
   // Exact days, games and events together: by day, events first (by time), then games by name.
   const dated: { date: string; order: number; item: CalendarItem }[] = [

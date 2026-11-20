@@ -22,8 +22,8 @@ import {
   type Status,
   type TrackedGame,
 } from '../../../../api/_lib/models.js';
-import { countdown, today } from '../../core/dates';
-import { nextReleaseId } from '../calendar/calendar-groups';
+import { countdown, isReleased, today } from '../../core/dates';
+import { localDate, nextReleaseId } from '../calendar/calendar-groups';
 import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
 import { EventsService } from '../../core/events.service';
@@ -46,22 +46,45 @@ import {
   type CopyFilter,
   DEFAULT_SORT,
   groupByYear,
+  hltbHours,
   LIBRARY_TABS,
   searchLibrary,
+  splitEvents,
   type Sort,
 } from './library-sort';
+import { PinnedTop } from '../../shared/pinned-top';
 import { TabTitle } from '../../shared/tab-title';
 
-/** A sort: its name in the menu, and a shorter one for the pill where the full one is long. */
-const SORTS: { key: Sort; label: string; short?: string }[] = [
+/**
+ * A sort: its name in the menu, a shorter one for the pill where the full one is long, and
+ * where it goes in the A–Z menu when that isn't by its name.
+ */
+interface SortOption {
+  key: Sort;
+  label: string;
+  short?: string;
+  sortAs?: string;
+}
+const SORTS: SortOption[] = [
   { key: 'recent', label: 'Recent' },
   { key: 'name', label: 'Name' },
   { key: 'release', label: 'Release date', short: 'Release' },
   { key: 'critics', label: 'OpenCritic' },
 ];
 const PLAYTIME = { key: 'playtime', label: 'Playtime' } as const;
+/** HowLongToBeat's three times, together in the menu in its own order. */
+const HLTB_SORTS: SortOption[] = [
+  { key: 'hltb-main', label: 'HLTB: Main story', short: 'Main story', sortAs: 'HLTB 1' },
+  { key: 'hltb-extra', label: 'HLTB: Main + extra', short: 'Main + extra', sortAs: 'HLTB 2' },
+  {
+    key: 'hltb-completionist',
+    label: 'HLTB: Completionist',
+    short: 'Completionist',
+    sortAs: 'HLTB 3',
+  },
+];
 /** Extra sorts where they make sense: Completed also by when you finished (its default). */
-const TAB_SORTS: Partial<Record<Status, { key: Sort; label: string; short?: string }[]>> = {
+const TAB_SORTS: Partial<Record<Status, SortOption[]>> = {
   completed: [
     // The pill says just "Date": the Completed tab's toolbar has the most buttons.
     { key: 'completed', label: 'Date completed', short: 'Date' },
@@ -70,12 +93,18 @@ const TAB_SORTS: Partial<Record<Status, { key: Sort; label: string; short?: stri
     ...SORTS,
   ],
   shelved: [...SORTS, PLAYTIME],
+  // Backlog (and the Wishlist's games already out) also by how long HowLongToBeat says each
+  // game takes.
+  backlog: [...SORTS, ...HLTB_SORTS],
+  wishlist: [...SORTS, ...HLTB_SORTS],
 };
 /** A tab's sorts, in the menu A–Z ("Date completed", "Name", "OpenCritic", "Playtime"…). */
-const sortsFor = (tab: Status) =>
-  [...(TAB_SORTS[tab] ?? SORTS)].sort((a, b) => a.label.localeCompare(b.label));
+const sortsFor = (tab: Status): SortOption[] =>
+  [...(TAB_SORTS[tab] ?? SORTS)].sort((a, b) =>
+    (a.sortAs ?? a.label).localeCompare(b.sortAs ?? b.label),
+  );
 
-/** The four game tabs, plus the gaming events that are over. */
+/** The four game tabs, plus the gaming events in your calendar (to come, then over). */
 type Tab = Status | 'events';
 
 const EVENT_DATE = new Intl.DateTimeFormat('en-GB', {
@@ -121,6 +150,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
   selector: 'app-library',
   imports: [
     TabTitle,
+    PinnedTop,
     RouterLink,
     NgTemplateOutlet,
     Cover,
@@ -156,11 +186,16 @@ export class LibraryPage {
     return tab === 'events' ? 'completed' : tab;
   });
 
-  /** Gaming events from your calendar that are over, latest first. */
-  protected readonly pastEvents = computed(() => {
-    const now = Date.now();
-    return this.events.events().filter((e) => !e.archived && eventEnd(e) <= now);
-  });
+  /**
+   * Gaming events in your calendar: the ones to come (or on now), soonest first, which lead
+   * the tab whatever its sort, and the ones that are over.
+   */
+  private readonly splitEvents = computed(() => splitEvents(this.events.events(), Date.now()));
+  protected readonly upcomingEvents = computed(() => this.splitEvents().upcoming);
+  protected readonly pastEvents = computed(() => this.splitEvents().past);
+  protected readonly eventCount = computed(
+    () => this.upcomingEvents().length + this.pastEvents().length,
+  );
   /** "3 Sep 2026" */
   protected eventDate(event: GamingEvent): string {
     return EVENT_DATE.format(event.startsAt);
@@ -181,13 +216,36 @@ export class LibraryPage {
   protected readonly eventSortLabel = computed(
     () => EVENT_SORTS.find((s) => s.key === this.eventSort())?.label ?? '',
   );
-  protected readonly sortedEvents = computed(() =>
+  /** The past events in the chosen order. */
+  private readonly sortedPast = computed(() =>
     sortEvents(this.pastEvents(), this.eventSort(), this.eventReversed()),
   );
-  /** By year: "3 in 2026", that year's events, then the next. Each year folds away. */
-  protected readonly eventGroups = computed(() =>
-    this.eventSort() === 'year' ? eventYearGroups(this.sortedEvents()) : null,
-  );
+  /** Upcoming first (soonest first), then the past ones in the chosen order. */
+  protected readonly sortedEvents = computed(() => [
+    ...this.upcomingEvents(),
+    ...this.sortedPast(),
+  ]);
+  /**
+   * By year: "2 upcoming" first, then "3 in 2026", that year's events, then the next. Each
+   * group folds away.
+   */
+  protected readonly eventGroups = computed(() => {
+    if (this.eventSort() !== 'year') return null;
+    const upcoming = this.upcomingEvents();
+    return [
+      ...(upcoming.length
+        ? [{ key: 'upcoming', title: `${upcoming.length} upcoming`, events: upcoming }]
+        : []),
+      ...eventYearGroups(this.sortedPast()),
+    ];
+  });
+
+  /** On an upcoming event's card, bottom left, as in the Calendar: "9 days", "Tomorrow", "Today". */
+  protected eventBadge(event: GamingEvent): string | null {
+    if (eventEnd(event) <= Date.now()) return null;
+    const left = countdown({ releaseDate: localDate(event.startsAt), releasePrecision: 'day' });
+    return left?.replace(/^in /, '').replace('Out today', 'Today') ?? null;
+  }
 
   /** Under an event's card: the company when sorted by company, else the date. */
   protected eventCaption(event: GamingEvent): string {
@@ -341,6 +399,16 @@ export class LibraryPage {
     const next = this.columns() === '4' ? '3' : '4';
     this.columns.set(next);
     remember('library-columns', next);
+  }
+  /**
+   * HowLongToBeat's times on a cover (Main story, Main + extra, Completionist): Backlog games
+   * you aren't playing, and Wishlist games already out.
+   */
+  protected coverHltb(game: TrackedGame): string[] {
+    const shown =
+      (game.status === 'backlog' && !game.playing) ||
+      (game.status === 'wishlist' && isReleased(game, today()));
+    return shown ? hltbHours(game.hltb) : [];
   }
   /** Time played on a cover: "137h 51m", or at four a row whole hours rounded up ("138h"). */
   protected coverPlaytime(hours: number | null | undefined): string {

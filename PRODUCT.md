@@ -28,7 +28,7 @@ A personal tracker shaped around one player's habits rather than a social catalo
 
 ## Capabilities and Constraints
 
-- Screens: Library (Playing, Backlog, Wishlist, Shelved, Completed), Calendar (just released, by month, later, TBA), Search, Game, Settings.
+- Screens: Library (Playing, Backlog, Wishlist, Shelved, Completed), Calendar (by month, later, TBA; a game leaves the day after it comes out), Search, Game, Settings.
 - Mobile only: no desktop layouts, no sideways scrolling anywhere, no pinch zoom, respect iPhone safe areas.
 - Text inputs at 16px or larger so iOS doesn't zoom on focus.
 - Must stay fast on the phone: nothing heavy or sluggish.

@@ -33,6 +33,7 @@ import { platformIgdbId, platformLabel } from '../../../../api/_lib/platforms.js
 import { LibraryService } from '../../core/library.service';
 import { ToastService } from '../../core/toast.service';
 import { ChoiceSheet } from '../../shared/choice-sheet';
+import { PinnedTop } from '../../shared/pinned-top';
 import { TabTitle } from '../../shared/tab-title';
 
 const MIN_LENGTH = 2;
@@ -62,6 +63,7 @@ const SHOWN_COMPANIES = 4;
   selector: 'app-search',
   imports: [
     TabTitle,
+    PinnedTop,
     RouterLink,
     Cover,
     EventArt,

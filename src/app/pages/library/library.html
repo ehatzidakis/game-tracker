@@ -35,10 +35,10 @@
     </div>
 
     @if (showEvents()) {
-      @if (pastEvents().length) {
+      @if (eventCount()) {
         <div class="mt-3 flex items-center gap-2 text-[15px] leading-5 text-muted">
           <p class="num min-w-0 truncate">
-            {{ pastEvents().length }} {{ pastEvents().length === 1 ? 'event' : 'events' }}
+            {{ eventCount() }} {{ eventCount() === 1 ? 'event' : 'events' }}
           </p>
           <!-- The same pill and reverse button as the game tabs. -->
           <label
@@ -213,10 +213,12 @@
   </div>
 } @else {
   @if (showEvents()) {
-    <!-- Gaming events from your calendar that are over, sorted by air date, company or year. -->
-    @if (pastEvents().length) {
+    <!-- Gaming events in your calendar: the ones to come lead, soonest first, with how long
+         until they start on the card (as in the Calendar); then the ones that are over, sorted by
+         air date, company or year. -->
+    @if (eventCount()) {
       @if (eventGroups(); as groups) {
-        <!-- By year: "3 in 2026", that year's events. Tap a year to fold it. -->
+        <!-- By year: "2 upcoming", then "3 in 2026", that year's events. Tap one to fold it. -->
         @for (group of groups; track group.key) {
           @let open = !isCollapsed(group.key);
           <section [attr.aria-label]="group.title">
@@ -257,9 +259,10 @@
     } @else {
       <div class="mx-auto mt-16 max-w-72 text-center">
         <svg lucideLibraryBig [size]="44" [strokeWidth]="1.5" class="mx-auto text-muted"></svg>
-        <p class="mt-4 text-[20px] leading-6 font-semibold">No past events yet</p>
+        <p class="mt-4 text-[20px] leading-6 font-semibold">No events yet</p>
         <p class="mt-1.5 text-[15px] leading-5 text-muted">
-          Gaming events in your Calendar move here once they’re over. Find events in Search.
+          Gaming events you add to your Calendar show here, and stay once they’re over. Find
+          events in Search.
         </p>
         <a routerLink="/search" class="mt-4 inline-block text-[17px] text-accent active:opacity-60">
           Search events
@@ -364,18 +367,51 @@
                 <svg lucideTrophy [size]="dense ? 13 : 15" [strokeWidth]="2"></svg>
               </span>
             }
-            <!-- Bottom left: time played (or DLC / Pre-ordered, only while it's on the Wishlist:
-                 a pre-order that's out is just a game you own). -->
-            @let clock =
-              game.status === 'completed' || game.status === 'shelved'
-                ? coverPlaytime(game.hoursPlayed)
-                : '';
+            <!-- Bottom left: time played (Completed, Shelved, and Backlog games you're playing),
+                 or on the rest of the Backlog and on Wishlist games already out
+                 HowLongToBeat's logo and its times, Main story,
+                 Main + extra and Completionist, in cells split by hairlines; or DLC /
+                 Pre-ordered, only while it's on the Wishlist (a pre-order that's out is just a
+                 game you own). -->
+            @let played =
+              game.status === 'completed' ||
+              game.status === 'shelved' ||
+              (game.status === 'backlog' && game.playing);
+            @let clock = played ? coverPlaytime(game.hoursPlayed) : '';
+            @let hltb = played ? [] : coverHltb(game);
             @if (clock) {
               <span
                 class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
                 [attr.aria-label]="formatPlaytime(game.hoursPlayed) + ' played'"
               >
                 {{ clock }}
+              </span>
+            } @else if (hltb.length) {
+              <span
+                class="num absolute bottom-1.5 left-1.5 flex items-center rounded-[5px] bg-black/70 py-0.75 pr-1.5 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                [class]="dense ? 'gap-1 pl-1' : 'gap-1.25 pl-1.25'"
+                [attr.aria-label]="
+                  'HowLongToBeat: main story ' +
+                  hltb[0] +
+                  ', main plus extra ' +
+                  hltb[1] +
+                  ', completionist ' +
+                  hltb[2] +
+                  ' hours'
+                "
+              >
+                <img
+                  src="icons/hltb.png"
+                  alt=""
+                  class="shrink-0 rounded-[2px]"
+                  [class]="dense ? 'size-2.5' : 'size-3'"
+                />
+                @for (hours of hltb; track $index) {
+                  @if (!$first) {
+                    <span class="h-2.25 w-px shrink-0 bg-white/30" aria-hidden="true"></span>
+                  }
+                  <span aria-hidden="true">{{ hours }}</span>
+                }
               </span>
             } @else if (isDlc(game)) {
               <span
@@ -412,10 +448,8 @@
                 }
                 @case ('backlog') {
                   @if (game.playing) {
+                    <!-- The time played is on the cover. -->
                     <span class="text-accent">Playing</span>
-                    @if (formatPlaytime(game.hoursPlayed); as played) {
-                      · {{ played }}
-                    }
                   } @else {
                     <span [class.text-accent]="game.igdbId === nextId()">{{
                       countdown(game)
@@ -440,13 +474,24 @@
     @for (event of events; track event.id) {
       <li>
         <a [routerLink]="['/event', event.id]" class="block active:opacity-70">
-          <app-event-art
-            class="aspect-3/4 rounded-md"
-            fit="contain"
-            [logoId]="event.logoId"
-            [kind]="event.kind"
-            [iconSize]="columns() === '4' ? 52 : 72"
-          />
+          <div class="relative">
+            <app-event-art
+              class="aspect-3/4 rounded-md"
+              fit="contain"
+              [logoId]="event.logoId"
+              [kind]="event.kind"
+              [iconSize]="columns() === '4' ? 52 : 72"
+            />
+            <!-- Bottom left, on events still to come: how long until it starts, as in the
+                 Calendar ("9 days", "Tomorrow", "Today"). -->
+            @if (eventBadge(event); as left) {
+              <span
+                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+              >
+                {{ left }}
+              </span>
+            }
+          </div>
           <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
             {{ event.title }}
           </p>

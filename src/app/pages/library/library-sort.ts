@@ -1,5 +1,12 @@
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
-import type { GamingEvent, Status, TrackedGame } from '../../../../api/_lib/models.js';
+import {
+  eventEnd,
+  type GamingEvent,
+  type HltbTimes,
+  type Status,
+  type TrackedGame,
+} from '../../../../api/_lib/models.js';
+import { isReleased } from '../../core/dates';
 import { searchable, titleMatcher } from '../../core/title-search';
 
 /** Which copies a tab shows: everything, only discs, or only downloads. */
@@ -14,7 +21,26 @@ export function matchesCopy(game: TrackedGame, copy: CopyFilter): boolean {
   return true;
 }
 
-export type Sort = 'recent' | 'name' | 'release' | 'completed' | 'rating' | 'playtime' | 'critics';
+export type Sort =
+  | 'recent'
+  | 'name'
+  | 'release'
+  | 'completed'
+  | 'rating'
+  | 'playtime'
+  | 'critics'
+  | HltbSort;
+
+/**
+ * HowLongToBeat's three times as sorts (the Backlog's, and the Wishlist's for games already out):
+ * Main story, Main + extra, Completionist.
+ */
+export type HltbSort = 'hltb-main' | 'hltb-extra' | 'hltb-completionist';
+const HLTB_SORT_KEY: Record<HltbSort, keyof HltbTimes> = {
+  'hltb-main': 'main',
+  'hltb-extra': 'extra',
+  'hltb-completionist': 'completionist',
+};
 
 /** Library tabs, in your order. */
 export const LIBRARY_TABS: readonly Status[] = ['completed', 'wishlist', 'backlog', 'shelved'];
@@ -51,7 +77,9 @@ function byValue<T extends number | string>(
  * no rating, no playtime, no OpenCritic score) stay last either way.
  * - Recent: last changed first. Name: A–Z. Date completed: latest first. Rating: highest first.
  *   Playtime: most played first. Release date: newest first. OpenCritic: highest Top Critic
- *   Average first, from `scores` (by IGDB id).
+ *   Average first, from `scores` (by IGDB id). HowLongToBeat (Main story, Main + extra,
+ *   Completionist): shortest first, so the quick ones lead a backlog. On the Wishlist only games
+ *   already out count (the ones whose cover shows the times); the rest go last.
  * - On the Wishlist, release date means what's coming soonest: upcoming games nearest first, then
  *   games without a date, then ones already out (newest first). Reversed, that whole order flips.
  */
@@ -74,6 +102,13 @@ export function compareBy(
       return byValue((g) => g.rating, dir);
     case 'playtime':
       return byValue((g) => g.hoursPlayed || null, dir);
+    case 'hltb-main':
+    case 'hltb-extra':
+    case 'hltb-completionist': {
+      const key = HLTB_SORT_KEY[sort];
+      const counts = (g: TrackedGame) => tab !== 'wishlist' || isReleased(g, today);
+      return byValue((g) => (counts(g) ? g.hltb?.[key] || null : null), reversed ? 1 : -1);
+    }
     case 'release':
       if (tab === 'wishlist') {
         const rank = (g: TrackedGame) => (!g.releaseDate ? 1 : g.releaseDate >= today ? 0 : 2);
@@ -212,4 +247,31 @@ export function eventYearGroups(
   }
   for (const g of groups) g.title = `${g.events.length} in ${g.key}`;
   return groups;
+}
+
+/**
+ * A backlog cover's HowLongToBeat badge: Main story, Main + extra and Completionist in whole
+ * hours (["12", "20", "45"]), "–" for a time not typed in, under an hour as "<1". Empty without
+ * any time.
+ */
+export function hltbHours(times: HltbTimes | null | undefined): string[] {
+  if (!times || (!times.main && !times.extra && !times.completionist)) return [];
+  const hours = (h: number | null) => (!h ? '–' : h < 0.5 ? '<1' : String(Math.round(h)));
+  return [times.main, times.extra, times.completionist].map(hours);
+}
+
+/**
+ * The Library's Events tab: the events in your calendar still to come (or on now), soonest
+ * first, which lead the tab whatever its sort, and the ones that are over. Archived ones are
+ * left out of both.
+ */
+export function splitEvents(
+  events: readonly GamingEvent[],
+  now: number,
+): { upcoming: GamingEvent[]; past: GamingEvent[] } {
+  const shown = events.filter((e) => !e.archived);
+  return {
+    upcoming: shown.filter((e) => eventEnd(e) > now).sort((a, b) => a.startsAt - b.startsAt),
+    past: shown.filter((e) => eventEnd(e) <= now),
+  };
 }

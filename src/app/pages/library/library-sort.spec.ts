@@ -7,9 +7,11 @@ import {
   COPY_TABS,
   DEFAULT_SORT,
   groupByYear,
+  hltbHours,
   LIBRARY_TABS,
   matchesCopy,
   searchLibrary,
+  splitEvents,
 } from './library-sort';
 
 const game = (name: string, extra: Partial<TrackedGame>) => ({ name, ...extra }) as TrackedGame;
@@ -254,5 +256,94 @@ describe('sorting past events', () => {
       ['2 in 2025', ['b', 'd']],
     ]);
     expect(EVENT_SORTS.map((s) => s.label)).toEqual(['Air date', 'Company', 'Year']);
+  });
+});
+
+describe('HowLongToBeat on the Backlog', () => {
+  const hltb = (main: number | null, extra: number | null, completionist: number | null) => ({
+    hltb: { main, extra, completionist },
+  });
+  const games = [
+    game('Long', hltb(40, 60, 120)),
+    game('None', {}),
+    game('Short', hltb(5, 8, 15)),
+    game('No extra', hltb(10, null, 30)),
+  ];
+
+  it('sorts by each of its times, shortest first, games without that time last', () => {
+    expect(names([...games].sort(compareBy('hltb-main', 'backlog', today)))).toEqual([
+      'Short',
+      'No extra',
+      'Long',
+      'None',
+    ]);
+    expect(names([...games].sort(compareBy('hltb-extra', 'backlog', today)))).toEqual([
+      'Short',
+      'Long',
+      'No extra',
+      'None',
+    ]);
+    expect(names([...games].sort(compareBy('hltb-completionist', 'backlog', today)))).toEqual([
+      'Short',
+      'No extra',
+      'Long',
+      'None',
+    ]);
+  });
+
+  it('reversed, longest first, still with games without that time last', () => {
+    expect(names([...games].sort(compareBy('hltb-main', 'backlog', today, true)))).toEqual([
+      'Long',
+      'No extra',
+      'Short',
+      'None',
+    ]);
+  });
+
+  it('on the Wishlist counts only games already out, the rest last', () => {
+    const wishlist = [
+      game('Coming', { releaseDate: '2027-03-01', ...hltb(2, 3, 4) }),
+      game('Out long', { releaseDate: '2025-01-10', ...hltb(30, 40, 50) }),
+      game('Out short', { releaseDate: '2026-11-08', ...hltb(6, 9, 12) }),
+      game('Out, no times', { releaseDate: '2026-02-01' }),
+    ];
+    expect(names([...wishlist].sort(compareBy('hltb-main', 'wishlist', today)))).toEqual([
+      'Out short',
+      'Out long',
+      'Coming',
+      'Out, no times',
+    ]);
+  });
+
+  it('shows the three times in whole hours on the cover, "–" for one not typed in', () => {
+    expect(hltbHours({ main: 23.5, extra: 40.2, completionist: 80 })).toEqual(['24', '40', '80']);
+    expect(hltbHours({ main: 12, extra: null, completionist: 45 })).toEqual(['12', '–', '45']);
+    expect(hltbHours({ main: 0.25, extra: 1, completionist: null })).toEqual(['<1', '1', '–']);
+    expect(hltbHours({ main: null, extra: null, completionist: null })).toEqual([]);
+    expect(hltbHours(null)).toEqual([]);
+    expect(hltbHours(undefined)).toEqual([]);
+  });
+});
+
+describe('the Events tab', () => {
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const hour = 3_600_000;
+  const event = (title: string, startsAt: number, extra: Partial<GamingEvent> = {}) =>
+    ({ id: title, title, startsAt, durationMinutes: 60, ...extra }) as GamingEvent;
+
+  it('splits the events into the ones to come, soonest first, and the ones that are over', () => {
+    const { upcoming, past } = splitEvents(
+      [
+        event('Over', now - 48 * hour),
+        event('Later', now + 300 * hour),
+        event('On now', now - 0.5 * hour),
+        event('Soon', now + 20 * hour),
+        event('Archived', now + 10 * hour, { archived: true }),
+        event('Archived past', now - 10 * hour, { archived: true }),
+      ],
+      now,
+    );
+    expect(upcoming.map((e) => e.title)).toEqual(['On now', 'Soon', 'Later']);
+    expect(past.map((e) => e.title)).toEqual(['Over']);
   });
 });

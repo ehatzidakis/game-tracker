@@ -284,6 +284,9 @@ dialog.sheet[open]::backdrop {
 :root {
   --tab-bar-bottom: max(calc(env(safe-area-inset-bottom) - 14px), 12px);
   --tab-bar-space: calc(62px + var(--tab-bar-bottom));
+  /* Where a tab screen's first line starts: just under the status bar, like a native app's,
+     with the large title's letters clear of the 12px iOS 27 strip (app.ts). */
+  --tab-top: calc(4px + env(safe-area-inset-top));
 }
 /* Trophy grades on a game's page. Light enough to read on black (4.5:1 or more). */
 .trophy-bronze {
@@ -380,18 +383,37 @@ dialog.sheet[open]::backdrop {
 
 /*
  * A tab screen's top (title, search, toolbar) stays at the top of the screen while the rest
- * scrolls under it. It reaches up over <main>'s top padding and out to its side padding, so it
- * sits exactly where it would anyway; once the page scrolls (main.is-scrolled), the content fades
- * out under it, with no hard edge (like the top bar on back screens).
+ * scrolls under it. It is fixed over the scrolling area, the app frame's width, rather than part
+ * of it, so pulling down at the top rubber-bands only the list, under it (shared/pinned-top.ts
+ * gives <main> its height so the list starts below it). Once the page scrolls (main.is-scrolled),
+ * the content fades out under it, with no hard edge (like the top bar on back screens). Like
+ * YouTube's, it slides away as you scroll down and slides back as soon as you scroll up
+ * (main.top-hidden, set by the shell).
  */
 .pinned-top {
-  position: sticky;
-  /* Sticky offsets count from <main>'s padding edge: minus that padding is its very top. */
-  top: calc(-12px - env(safe-area-inset-top));
+  position: fixed;
+  top: 0;
+  inset-inline: 0;
+  margin-inline: auto;
+  /* The app frame's width (max-w-md in shell.html). */
+  max-width: 28rem;
   z-index: 10;
-  margin: calc(-12px - env(safe-area-inset-top)) -1rem -0.5rem;
-  padding: calc(12px + env(safe-area-inset-top)) 1rem 0.5rem;
+  padding: var(--tab-top) 1rem 0.5rem;
   background: var(--color-ground);
+  transition: transform 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+.top-hidden .pinned-top {
+  transform: translateY(-100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pinned-top {
+    transition: none;
+  }
+}
+/* While a tab screen's top is away: solid over the iOS 27 strip, then fading into the page. */
+.tab-top-fade {
+  height: calc(12px + env(safe-area-inset-top) + 1rem);
+  background: linear-gradient(var(--color-ground) calc(100% - 1rem), rgb(0 0 0 / 0));
 }
 .pinned-top::after {
   content: '';

@@ -17,12 +17,14 @@ import { PsnAddAll } from '../../core/psn-add-all.service';
 import { PsnService } from '../../core/psn.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
+import { PinnedTop } from '../../shared/pinned-top';
 import { TabTitle } from '../../shared/tab-title';
 
 @Component({
   selector: 'app-settings',
   imports: [
     TabTitle,
+    PinnedTop,
     RouterLink,
     LucideCalendarPlus,
     LucideChevronRight,

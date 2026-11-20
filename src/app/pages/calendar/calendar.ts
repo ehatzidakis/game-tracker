@@ -26,6 +26,7 @@ import {
   vagueDateWithYear,
   type CalendarItem,
 } from './calendar-groups';
+import { PinnedTop } from '../../shared/pinned-top';
 import { TabTitle } from '../../shared/tab-title';
 
 const WEEKDAY_DAY = new Intl.DateTimeFormat('en-GB', {
@@ -57,6 +58,7 @@ const MONTH_ONLY = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: '
   selector: 'app-calendar',
   imports: [
     TabTitle,
+    PinnedTop,
     RouterLink,
     Cover,
     EventArt,
@@ -131,8 +133,8 @@ export class CalendarPage {
     countdown(game, this.today);
 
   /**
-   * "Thu 19": the month is in the section header. "Just released" has no month header, so it
-   * gets "Thu 29 Oct".
+   * "Thu 19": the month is in the section header. With `withMonth`, "Thu 29 Oct" (for a row
+   * without a month header).
    */
   protected shortDate(date: string, withMonth: boolean): string {
     const format = withMonth ? WEEKDAY_DAY_MONTH : WEEKDAY_DAY;
