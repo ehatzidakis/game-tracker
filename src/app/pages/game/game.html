@@ -1,5 +1,5 @@
-<!-- DLC and expansions of a main game: right under your progress (Completed on), so they're
-     easy to reach. -->
+<!-- DLC and expansions of a main game: first under the "IGDB data" title, so they're easy
+     to reach. -->
 <ng-template #dlcList>
   @if (!isDlcPage() && dlcs().length) {
     <section aria-label="DLC and expansions">
@@ -33,34 +33,18 @@
       [eager]="true"
     />
     <div class="min-w-0 flex-1 pb-0.5">
-      <!-- The name, and at the far right on its first line, the pencil for "Edit my data". -->
-      <div class="flex items-start gap-2">
-        @if (name()) {
-          <h1
-            class="min-w-0 flex-1 text-[24px] leading-7.25 font-bold tracking-[0.005em] text-balance"
-          >
-            {{ name() }}
-            @if (platinum()) {
-              <span class="ml-1 inline-flex align-[-2px] text-accent" aria-label="Platinum">
-                <svg lucideTrophy [size]="22" [strokeWidth]="2.25"></svg>
-              </span>
-            }
-          </h1>
-        } @else {
-          <div class="h-7 w-40 animate-pulse rounded-md bg-raised"></div>
-        }
-        @if (tracked() && !isDlcPage()) {
-          <!-- 44px to tap; the negative margins keep it to the title's line. -->
-          <button
-            type="button"
-            class="my-[-7.5px] -mr-3 ml-auto grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
-            aria-label="Edit my data"
-            (click)="editMyData()"
-          >
-            <svg lucidePencil [size]="20" [strokeWidth]="2.25"></svg>
-          </button>
-        }
-      </div>
+      @if (name()) {
+        <h1 class="text-[24px] leading-7.25 font-bold tracking-[0.005em] text-balance">
+          {{ name() }}
+          @if (platinum()) {
+            <span class="ml-1 inline-flex align-[-2px] text-accent" aria-label="Platinum">
+              <svg lucideTrophy [size]="22" [strokeWidth]="2.25"></svg>
+            </span>
+          }
+        </h1>
+      } @else {
+        <div class="h-7 w-40 animate-pulse rounded-md bg-raised"></div>
+      }
       <!-- The release date between the name and its makers; the header grows upwards, so the
            name rises and Developer · Publisher stay level with the cover's foot. -->
       @if (release().label) {
@@ -121,8 +105,22 @@
   <!-- What matters at a glance, in cards with room to breathe, filling the first screen (Shown
        at and the rest are a scroll away): your progress, your trophies, the scores (critics,
        players, yours) with HowLongToBeat, and your purchase. Big values, small captions; only
-       what there is. Edited from the pencil by the name. -->
-  <div class="mt-5 flex flex-col gap-2.5">
+       what there is. Edited from the pencil by the "My data" title. -->
+  @if (tracked() && !isDlcPage()) {
+    <div class="mt-6 flex items-center gap-3">
+      <h2 class="min-w-0 flex-1 text-[20px] leading-6 font-semibold">My data</h2>
+      <!-- 44px to tap; the negative margins keep it to the title's line. -->
+      <button
+        type="button"
+        class="-my-2.5 -mr-3 grid size-11 shrink-0 place-items-center text-accent active:opacity-60"
+        aria-label="Edit my data"
+        (click)="editMyData()"
+      >
+        <svg lucidePencil [size]="20" [strokeWidth]="2.25"></svg>
+      </button>
+    </div>
+  }
+  <div class="flex flex-col gap-2.5" [class]="tracked() && !isDlcPage() ? 'mt-3' : 'mt-5'">
     @if (!isDlcPage() && progress().length) {
       <section class="grouped px-4 py-3" aria-label="Progress">
         <div class="grid grid-cols-3 gap-3">
@@ -425,8 +423,6 @@
         <p class="group-footer">Up to {{ maxPlaying }} at a time. They lead your Backlog.</p>
       }
 
-      <ng-container [ngTemplateOutlet]="dlcList" />
-
       <!-- Before release: the pre-order switch (any status, usually Wishlist) and the release
            alert. What you paid, hours and dates are under "Edit my data" at the top. -->
       @if (!released()) {
@@ -475,8 +471,24 @@
       <svg lucidePlus [size]="20" [strokeWidth]="2.5"></svg>
       Add to Library
     </button>
-    <ng-container [ngTemplateOutlet]="dlcList" />
   }
+
+  <!-- What IGDB knows about the game, under its own title; your platform and notes stay at
+       the foot of the page. -->
+  @let dlcShown = !isDlcPage() && dlcs().length > 0;
+  @let seriesShown = !isDlcPage() && !!series();
+  @if (
+    dlcShown ||
+    shownAt().length ||
+    seriesShown ||
+    screenshots().length ||
+    videos().length ||
+    facts().length ||
+    links().length
+  ) {
+    <h2 class="mt-8 text-[20px] leading-6 font-semibold">IGDB data</h2>
+  }
+  <ng-container [ngTemplateOutlet]="dlcList" />
 
   @if (shownAt().length) {
     <section aria-label="Shown at">
