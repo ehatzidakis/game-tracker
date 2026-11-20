@@ -348,6 +348,19 @@ dialog.sheet[open]::backdrop {
   transition: transform 150ms ease;
 }
 
+/*
+ * The small dark badges on covers (score, HLTB, physical copy, release date). They're 70–75%
+ * black already, so a light blur under them only softens the art a little. It's kept on iPhone,
+ * which draws it cheaply. Elsewhere it's left off: Android redraws every blurred badge on every
+ * scrolled frame, and a screen of covers holds dozens of them, which made scrolling stutter.
+ */
+@supports (-webkit-touch-callout: none) {
+  .badge-glass {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+}
+
 /* Behind the top bar once scrolled: dark at the top, fading (and un-blurring) into the page. */
 .top-fade {
   /* From the page's own colour, so it matches whichever background is chosen. */

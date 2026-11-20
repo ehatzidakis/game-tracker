@@ -60,7 +60,7 @@
                 <app-cover [coverId]="game.coverId" [name]="game.name">
                   @if (tracked) {
                     <span
-                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
                     >
                       {{ trackedLabel(tracked) }}
                     </span>
@@ -89,7 +89,7 @@
                 <app-event-art class="aspect-video rounded-lg" [logoId]="event.logoId">
                   @if (events.byId().has(eventDocId(event.id))) {
                     <span
-                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                      class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
                     >
                       In Calendar
                     </span>

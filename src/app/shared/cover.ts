@@ -11,6 +11,7 @@ import { coverUrl, type ImageSize } from '../core/igdb';
         [src]="url"
         alt=""
         [attr.loading]="eager() ? null : 'lazy'"
+        decoding="async"
         class="size-full object-cover"
       />
     } @else {

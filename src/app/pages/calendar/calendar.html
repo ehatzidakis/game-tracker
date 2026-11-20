@@ -110,7 +110,7 @@
                 />
                 @if (eventBadge(item.date); as left) {
                   <span
-                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
                     aria-hidden="true"
                     >{{ left }}</span
                   >
@@ -148,7 +148,7 @@
               >
                 @if (game.preordered) {
                   <span
-                    class="absolute top-1.5 left-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                    class="absolute top-1.5 left-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
                     [class]="dense ? 'size-6' : 'size-7'"
                     aria-hidden="true"
                   >
@@ -157,7 +157,7 @@
                 }
                 @if (game.notify) {
                   <span
-                    class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                    class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
                     [class]="dense ? 'size-6' : 'size-7'"
                     aria-hidden="true"
                   >
@@ -166,7 +166,7 @@
                 }
                 @if (countdown(game); as c) {
                   <span
-                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                    class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
                     [class.text-accent]="game.igdbId === nextId()"
                     aria-hidden="true"
                     >{{ badge(c) }}</span

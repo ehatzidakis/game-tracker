@@ -1,4 +1,5 @@
 import {
+  afterNextRender,
   Component,
   computed,
   DestroyRef,
@@ -84,14 +85,15 @@ export class Shell {
   protected readonly activeTab = computed(() =>
     this.tabs.findIndex((t) => this.url() === t.path || this.url().startsWith(t.path + '?')),
   );
-  private readonly scrollTop = signal(0);
-  /** Past the large title (or the artwork): the bar turns solid and shows the small title. */
-  protected readonly titleShown = computed(
-    () => this.scrollTop() > (this.route().hero ? TITLE_AFTER_HERO : TITLE_AFTER),
-  );
+  /**
+   * Past the large title (or the artwork): the bar turns solid and shows the small title.
+   * The scroll position itself is never a signal: the screen is only re-checked when one of these
+   * flips, not on every scrolled frame (which made long lists stutter on Android).
+   */
+  protected readonly titleShown = signal(false);
   protected readonly scrolled = this.titleShown;
   /** Not scrolled at all: a tab's pinned top shows no fade under it. */
-  protected readonly atTop = computed(() => this.scrollTop() <= 0);
+  protected readonly atTop = signal(true);
   /** A tab screen's top slid away: scrolling down hides it, scrolling up brings it back. */
   protected readonly topHidden = signal(false);
   private lastTop = 0;
@@ -128,13 +130,29 @@ export class Shell {
         }
       }
     });
-    inject(DestroyRef).onDestroy(() => sub.unsubscribe());
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => sub.unsubscribe());
+
+    // A plain passive listener rather than a template (scroll) binding: a template listener runs
+    // change detection for the whole app on every scroll event.
+    afterNextRender(() => {
+      const scroller = this.scroller().nativeElement;
+      const onScroll = () => this.onScroll();
+      scroller.addEventListener('scroll', onScroll, { passive: true });
+      destroyRef.onDestroy(() => scroller.removeEventListener('scroll', onScroll));
+    });
   }
 
-  protected onScroll(): void {
+  /** Sets the signals that depend on where the page is (each only notifies when it changes). */
+  private showPosition(top: number): void {
+    this.titleShown.set(top > (this.route().hero ? TITLE_AFTER_HERO : TITLE_AFTER));
+    this.atTop.set(top <= 0);
+  }
+
+  private onScroll(): void {
     const scroller = this.scroller().nativeElement;
     const top = scroller.scrollTop;
-    this.scrollTop.set(top);
+    this.showPosition(top);
     if (top <= 0) {
       // At the very top (or pulled past it): the top is always there.
       this.lastTop = 0;
@@ -164,7 +182,7 @@ export class Shell {
   /** A new page, or one restored by Back: its top shows, and scrolling counts from here. */
   private resetScroll(): void {
     const top = this.scroller().nativeElement.scrollTop;
-    this.scrollTop.set(top);
+    this.showPosition(top);
     this.lastTop = top;
     this.travel = 0;
     this.topHidden.set(false);

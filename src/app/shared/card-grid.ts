@@ -135,7 +135,7 @@ export function gameMarks(game: TrackedGame | undefined): Pick<GridCard, 'status
               <app-cover [coverId]="card.coverId" [name]="card.name" [class.dimmed]="card.dim">
                 @if (card.platinum) {
                   <span
-                    class="absolute right-1 bottom-1 grid size-5 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                    class="absolute right-1 bottom-1 grid size-5 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
                     aria-hidden="true"
                   >
                     <svg lucideTrophy [size]="11" [strokeWidth]="2.25"></svg>

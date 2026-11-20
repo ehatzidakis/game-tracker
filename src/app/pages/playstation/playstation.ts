@@ -70,7 +70,7 @@ function played(seconds: number): string {
                 <app-cover class="w-10 shrink-0 rounded-[5px]!" [coverId]="coverOf(g)" [name]="''">
                   @if (g.platinumEarned) {
                     <span
-                      class="absolute right-0.5 bottom-0.5 grid size-4 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                      class="absolute right-0.5 bottom-0.5 grid size-4 place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
                     >
                       <svg lucideTrophy [size]="9" [strokeWidth]="2.5" aria-hidden="true"></svg>
                       <span class="sr-only">Platinum</span>

@@ -66,7 +66,6 @@
             ? 'calc(68px + env(safe-area-inset-top))'
             : 'max(0px, calc(var(--pinned-h, 0px) - 0.5rem))'
       "
-      (scroll)="onScroll()"
     >
       <router-outlet />
       <!-- Room to scroll the last item above the floating tab bar. A real element rather than

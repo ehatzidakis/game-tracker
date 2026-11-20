@@ -359,7 +359,7 @@
           >
             @if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
               <span
-                class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
                 [class]="dense ? 'size-6' : 'size-7'"
                 aria-label="Physical copy"
               >
@@ -388,7 +388,7 @@
                  show, it sits in their badge instead, over Completionist. -->
             @if (!hltb && game.status === 'completed' && game.completion === 'platinum') {
               <span
-                class="absolute right-1.5 bottom-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 backdrop-blur-sm"
+                class="absolute right-1.5 bottom-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
                 [class]="dense ? 'size-6' : 'size-7'"
                 aria-label="Platinum"
               >
@@ -398,7 +398,7 @@
             @if (hltb) {
               @let row = hltb.mine || hltb.platinum ? 2 : 1;
               <span
-                class="num absolute bottom-1.5 left-1.5 grid grid-cols-[repeat(6,auto)] items-center justify-items-center gap-y-0.75 rounded-[5px] bg-black/70 py-0.75 pr-1.5 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="num absolute bottom-1.5 left-1.5 grid grid-cols-[repeat(6,auto)] items-center justify-items-center gap-y-0.75 rounded-[5px] bg-black/70 py-0.75 pr-1.5 text-[11px] leading-none font-semibold tracking-normal badge-glass"
                 [class]="dense ? 'gap-x-1 pl-1' : 'gap-x-1.25 pl-1.25'"
                 [attr.aria-label]="hltbLabel(hltb)"
               >
@@ -445,20 +445,20 @@
               </span>
             } @else if (clock) {
               <span
-                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
                 [attr.aria-label]="formatPlaytime(game.hoursPlayed) + ' played'"
               >
                 {{ clock }}
               </span>
             } @else if (isDlc(game)) {
               <span
-                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
               >
                 {{ game.preordered && game.status === 'wishlist' ? 'DLC · Pre-ordered' : 'DLC' }}
               </span>
             } @else if (game.preordered && game.status === 'wishlist' && countdown(game) !== null) {
               <span
-                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
               >
                 Pre-ordered
               </span>
@@ -523,7 +523,7 @@
                  Calendar ("9 days", "Tomorrow", "Today"). -->
             @if (eventBadge(event); as left) {
               <span
-                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal backdrop-blur-sm"
+                class="num absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/70 px-1.5 py-0.75 text-[11px] leading-none font-semibold tracking-normal badge-glass"
               >
                 {{ left }}
               </span>

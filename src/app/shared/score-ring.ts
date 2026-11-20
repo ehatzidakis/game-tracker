@@ -29,7 +29,7 @@ export function scoreColor(score: number): string {
   selector: 'app-score-ring',
   host: {
     class:
-      'relative grid shrink-0 place-items-center rounded-full bg-black/75 text-white backdrop-blur-sm',
+      'relative grid shrink-0 place-items-center rounded-full bg-black/75 text-white badge-glass',
     role: 'img',
     '[style.width.px]': 'size()',
     '[style.height.px]': 'size()',
