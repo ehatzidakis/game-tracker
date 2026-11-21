@@ -19,12 +19,16 @@ import { PsnService } from '../../core/psn.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
 import { GROUNDS, GroundService } from '../../core/ground';
+import { subscribeUrl } from '../../core/calendar-link';
+import { isAndroid } from '../../core/platform';
 import { PinnedTop } from '../../shared/pinned-top';
+import { SheetPicker } from '../../shared/sheet-picker';
 import { TabTitle } from '../../shared/tab-title';
 
 @Component({
   selector: 'app-settings',
   imports: [
+    SheetPicker,
     TabTitle,
     PinnedTop,
     RouterLink,
@@ -138,9 +142,16 @@ export class SettingsPage {
     const key = this.library.settings().calendarKey;
     return key ? `${location.origin}/api/calendar.ics?key=${key}` : null;
   });
-  protected readonly webcalUrl = computed(
-    () => this.calendarUrl()?.replace(/^https?:/, 'webcal:') ?? null,
-  );
+  /**
+   * Where "Add to Calendar" goes. iPhone opens webcal: links in its Calendar app, which asks to
+   * subscribe. Android has nothing that opens them (the button did nothing), so there it opens
+   * Google Calendar's "add this calendar" page, which then syncs to the phone's Calendar app.
+   */
+  protected readonly onAndroid = isAndroid();
+  protected readonly addCalendarUrl = computed(() => {
+    const url = this.calendarUrl();
+    return url ? subscribeUrl(url, this.onAndroid) : null;
+  });
 
   protected async togglePush(): Promise<void> {
     try {
@@ -190,10 +201,12 @@ export class SettingsPage {
     return days === 1 ? '1 day before' : `${days} days before`;
   }
 
-  /** Makes your calendar link if needed and opens the iPhone's "Subscribe to calendar" prompt. */
+  /** Makes your calendar link if needed and opens the calendar's "Subscribe" prompt. */
   protected subscribe(): void {
     const key = this.library.calendarKey();
-    location.href = `webcal://${location.host}/api/calendar.ics?key=${key}`;
+    const url = subscribeUrl(`${location.origin}/api/calendar.ics?key=${key}`, this.onAndroid);
+    if (this.onAndroid) window.open(url, '_blank');
+    else location.href = url;
   }
 
   protected async copyCalendarLink(): Promise<void> {

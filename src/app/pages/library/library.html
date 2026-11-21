@@ -49,6 +49,7 @@
             <svg lucideChevronDown [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
             <!-- 16px or more so iOS doesn't zoom in when it opens. -->
             <select
+              sheetPicker
               class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
               (change)="setEventSort($event)"
             >
@@ -104,6 +105,7 @@
           <svg lucideChevronDown [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
           <!-- 16px or more so iOS doesn't zoom in when it opens. -->
           <select
+            sheetPicker
             class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
             (change)="setSort($event)"
           >
@@ -162,6 +164,7 @@
             }
             <!-- 16px or more so iOS doesn't zoom in when it opens. -->
             <select
+              sheetPicker
               class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
               (change)="setCopy($event)"
             >

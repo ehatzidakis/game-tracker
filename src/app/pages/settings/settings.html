@@ -47,6 +47,7 @@
       <span class="relative flex items-center text-muted">
         <!-- 16px or more so iOS doesn't zoom in when it opens. -->
         <select
+          sheetPicker
           class="appearance-none bg-transparent pr-5 text-right text-[17px] outline-none"
           (change)="setDays($event)"
         >
@@ -147,9 +148,14 @@
   @if (calendarUrl(); as url) {
     <div class="grouped" style="--sep-inset: 52px">
       <p class="row text-[13px] leading-4.5 break-all text-muted select-all">{{ url }}</p>
-      <a [href]="webcalUrl()" class="row text-accent">
+      <a
+        [href]="addCalendarUrl()"
+        [attr.target]="onAndroid ? '_blank' : null"
+        rel="noopener"
+        class="row text-accent"
+      >
         <svg lucideCalendarPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
-        Add to Calendar app
+        {{ onAndroid ? 'Add to Google Calendar' : 'Add to Calendar app' }}
       </a>
       <button type="button" class="row text-accent" (click)="copyCalendarLink()">
         <svg lucideCopy [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
@@ -161,18 +167,24 @@
       </button>
     </div>
     <p class="group-footer">
-      Your calendar app checks this link for changes, so delays show up on their own. Anyone with
-      the link can see your upcoming games, so make a new one if it leaks.
+      Your calendar app checks this link for changes, so delays show up on their own{{
+        onAndroid ? ' (Google Calendar can take up to a day)' : ''
+      }}. Anyone with the link can see your upcoming games, so make a new one if it leaks.
     </p>
   } @else {
     <div class="grouped">
       <button type="button" class="row text-accent" (click)="subscribe()">
         <svg lucideCalendarPlus [size]="22" [strokeWidth]="1.75" class="shrink-0"></svg>
-        Add to Calendar app
+        {{ onAndroid ? 'Add to Google Calendar' : 'Add to Calendar app' }}
       </button>
     </div>
     <p class="group-footer">
-      Puts your upcoming games in the iPhone Calendar (or Google Calendar) and keeps it updated.
+      @if (onAndroid) {
+        Puts your upcoming games in Google Calendar and keeps it updated. It opens Google Calendar
+        in the browser to add it; it then shows in the Calendar app on this phone.
+      } @else {
+        Puts your upcoming games in the iPhone Calendar (or Google Calendar) and keeps it updated.
+      }
     </p>
   }
 </section>

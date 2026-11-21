@@ -56,6 +56,7 @@ import {
   type Sort,
 } from './library-sort';
 import { PinnedTop } from '../../shared/pinned-top';
+import { SheetPicker } from '../../shared/sheet-picker';
 import { TabTitle } from '../../shared/tab-title';
 
 /**
@@ -152,6 +153,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
 @Component({
   selector: 'app-library',
   imports: [
+    SheetPicker,
     TabTitle,
     PinnedTop,
     RouterLink,

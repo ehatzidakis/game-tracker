@@ -156,6 +156,10 @@
     height: 0.5px;
     background: var(--color-sep);
   }
+  /* A section heading in a picker sheet has its own line above; none between it and its rows. */
+  .grouped > .group-scroll > .sheet-group-title + .row::before {
+    display: none;
+  }
   .row {
     position: relative;
     display: flex;

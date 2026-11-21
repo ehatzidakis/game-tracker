@@ -8,6 +8,7 @@ import {
   type TrackedGame,
 } from '../../../api/_lib/models.js';
 import { moreCount } from '../core/show-more';
+import { SheetPicker } from './sheet-picker';
 import { Cover } from './cover';
 import { EventArt } from './event-art';
 
@@ -71,7 +72,7 @@ export function gameMarks(game: TrackedGame | undefined): Pick<GridCard, 'status
  */
 @Component({
   selector: 'app-card-grid',
-  imports: [RouterLink, Cover, EventArt, LucideChevronDown, LucideTrophy],
+  imports: [RouterLink, SheetPicker, Cover, EventArt, LucideChevronDown, LucideTrophy],
   host: { class: 'block' },
   template: `
     <div class="mt-6 flex min-h-8 items-center gap-2">
@@ -92,6 +93,7 @@ export function gameMarks(game: TrackedGame | undefined): Pick<GridCard, 'status
           <svg lucideChevronDown [size]="16" [strokeWidth]="2.5" aria-hidden="true"></svg>
           <!-- 16px or more so iOS doesn't zoom in when it opens. -->
           <select
+            sheetPicker
             class="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full text-base opacity-0"
             (change)="setFilter($event)"
           >

@@ -7,12 +7,15 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { LucideCheck } from '@lucide/angular';
 import { COMPLETIONS, STATUSES, type Completion, type Status } from '../../../api/_lib/models.js';
 
 export interface Choice<T extends string> {
   key: T;
   label: string;
   hint?: string;
+  /** A heading over this choice and the ones after it with the same group (a picker's sections). */
+  group?: string;
 }
 
 interface ChoiceRequest {
@@ -22,6 +25,8 @@ interface ChoiceRequest {
   message?: string;
   choices: readonly Choice<string>[];
   suggested: string | null;
+  /** The one chosen now, ticked (a picker standing in for a <select>). */
+  current?: string | null;
   resolve: (key: string | null) => void;
 }
 
@@ -43,6 +48,24 @@ export class ChoiceSheet {
         message,
         choices,
         suggested,
+        resolve: resolve as (key: string | null) => void,
+      }),
+    );
+  }
+
+  /** A list to pick from, the current choice ticked: what a <select> opens off iPhone. */
+  pick<T extends string>(
+    title: string,
+    choices: readonly Choice<T>[],
+    current: T | null,
+  ): Promise<T | null> {
+    this.request()?.resolve(null);
+    return new Promise<T | null>((resolve) =>
+      this.request.set({
+        heading: [title, '', ''],
+        choices,
+        suggested: null,
+        current,
         resolve: resolve as (key: string | null) => void,
       }),
     );
@@ -73,6 +96,7 @@ export class ChoiceSheet {
 /** Rendered once, in the shell. */
 @Component({
   selector: 'app-choice-sheet',
+  imports: [LucideCheck],
   template: `
     <dialog
       #dialog
@@ -99,7 +123,14 @@ export class ChoiceSheet {
             }
             <!-- Long lists (your gaming events) scroll inside the sheet. -->
             <div class="group-scroll max-h-[60dvh] overflow-y-auto overscroll-contain">
-              @for (c of req.choices; track c.key) {
+              @for (c of req.choices; track c.key; let i = $index) {
+                @if (c.group && c.group !== req.choices[i - 1]?.group) {
+                  <p
+                    class="sheet-group-title border-t-[0.5px] border-sep px-4 pt-3 pb-1.5 text-[13px] leading-4.5 text-muted"
+                  >
+                    {{ c.group }}
+                  </p>
+                }
                 <button type="button" class="row min-h-14.25!" (click)="sheet.finish(c.key)">
                   <span class="min-w-0 flex-1">
                     <span class="block text-[17px]">{{ c.label }}</span>
@@ -109,6 +140,15 @@ export class ChoiceSheet {
                   </span>
                   @if (c.key === req.suggested) {
                     <span class="shrink-0 text-[15px] text-accent-raised">Suggested</span>
+                  }
+                  @if (req.current != null && c.key === req.current) {
+                    <svg
+                      lucideCheck
+                      [size]="20"
+                      [strokeWidth]="2.5"
+                      class="shrink-0 text-accent-raised"
+                      aria-label="Chosen"
+                    ></svg>
                   }
                 </button>
               }
