@@ -70,7 +70,8 @@ interface SortOption {
   sortAs?: string;
 }
 const SORTS: SortOption[] = [
-  { key: 'recent', label: 'Recent' },
+  // Recent (last changed first), taken off the menu on 2026-11-21; kept for if it comes back.
+  // { key: 'recent', label: 'Recent' },
   { key: 'name', label: 'Name' },
   { key: 'release', label: 'Release date', short: 'Release' },
   { key: 'critics', label: 'OpenCritic' },

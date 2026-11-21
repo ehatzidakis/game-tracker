@@ -23,7 +23,8 @@ export function matchesCopy(game: TrackedGame, copy: CopyFilter): boolean {
 }
 
 export type Sort =
-  | 'recent'
+  // Recent (last changed first), taken off the menu on 2026-11-21; kept for if it comes back.
+  // | 'recent'
   | 'name'
   | 'release'
   | 'completed'
@@ -76,7 +77,7 @@ function byValue<T extends number | string>(
 /**
  * Each sort's usual order, or the opposite when `reversed`. Games missing the value (no date,
  * no rating, no playtime, no OpenCritic score) stay last either way.
- * - Recent: last changed first. Name: A–Z. Date completed: latest first. Rating: highest first.
+ * - (Recent, commented out: last changed first.) Name: A–Z. Date completed: latest first. Rating: highest first.
  *   Playtime: most played first. Release date: newest first. OpenCritic: highest Top Critic
  *   Average first, from `scores` (by IGDB id). HowLongToBeat (Main story, Main + extra,
  *   Completionist): shortest first, so the quick ones lead a backlog. On the Wishlist only games
@@ -121,8 +122,9 @@ export function compareBy(
                 : (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''))) || byName(a, b);
       }
       return byValue((g) => g.releaseDate, dir);
-    default:
-      return (a, b) => dir * (b.updatedAt - a.updatedAt);
+    // Recent, taken off the menu: last changed first.
+    // case 'recent':
+    //   return (a, b) => dir * (b.updatedAt - a.updatedAt);
   }
 }
 
