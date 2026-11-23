@@ -13,7 +13,7 @@ describe('the background', () => {
   });
 
   it('offers Black first, then the other dark backgrounds', () => {
-    expect(GROUNDS.map((g) => g.key)).toEqual(['black', 'charcoal', 'midnight', 'graphite']);
+    expect(GROUNDS.map((g) => g.key)).toEqual(['black', 'charcoal', 'midnight', 'slate']);
   });
 
   it('sets the palette on the page and the theme colour to match', () => {
@@ -25,7 +25,7 @@ describe('the background', () => {
   });
 
   it('goes back to the tokens’ own values for Black', () => {
-    applyGround('graphite');
+    applyGround('slate');
     applyGround('black');
     expect(document.documentElement.dataset['ground']).toBeUndefined();
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute('content')).toBe(

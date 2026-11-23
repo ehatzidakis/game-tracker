@@ -8,7 +8,7 @@ import { remember, remembered } from './remembered';
  * sheets. All stay dark: the iPhone status bar is always black in the home-screen app, so a
  * light ground would leave a band at the top.
  */
-export type Ground = 'black' | 'charcoal' | 'midnight' | 'graphite';
+export type Ground = 'black' | 'charcoal' | 'midnight' | 'slate';
 
 export interface GroundOption {
   key: Ground;
@@ -43,11 +43,11 @@ export const GROUNDS: readonly GroundOption[] = [
     group: '#1a1f2b',
   },
   {
-    key: 'graphite',
-    label: 'Graphite',
-    hint: 'Dark grey, lists and covers stand out less',
-    ground: '#161618',
-    group: '#242427',
+    key: 'slate',
+    label: 'Slate',
+    hint: 'Cool blue-grey, lists and covers stand out less',
+    ground: '#16181c',
+    group: '#22252b',
   },
 ];
 

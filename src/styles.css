@@ -53,11 +53,12 @@
   --color-raised: #262c3a;
   --color-pressed: #323a4b;
 }
-:root[data-ground='graphite'] {
-  --color-ground: #161618;
-  --color-group: #242427;
-  --color-raised: #303033;
-  --color-pressed: #3d3d41;
+/* Slate: a cool blue-grey; lists and sheets keep its tint. Blue and red text on lists 4.51:1. */
+:root[data-ground='slate'] {
+  --color-ground: #16181c;
+  --color-group: #22252b;
+  --color-raised: #2d3037;
+  --color-pressed: #3a3d45;
 }
 
 @layer base {
