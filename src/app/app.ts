@@ -9,8 +9,12 @@ import { AppUpdate } from './core/app-update';
   imports: [RouterOutlet],
   template: `
     <!-- iOS 27 home-screen apps blur the top of the page unless a fixed, coloured element taller
-         than 10px touches the top edge. This strip matches the page colour, so it's invisible. -->
-    <div class="fixed inset-x-0 top-0 z-50 h-3 bg-ground pointer-events-none" aria-hidden="true"></div>
+         than 10px touches the top edge. This strip matches the page colour, so it's invisible.
+         iPhone only (.ios-strip in styles.css): on Android it cut off the top of tab screens. -->
+    <div
+      class="ios-strip fixed inset-x-0 top-0 z-50 h-3 bg-ground pointer-events-none"
+      aria-hidden="true"
+    ></div>
     @if (!ready()) {
       <!-- Shown while Firebase checks whether you're already signed in. -->
       <div class="fixed inset-0 grid place-items-center" role="status" aria-label="Loading">

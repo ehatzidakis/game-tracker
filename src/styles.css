@@ -315,9 +315,26 @@ dialog.sheet[open]::backdrop {
 :root {
   --tab-bar-bottom: max(calc(env(safe-area-inset-bottom) - 14px), 12px);
   --tab-bar-space: calc(62px + var(--tab-bar-bottom));
-  /* Where a tab screen's first line starts: just under the status bar, like a native app's,
-     with the large title's letters clear of the 12px iOS 27 strip (app.ts). */
-  --tab-top: calc(4px + env(safe-area-inset-top));
+  /* Where a tab screen's first line starts: just under the status bar, like a native app's.
+     12px off iPhone (Android), where nothing covers the top. */
+  --tab-top: calc(12px + env(safe-area-inset-top));
+}
+/*
+ * iPhone only (-webkit-touch-callout exists only in iOS's browser engine): the 12px strip that
+ * stops iOS 27 blurring the top edge (app.ts), and the tab screens' top starting 4px down, the
+ * large title's letters clear of the strip in iPhone's font. Elsewhere there's no strip: Android's
+ * font sits higher in its line, so the strip cut off the tops of the title and logo.
+ */
+.ios-strip {
+  display: none;
+}
+@supports (-webkit-touch-callout: none) {
+  .ios-strip {
+    display: block;
+  }
+  :root {
+    --tab-top: calc(4px + env(safe-area-inset-top));
+  }
 }
 /* Trophy grades on a game's page. Light enough to read on black (4.5:1 or more). */
 .trophy-bronze {

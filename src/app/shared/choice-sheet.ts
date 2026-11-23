@@ -139,7 +139,8 @@ export class ChoiceSheet {
                     }
                   </span>
                   @if (c.key === req.suggested) {
-                    <span class="shrink-0 text-[15px] text-accent-raised">Suggested</span>
+                    <!-- Grey, not blue: blue here read as the only choice you could tap. -->
+                    <span class="shrink-0 text-[15px] text-muted">Suggested</span>
                   }
                   @if (req.current != null && c.key === req.current) {
                     <svg
