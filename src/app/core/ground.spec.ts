@@ -13,7 +13,7 @@ describe('the background', () => {
   });
 
   it('offers Black first, then the other dark backgrounds', () => {
-    expect(GROUNDS.map((g) => g.key)).toEqual(['black', 'charcoal', 'midnight', 'slate']);
+    expect(GROUNDS.map((g) => g.key)).toEqual(['black', 'charcoal', 'midnight', 'slate', 'arcade']);
   });
 
   it('sets the palette on the page and the theme colour to match', () => {

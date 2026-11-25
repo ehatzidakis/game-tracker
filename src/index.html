@@ -17,7 +17,7 @@
         var g = localStorage.getItem('ground');
         // Graphite became Slate (2026-11-23): phones that chose it keep it.
         if (g === 'graphite') localStorage.setItem('ground', (g = 'slate'));
-        var c = { charcoal: '#0e0e10', midnight: '#080b12', slate: '#16181c' }[g];
+        var c = { charcoal: '#0e0e10', midnight: '#080b12', slate: '#16181c', arcade: '#120a1f' }[g];
         if (c) {
           document.documentElement.dataset.ground = g;
           document.querySelector('meta[name="theme-color"]').setAttribute('content', c);

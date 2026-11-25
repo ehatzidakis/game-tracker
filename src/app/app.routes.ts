@@ -73,6 +73,12 @@ export const routes: Routes = [
           import('./pages/playstation/playstation').then((m) => m.PlaystationPage),
       },
       {
+        path: 'settings/art',
+        title: 'Game art · Questloggd',
+        data: { title: 'Game art', back: true },
+        loadComponent: () => import('./pages/art/art').then((m) => m.ArtPage),
+      },
+      {
         path: 'events',
         title: 'Gaming events · Questloggd',
         data: { title: 'Gaming events', back: true },

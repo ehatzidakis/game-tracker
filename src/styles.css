@@ -60,6 +60,34 @@
   --color-raised: #2d3037;
   --color-pressed: #3a3d45;
 }
+/*
+ * Arcade: the one loud option, opt-in. A deep grape page with lists in the same hue, and the
+ * accent swapped from blue to hot pink everywhere (links, tabs, switches, selected segments).
+ * Colour only: no glow or neon effects, and nothing borrowed from a console's interface.
+ * Pink text 6.1:1 on lists, 5.4:1 on sheets (raised pink 6.3:1); white on pink fill 5.6:1;
+ * lavender secondary text 7.5:1 on lists, 6.6:1 on sheets.
+ */
+:root[data-ground='arcade'] {
+  --color-ground: #120a1f;
+  --color-group: #231736;
+  --color-raised: #2f2047;
+  --color-pressed: #3d2b5b;
+  --color-sep: rgb(132 104 184 / 0.5);
+  --color-muted: #b4a6d0;
+  --color-faint: #54447a;
+  --color-fill: rgb(150 112 220 / 0.24);
+  --color-accent: #ff5cc6;
+  --color-accent-raised: #ff7ad2;
+  --color-accent-fill: #c4137f;
+  --color-danger: #ff5c52;
+}
+:root[data-ground='arcade'] .tab-bar {
+  background: rgb(46 30 72 / 0.74);
+  border-color: rgb(255 122 210 / 0.22);
+}
+:root[data-ground='arcade'] .tab-pill {
+  background: rgb(255 92 198 / 0.16);
+}
 
 @layer base {
   html {
@@ -108,7 +136,7 @@
   }
 
   ::selection {
-    background: rgb(76 134 255 / 0.4);
+    background: color-mix(in srgb, var(--color-accent) 40%, transparent);
   }
 
   :focus-visible {
@@ -477,6 +505,108 @@ dialog.sheet[open]::backdrop {
     transition: none;
   }
 }
+/*
+ * Game art behind the page (Settings → Game art, shell.html). Behind everything in the app frame
+ * (z-index -1 inside the frame's own layer), still while the page scrolls. Blurred by --art-blur
+ * and see-through by --art-strength, both from the Game art screen's sliders; at Brightness 100%
+ * the strength is worked out per picture, blur and background (core/backdrop.ts) so grey
+ * secondary text keeps 4.5:1 over its brightest part. It fades in from below a tab screen's top
+ * (--art-top), so the solid top never shows an edge against it.
+ */
+.game-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 400ms ease-out;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent var(--art-top, 0px),
+    black calc(var(--art-top, 0px) + 40%)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent var(--art-top, 0px),
+    black calc(var(--art-top, 0px) + 40%)
+  );
+}
+.game-backdrop img {
+  position: absolute;
+  /* Past the edges, so the blur doesn't darken them. */
+  inset: -15%;
+  width: 130%;
+  height: 130%;
+  /* Not the usual cap at the frame's width (it would stop short of the right edge). */
+  max-width: none;
+  object-fit: cover;
+  opacity: var(--art-strength, 0);
+  /* The saturation is ART_SATURATE in core/backdrop.ts, which allows for it. */
+  filter: blur(var(--art-blur, 12px)) saturate(1.6);
+  /* Its own layer: drawn once, not again as the page scrolls over it. */
+  transform: translateZ(0);
+}
+
+/*
+ * A slider (Game art's Blur and Brightness): the rating bar's look on a native range input, so
+ * it drags, taps and takes arrow keys like any slider. --fill is how far along it is (0 to 1); the
+ * blue runs to the middle of the handle, which travels 14px short of each end.
+ */
+.look-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 2.75rem;
+  background: transparent;
+  touch-action: pan-x;
+  cursor: pointer;
+}
+.look-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-accent-fill) calc(14px + (100% - 28px) * var(--fill, 0)),
+    var(--color-fill) calc(14px + (100% - 28px) * var(--fill, 0))
+  );
+}
+.look-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-accent-fill) calc(14px + (100% - 28px) * var(--fill, 0)),
+    var(--color-fill) calc(14px + (100% - 28px) * var(--fill, 0))
+  );
+}
+.look-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -11px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}
+.look-slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}
+.look-slider:focus-visible {
+  outline: none;
+}
+.look-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px var(--color-ground),
+    0 0 0 4px var(--color-accent);
+}
+
 /* While a tab screen's top is away: solid over the iOS 27 strip, then fading into the page. */
 .tab-top-fade {
   height: calc(12px + env(safe-area-inset-top) + 1rem);

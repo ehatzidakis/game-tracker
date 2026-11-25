@@ -104,42 +104,75 @@
   </p>
 </section>
 
-<!-- Background: the page colour and the greys stepped up from it, on this device
-     (core/ground.ts). Picked like an iOS list: a swatch of the page with a list on it, the name
-     and a line about it, a check on the one in use. Applies at once. -->
+<!-- Background: two rows, so the choices only take room when you're choosing. Colour opens a
+     picker (the iPhone's own menu; the app's sheet elsewhere, with each colour's hint), the
+     swatch beside it showing the one in use. Game art opens its own screen (pages/art). Both
+     are kept on this device and apply at once. -->
 <section aria-labelledby="ground-title">
   <h2 id="ground-title" class="group-header">Background</h2>
-  <div class="grouped" style="--sep-inset: 60px" role="radiogroup" aria-labelledby="ground-title">
-    @for (g of grounds; track g.key) {
-      @let chosen = ground.current() === g.key;
-      <button
-        type="button"
-        class="row"
-        role="radio"
-        [attr.aria-checked]="chosen"
-        (click)="ground.set(g.key)"
+  <div class="grouped" style="--sep-inset: 60px">
+    @let g = currentGround();
+    <label class="row">
+      <span class="sr-only">Background colour</span>
+      <span
+        class="relative size-8 shrink-0 overflow-hidden rounded-lg ring-[0.5px] ring-white/20"
+        [style.background]="g.ground"
+        aria-hidden="true"
       >
         <span
-          class="relative size-8 shrink-0 overflow-hidden rounded-[8px] ring-[0.5px] ring-white/20"
-          [style.background]="g.ground"
-          aria-hidden="true"
+          class="absolute inset-x-1.25 bottom-1.25 h-2.5 rounded-[3px]"
+          [style.background]="g.group"
         >
-          <span
-            class="absolute inset-x-1.25 bottom-1.25 h-2.5 rounded-[3px]"
-            [style.background]="g.group"
-          ></span>
+          @if (g.accent) {
+            <span
+              class="absolute top-0.75 left-0.75 size-1 rounded-full"
+              [style.background]="g.accent"
+            ></span>
+          }
         </span>
-        <span class="min-w-0 flex-1">
-          <span class="block">{{ g.label }}</span>
-          <span class="block truncate text-[13px] leading-4.5 text-muted">{{ g.hint }}</span>
-        </span>
-        @if (chosen) {
-          <svg lucideCheck [size]="20" [strokeWidth]="2.5" class="shrink-0 text-accent"></svg>
+      </span>
+      <span class="flex-1" aria-hidden="true">Colour</span>
+      <span class="relative flex items-center text-muted">
+        <!-- 16px or more so iOS doesn't zoom in when it opens. -->
+        <select
+          sheetPicker
+          class="appearance-none bg-transparent pr-5 text-right text-[17px] outline-none"
+          (change)="setGround($event)"
+        >
+          @for (o of grounds; track o.key) {
+            <option [value]="o.key" [selected]="o.key === g.key" [attr.data-hint]="o.hint">
+              {{ o.label }}
+            </option>
+          }
+        </select>
+        <svg lucideChevronsUpDown [size]="15" class="pointer-events-none absolute right-0"></svg>
+      </span>
+    </label>
+
+    <a routerLink="/settings/art" class="row">
+      <span
+        class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-fill text-muted ring-[0.5px] ring-white/20"
+        aria-hidden="true"
+      >
+        @if (backdrop.url(); as art) {
+          <img [src]="art" alt="" class="size-full object-cover" />
+        } @else {
+          <svg lucideImage [size]="17" [strokeWidth]="1.75"></svg>
         }
-      </button>
-    }
+      </span>
+      <span class="flex-1">Game art</span>
+      <span class="row-value max-w-[50%] truncate">{{ backdrop.current()?.game ?? 'None' }}</span>
+      <svg
+        lucideChevronRight
+        [size]="18"
+        [strokeWidth]="2.25"
+        class="-mr-1 shrink-0 text-faint"
+      ></svg>
+    </a>
   </div>
-  <p class="group-footer">On this iPhone only. Lists and sheets follow the background you pick.</p>
+  <p class="group-footer">
+    On this phone only. Lists and sheets follow the colour; game art shows behind them.
+  </p>
 </section>
 
 <!-- Calendar subscription -->

@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   signal,
@@ -24,6 +25,8 @@ import {
   LucideSearch,
   LucideSettings,
 } from '@lucide/angular';
+import { artStrength, BackdropService, patchesAt, sampleArt, STRENGTH_CAP } from '../core/backdrop';
+import { GROUNDS, GroundService, MUTED } from '../core/ground';
 import { PageTitle } from '../core/page-title';
 import { ChoiceSheetOutlet } from '../shared/choice-sheet';
 import { DetailsSheetOutlet } from '../shared/details-sheet';
@@ -100,6 +103,32 @@ export class Shell {
   /** How far the page has gone in the current direction (down positive, up negative). */
   private travel = 0;
   protected readonly title = computed(() => this.pageTitle.override() ?? this.route().title ?? '');
+  /** Game art behind the page, and which picture has finished loading (it fades in then). */
+  protected readonly backdrop = inject(BackdropService);
+  protected readonly artShown = signal<string | null>(null);
+  private readonly ground = inject(GroundService);
+  /** The picture's thumbnail pixels, once read (null thumb: it couldn't be read). */
+  private readonly artSample = signal<{ id: string; thumb: Uint8ClampedArray | null } | null>(null);
+  /** As blurred as the glow is now (the Blur slider). */
+  protected readonly artBlur = computed(() => this.backdrop.look().blur + 'px');
+  /** The strongest the glow can be at this blur, on this background, with grey text at 4.5:1. */
+  private readonly readableStrength = computed(() => {
+    const id = this.backdrop.current()?.imageId;
+    const sample = this.artSample();
+    if (!id || sample?.id !== id) return null;
+    const ground = GROUNDS.find((g) => g.key === this.ground.current()) ?? GROUNDS[0];
+    const patches = patchesAt(sample.thumb, this.backdrop.look().blur);
+    return artStrength(patches, ground.ground, ground.muted ?? MUTED);
+  });
+  /**
+   * How strong the glow is: the readable strength times the Brightness slider. Null until the
+   * picture has been read, so it never shows too bright first.
+   */
+  protected readonly artStrength = computed(() => {
+    const readable = this.readableStrength();
+    if (readable === null) return null;
+    return Math.min(STRENGTH_CAP, readable * this.backdrop.look().brightness);
+  });
 
   constructor() {
     // Only <main> scrolls, so the router's own scroll handling (which works on the window)
@@ -132,6 +161,15 @@ export class Shell {
     });
     const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(() => sub.unsubscribe());
+
+    // Read a newly chosen picture's colours (once per picture).
+    effect(() => {
+      const id = this.backdrop.current()?.imageId;
+      if (!id || this.artSample()?.id === id) return;
+      void sampleArt(id).then((thumb) => {
+        if (this.backdrop.current()?.imageId === id) this.artSample.set({ id, thumb });
+      });
+    });
 
     // A plain passive listener rather than a template (scroll) binding: a template listener runs
     // change detection for the whole app on every scroll event.

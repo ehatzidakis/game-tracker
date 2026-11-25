@@ -9,6 +9,22 @@
 -->
 <div class="fixed inset-x-0 top-0 bottom-0 mx-auto flex max-w-md flex-col bg-ground">
   <div class="relative min-h-0 flex-1">
+    <!-- Game art chosen in Settings → Game art: blurred and see-through behind the page, as set
+         by that screen's Blur and Brightness sliders (core/backdrop.ts). It stays still while the page scrolls. It starts below a
+         tab screen's top (which is solid), so there's no edge, and the game screen, which has
+         its own artwork, hides it. -->
+    @if (backdrop.url(); as art) {
+      <div
+        class="game-backdrop"
+        [class.opacity-0]="route().hero || artShown() !== art || artStrength() === null"
+        [style.--art-top]="route().back ? '0px' : 'var(--pinned-h, 0px)'"
+        [style.--art-strength]="artStrength()"
+        [style.--art-blur]="artBlur()"
+        aria-hidden="true"
+      >
+        <img [src]="art" alt="" decoding="async" (load)="artShown.set(art)" />
+      </div>
+    }
     <!-- Top bar, only on screens with a back button. On the game screen it's see-through over the
          artwork; once that scrolls away it turns into a blurred bar with the game's name. Other
          back screens (Gaming events) get room for it above their large title. Tab screens have

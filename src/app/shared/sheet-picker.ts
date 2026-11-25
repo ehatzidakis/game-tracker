@@ -50,11 +50,16 @@ function titleOf(label: HTMLLabelElement): string {
   return text?.trim() || 'Choose';
 }
 
-/** The select's options in order, each with its <optgroup>'s name if it has one. */
+/**
+ * The select's options in order, each with its <optgroup>'s name if it has one, and the line
+ * under it from its data-hint.
+ */
 function choicesOf(select: HTMLSelectElement): Choice<string>[] {
   return Array.from(select.options).map((option) => ({
     key: option.value,
     label: option.textContent?.trim() ?? option.value,
-    group: option.parentElement instanceof HTMLOptGroupElement ? option.parentElement.label : undefined,
+    hint: option.dataset['hint'] || undefined,
+    group:
+      option.parentElement instanceof HTMLOptGroupElement ? option.parentElement.label : undefined,
   }));
 }

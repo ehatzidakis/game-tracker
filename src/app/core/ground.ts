@@ -5,10 +5,10 @@ import { remember, remembered } from './remembered';
  * The app's background (the ground) and the greys stepped up from it, chosen in Settings and
  * kept on this device. Each palette lives in styles.css under :root[data-ground="…"]; Black has
  * no attribute (the tokens' own values). Every one keeps text at 4.5:1 or more on its lists and
- * sheets. All stay dark: the iPhone status bar is always black in the home-screen app, so a
+ * sheets. Arcade, the loud one, also swaps the blue accent for pink. All stay dark: the iPhone status bar is always black in the home-screen app, so a
  * light ground would leave a band at the top.
  */
-export type Ground = 'black' | 'charcoal' | 'midnight' | 'slate';
+export type Ground = 'black' | 'charcoal' | 'midnight' | 'slate' | 'arcade';
 
 export interface GroundOption {
   key: Ground;
@@ -18,7 +18,14 @@ export interface GroundOption {
   /** The page colour, and the grouped-list colour on it, for the swatch. */
   ground: string;
   group: string;
+  /** Set when the option also changes the accent: shown as a dot on the swatch's list. */
+  accent?: string;
+  /** Its secondary text colour, if not the usual grey (game art keeps 4.5:1 against it). */
+  muted?: string;
 }
+
+/** Secondary text on every background but Arcade (--color-muted in styles.css). */
+export const MUTED = '#98989f';
 
 export const GROUNDS: readonly GroundOption[] = [
   {
@@ -48,6 +55,15 @@ export const GROUNDS: readonly GroundOption[] = [
     hint: 'Cool blue-grey, lists and covers stand out less',
     ground: '#16181c',
     group: '#22252b',
+  },
+  {
+    key: 'arcade',
+    label: 'Arcade',
+    hint: 'Grape and hot pink, the pink replaces the blue',
+    ground: '#120a1f',
+    group: '#231736',
+    accent: '#ff5cc6',
+    muted: '#b4a6d0',
   },
 ];
 
