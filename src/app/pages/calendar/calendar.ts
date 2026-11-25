@@ -26,6 +26,7 @@ import {
   vagueDateWithYear,
   type CalendarItem,
 } from './calendar-groups';
+import { NowPlaying } from './now-playing';
 import { PinnedTop } from '../../shared/pinned-top';
 import { TabTitle } from '../../shared/tab-title';
 
@@ -70,6 +71,7 @@ const MONTH_ONLY = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: '
     LucideLayoutGrid,
     PreorderIcon,
     LucidePlus,
+    NowPlaying,
   ],
   templateUrl: './calendar.html',
 })

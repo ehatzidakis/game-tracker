@@ -80,6 +80,10 @@
     </div>
   </div>
 } @else {
+  <!-- The game you're playing (Settings → Now playing turns it off); hidden while searching. -->
+  @if (library.settings().nowPlaying !== false && !query().trim()) {
+    <app-now-playing class="mt-4" />
+  }
   @if (cardView() && groups().length) {
     <!-- Cards like the Library's, three or four a row, all in one grid in calendar order (no
          month headers: each date says its month, and its year when it isn't this one). A game:

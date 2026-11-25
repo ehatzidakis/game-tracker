@@ -286,6 +286,10 @@ export interface UserSettings {
   defaultPlatform: PlatformKey;
   /** A notification when the app gets something new (What's new). On unless turned off. */
   updateAlerts?: boolean;
+  /** The Now playing area at the top of the Calendar. On unless turned off. */
+  nowPlaying?: boolean;
+  /** The Playing game it shows (igdbId); the most recently played one when unset or not Playing. */
+  nowPlayingId?: number | null;
   psn?: PsnLink | null;
   /** How the last PlayStation sync went (written by the server). */
   psnSync?: PsnSyncState | null;
