@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <!-- Android home-screen icon (the manifest's maskable icons): the mark (src/app/shared/wordmark.ts)
+       in white on black, its progress ring in Tint Blue. Full bleed; Android crops it to its own
+       shape (circle, squircle), so the mark stays well inside the middle 80%. The maskable PNGs are
+       made from this. iOS and the favicon keep icon.svg. -->
+  <rect width="160" height="160" fill="#000" />
+  <g transform="translate(80 80) scale(1.15) translate(-50 -53)" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="36" cy="44" r="14" stroke-opacity="0.3" />
+    <path d="M50 30v32a14 14 0 0 1-14 14h-4" />
+    <circle cx="64" cy="44" r="14" />
+    <path d="M78 30v32a14 14 0 0 1-14 14h-4" />
+    <path d="M36 30A14 14 0 1 1 22 44" stroke="#4c86ff" />
+  </g>
+</svg>
