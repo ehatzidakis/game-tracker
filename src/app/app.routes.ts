@@ -73,6 +73,13 @@ export const routes: Routes = [
           import('./pages/playstation/playstation').then((m) => m.PlaystationPage),
       },
       {
+        // Also where a What's new notification opens.
+        path: 'whats-new',
+        title: 'What’s new · Questloggd',
+        data: { title: 'What’s new', back: true },
+        loadComponent: () => import('./pages/whats-new/whats-new').then((m) => m.WhatsNewPage),
+      },
+      {
         path: 'settings/art',
         title: 'Game art · Questloggd',
         data: { title: 'Game art', back: true },

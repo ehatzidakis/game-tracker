@@ -414,6 +414,50 @@
   }
 </section>
 
+<!-- What's new (api/_lib/changelog.ts): the list, marked New until this phone has opened the
+     newest entry, and the switch for the note sent when one goes live (runAnnounce). -->
+<section aria-labelledby="news-title">
+  <h2 id="news-title" class="group-header">What’s new</h2>
+  <div class="grouped">
+    @if (news.latest; as latest) {
+      <a routerLink="/whats-new" class="row">
+        <span class="min-w-0 flex-1 truncate">{{ latest.title }}</span>
+        @if (news.unseen()) {
+          <span
+            class="shrink-0 rounded-full bg-accent-fill px-2 py-0.5 text-[13px] leading-4 font-semibold text-white"
+          >
+            New
+          </span>
+        } @else {
+          <span class="row-value num shrink-0">{{ newsDate(latest.date) }}</span>
+        }
+        <svg
+          lucideChevronRight
+          [size]="18"
+          [strokeWidth]="2.25"
+          class="-mr-1 shrink-0 text-faint"
+        ></svg>
+      </a>
+    }
+    <div class="row">
+      <p id="news-alerts-label" class="flex-1">Tell me about updates</p>
+      <button
+        type="button"
+        role="switch"
+        class="switch"
+        aria-labelledby="news-alerts-label"
+        [attr.aria-checked]="s.updateAlerts !== false"
+        (click)="library.saveSettings({ updateAlerts: s.updateAlerts === false })"
+      >
+        <span></span>
+      </button>
+    </div>
+  </div>
+  <p class="group-footer">
+    A short notification when the app gets something new, on phones with notifications on.
+  </p>
+</section>
+
 <!-- Account -->
 <section aria-labelledby="account-title">
   <h2 id="account-title" class="group-header">Account</h2>

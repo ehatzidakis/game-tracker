@@ -22,6 +22,7 @@ import { BackdropService } from '../../core/backdrop';
 import { GROUNDS, GroundService, type Ground } from '../../core/ground';
 import { subscribeUrl } from '../../core/calendar-link';
 import { isAndroid } from '../../core/platform';
+import { changelogDate, WhatsNew } from '../../core/whats-new';
 import { PinnedTop } from '../../shared/pinned-top';
 import { SheetPicker } from '../../shared/sheet-picker';
 import { TabTitle } from '../../shared/tab-title';
@@ -57,6 +58,9 @@ export class SettingsPage {
   );
   /** Game art behind the app (its own screen, pages/art), also kept on this device. */
   protected readonly backdrop = inject(BackdropService);
+  /** What's new, and whether this phone has seen the newest entry. */
+  protected readonly news = inject(WhatsNew);
+  protected readonly newsDate = changelogDate;
   protected readonly eventCount = computed(() => this.events.events().length);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);

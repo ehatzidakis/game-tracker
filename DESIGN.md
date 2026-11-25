@@ -330,6 +330,9 @@ A full screen without the tab bar (/setup), after sign-up with a PlayStation nam
 ### Sign-up and invites
 Settings → Friends makes a one-time invite link, shown in a grouped row (13px, selectable) with Share link, Copy link and New link for another friend. The link opens the sign-up page, laid out like the login page (icon, wordmark heading, grouped Email and Password rows, primary button): the password's rules sit under its group as a 13px checklist (a Tint Blue check once met, a Decoration Grey circle until then), then an optional PlayStation Online ID in its own group.
 
+### What's new
+A changelog for the people using the app (api/_lib/changelog.ts), written for a player: what they can now do and where to find it. **What's new screen** (Settings → What's new, and where tapping its notification lands): a back screen with a large title, then one grouped card per entry under its date as the group header ("25 November", with the year if not this year's), the entry's title in 17px semibold and its points as a 15px bulleted list (muted bullets). **Settings → What's new**: a row with the newest entry's title, marked with a small **New** pill (Fill Blue under white, 13px semibold) until this phone has opened the list, its date otherwise; then a **Tell me about updates** switch (on unless turned off). **The notification**: "New in Questloggd: <title>" with the entry's one-line summary, sent once per entry by the hourly job (the first run after the deploy that adds it, so within an hour), only for entries dated in the last 7 days. Deploys without a new entry send nothing.
+
 ## Do's and Don'ts
 
 ### Do:

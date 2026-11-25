@@ -1,5 +1,6 @@
 // The scheduled work: refreshing release dates from IGDB and sending release alerts.
 import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
+import { announcementFor, CHANGELOG } from './changelog.js';
 import { sendNotification, setVapidDetails } from 'web-push';
 import { igdbQuery } from './igdb-client.js';
 import { EVENT_FIELDS, igdbEventChanged, igdbEventFields, type IgdbEvent } from './igdb-events.js';
@@ -155,6 +156,35 @@ export async function runNotify(db: Firestore, now = Date.now()) {
     }
   }
   return { sent };
+}
+
+/**
+ * Sends the newest What's new entry (changelog.ts) once, to everyone who hasn't turned these off,
+ * the first hourly run after the deploy that added it. Deploys without a new entry send nothing.
+ * The entry is marked as sent before sending, so two runs at once can't both send it.
+ */
+export async function runAnnounce(db: Firestore, now = Date.now()) {
+  const record = db.collection('meta').doc('changelog');
+  const entry = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(record);
+    const announced = (snap.get('announced') as string | undefined) ?? null;
+    const next = announcementFor(CHANGELOG, announced, now);
+    if (next) tx.set(record, { announced: next.id, announcedAt: now }, { merge: true });
+    return next;
+  });
+  if (!entry) return { announced: null, sent: 0 };
+  let sent = 0;
+  for (const userRef of await userRefs(db)) {
+    const settings = await settingsOf(userRef);
+    if (settings.updateAlerts === false) continue;
+    sent += await sendToUser(userRef, {
+      title: `New in Questloggd: ${entry.title}`,
+      body: entry.summary,
+      url: '/whats-new',
+      tag: 'whats-new',
+    });
+  }
+  return { announced: entry.id, sent };
 }
 
 function needsRefresh(game: TrackedGame, today: string): boolean {

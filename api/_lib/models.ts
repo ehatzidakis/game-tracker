@@ -284,6 +284,8 @@ export interface UserSettings {
   notifyTime: string;
   notifyDaysBefore: number;
   defaultPlatform: PlatformKey;
+  /** A notification when the app gets something new (What's new). On unless turned off. */
+  updateAlerts?: boolean;
   psn?: PsnLink | null;
   /** How the last PlayStation sync went (written by the server). */
   psnSync?: PsnSyncState | null;

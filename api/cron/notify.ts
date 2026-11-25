@@ -1,9 +1,9 @@
 // Hourly: moves pre-orders that came out today to the Backlog, sends release alerts that are
-// due, syncs PlayStation for those whose last sync is 8 hours old, then fills in OpenCritic
+// due, announces a new What's new entry once it's live, syncs PlayStation for those whose last sync is 8 hours old, then fills in OpenCritic
 // scores with whatever is left of its allowance. Called by the hourly trigger with CRON_SECRET.
 import { adminDb } from '../_lib/admin.js';
 import { isCron, json } from '../_lib/auth.js';
-import { runNotify, runPreorderArrivals } from '../_lib/jobs.js';
+import { runAnnounce, runNotify, runPreorderArrivals } from '../_lib/jobs.js';
 import { runOpenCriticRefresh } from '../_lib/opencritic.js';
 import { runPsnSync } from '../_lib/psn.js';
 
@@ -16,7 +16,11 @@ export async function GET(request: Request): Promise<Response> {
     const db = adminDb();
     const arrivals = await runPreorderArrivals(db);
     const notify = await runNotify(db);
-    // On their own: a PlayStation or OpenCritic problem never holds up alerts.
+    // On their own: a What's new, PlayStation or OpenCritic problem never holds up alerts.
+    const whatsNew = await runAnnounce(db).catch((error: unknown) => {
+      console.error(error);
+      return { error: "What's new failed" };
+    });
     const playstation = await runPsnSync(db).catch((error: unknown) => {
       console.error(error);
       return { error: 'PlayStation sync failed' };
@@ -27,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
         return { error: 'OpenCritic refresh failed' };
       },
     );
-    return json({ ...notify, arrivals, playstation, opencritic });
+    return json({ ...notify, arrivals, whatsNew, playstation, opencritic });
   } catch (error) {
     console.error(error);
     return json({ error: 'Notify failed' }, 500);
