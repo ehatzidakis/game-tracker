@@ -314,16 +314,17 @@ export function coverHltb(game: TrackedGame, today: string): CoverHltb | null {
 
 /**
  * The Library's Events tab: the events in your calendar still to come (or on now), soonest
- * first, which lead the tab whatever its sort, and the ones that are over. Archived ones are
- * left out of both.
+ * first, which lead the tab whatever its sort, and the ones that are over. Archived ones (gone
+ * from the Calendar) are kept apart, for their own group at the end of the tab.
  */
 export function splitEvents(
   events: readonly GamingEvent[],
   now: number,
-): { upcoming: GamingEvent[]; past: GamingEvent[] } {
+): { upcoming: GamingEvent[]; past: GamingEvent[]; archived: GamingEvent[] } {
   const shown = events.filter((e) => !e.archived);
   return {
     upcoming: shown.filter((e) => eventEnd(e) > now).sort((a, b) => a.startsAt - b.startsAt),
     past: shown.filter((e) => eventEnd(e) <= now),
+    archived: events.filter((e) => e.archived),
   };
 }

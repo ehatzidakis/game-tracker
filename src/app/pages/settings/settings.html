@@ -5,7 +5,10 @@
 
 <!-- Release alerts -->
 <section aria-labelledby="alerts-title">
-  <h2 id="alerts-title" class="group-header">Release alerts</h2>
+  <h2 id="alerts-title" class="section-title pt-4">
+    <span class="section-icon" aria-hidden="true"><svg lucideBell [size]="17" [strokeWidth]="2.25"></svg></span>
+    Release alerts
+  </h2>
   <div class="grouped">
     <div class="row">
       <div class="min-w-0 flex-1">
@@ -77,14 +80,16 @@
     }
   </div>
   <p class="group-footer">
-    Alerts are off by default; turn them on per game with its Release alert switch. Games without an
-    exact day get theirs once one is announced. Date changes are always sent.
+    Off until you turn on a game’s Release alert. Date changes are always sent.
   </p>
 </section>
 
 <!-- Default platform -->
 <section aria-labelledby="platform-title">
-  <h2 id="platform-title" class="group-header">Default platform</h2>
+  <h2 id="platform-title" class="section-title">
+    <span class="section-icon" aria-hidden="true"><svg lucideGamepad2 [size]="17" [strokeWidth]="2.25"></svg></span>
+    Default platform
+  </h2>
   <div class="segmented" role="radiogroup" aria-labelledby="platform-title">
     @for (p of platforms; track p.key) {
       <button
@@ -99,8 +104,7 @@
     }
   </div>
   <p class="group-footer">
-    Used for new games and their release dates. You can change it per game at the bottom of its
-    page.
+    For new games and their release dates. Change it per game on its page.
   </p>
 </section>
 
@@ -109,7 +113,10 @@
      swatch beside it showing the one in use. Game art opens its own screen (pages/art). Both
      are kept on this device and apply at once. -->
 <section aria-labelledby="ground-title">
-  <h2 id="ground-title" class="group-header">Background</h2>
+  <h2 id="ground-title" class="section-title">
+    <span class="section-icon" aria-hidden="true"><svg lucidePalette [size]="17" [strokeWidth]="2.25"></svg></span>
+    Background
+  </h2>
   <div class="grouped" style="--sep-inset: 60px">
     @let g = currentGround();
     <label class="row">
@@ -171,13 +178,16 @@
     </a>
   </div>
   <p class="group-footer">
-    On this phone only. Lists and sheets follow the colour; game art shows behind them.
+    On this phone only.
   </p>
 </section>
 
 <!-- Calendar subscription -->
 <section aria-labelledby="calendar-title">
-  <h2 id="calendar-title" class="group-header">Calendar subscription</h2>
+  <h2 id="calendar-title" class="section-title">
+    <span class="section-icon" aria-hidden="true"><svg lucideCalendarSync [size]="17" [strokeWidth]="2.25"></svg></span>
+    Calendar subscription
+  </h2>
   @if (calendarUrl(); as url) {
     <div class="grouped" style="--sep-inset: 52px">
       <p class="row text-[13px] leading-4.5 break-all text-muted select-all">{{ url }}</p>
@@ -200,9 +210,8 @@
       </button>
     </div>
     <p class="group-footer">
-      Your calendar app checks this link for changes, so delays show up on their own{{
-        onAndroid ? ' (Google Calendar can take up to a day)' : ''
-      }}. Anyone with the link can see your upcoming games, so make a new one if it leaks.
+      Delays show up on their own{{ onAndroid ? ' (in Google Calendar, within a day)' : '' }}.
+      Anyone with the link sees your upcoming games: make a new one if it leaks.
     </p>
   } @else {
     <div class="grouped">
@@ -213,10 +222,9 @@
     </div>
     <p class="group-footer">
       @if (onAndroid) {
-        Puts your upcoming games in Google Calendar and keeps it updated. It opens Google Calendar
-        in the browser to add it; it then shows in the Calendar app on this phone.
+        Your upcoming games in Google Calendar, kept up to date. Opens in the browser to add.
       } @else {
-        Puts your upcoming games in the iPhone Calendar (or Google Calendar) and keeps it updated.
+        Your upcoming games in your calendar, kept up to date.
       }
     </p>
   }
@@ -224,7 +232,10 @@
 
 <!-- PlayStation: your Online ID, so playtime and trophies can come from your profile. -->
 <section aria-labelledby="psn-title">
-  <h2 id="psn-title" class="group-header">PlayStation</h2>
+  <h2 id="psn-title" class="section-title">
+    <span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path [attr.d]="playstation" /></svg></span>
+    PlayStation
+  </h2>
   @if (s.psn; as psn) {
     <div class="grouped">
       <div class="row">
@@ -345,29 +356,12 @@
   }
 </section>
 
-<!-- Gaming events: all of them, including past and archived ones. -->
-<section aria-labelledby="events-title">
-  <h2 id="events-title" class="group-header">Gaming events</h2>
-  <div class="grouped">
-    <a routerLink="/events" class="row">
-      <span class="flex-1">All events</span>
-      <span class="row-value num">{{ eventCount() }}</span>
-      <svg
-        lucideChevronRight
-        [size]="18"
-        [strokeWidth]="2.25"
-        class="-mr-1 shrink-0 text-faint"
-      ></svg>
-    </a>
-  </div>
-  <p class="group-footer">
-    Past and archived ones too. New events are added with + in the Calendar.
-  </p>
-</section>
-
 <!-- Invite a friend: a one-time link to make their own account (api/invite.ts, /signup). -->
 <section aria-labelledby="invite-title">
-  <h2 id="invite-title" class="group-header">Friends</h2>
+  <h2 id="invite-title" class="section-title">
+    <span class="section-icon" aria-hidden="true"><svg lucideUsers [size]="17" [strokeWidth]="2.25"></svg></span>
+    Friends
+  </h2>
   @if (invite(); as inv) {
     <div class="grouped" style="--sep-inset: 52px">
       <p class="row text-[13px] leading-4.5 break-all text-muted select-all">{{ inv.url }}</p>
@@ -408,8 +402,7 @@
       </button>
     </div>
     <p class="group-footer">
-      Makes a one-time link that lets a friend create their own account, with their own library and
-      calendar.
+      A one-time link for a friend to make their own account.
     </p>
   }
 </section>
@@ -417,7 +410,10 @@
 <!-- What's new (api/_lib/changelog.ts): the list, marked New until this phone has opened the
      newest entry, and the switch for the note sent when one goes live (runAnnounce). -->
 <section aria-labelledby="news-title">
-  <h2 id="news-title" class="group-header">What’s new</h2>
+  <h2 id="news-title" class="section-title">
+    <span class="section-icon" aria-hidden="true"><svg lucideSparkles [size]="17" [strokeWidth]="2.25"></svg></span>
+    What’s new
+  </h2>
   <div class="grouped">
     @if (news.latest; as latest) {
       <a routerLink="/whats-new" class="row">
@@ -454,13 +450,16 @@
     </div>
   </div>
   <p class="group-footer">
-    A short notification when the app gets something new, on phones with notifications on.
+    A short notification when something new arrives.
   </p>
 </section>
 
 <!-- Account -->
 <section aria-labelledby="account-title">
-  <h2 id="account-title" class="group-header">Account</h2>
+  <h2 id="account-title" class="section-title">
+    <span class="section-icon" aria-hidden="true"><svg lucideCircleUser [size]="17" [strokeWidth]="2.25"></svg></span>
+    Account
+  </h2>
   <div class="grouped">
     <div class="row">
       <span>Signed in as</span>

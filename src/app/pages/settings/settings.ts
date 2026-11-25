@@ -1,18 +1,24 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import {
+  LucideBell,
   LucideCalendarPlus,
+  LucideCalendarSync,
   LucideChevronRight,
   LucideChevronsUpDown,
+  LucideCircleUser,
   LucideCopy,
+  LucideGamepad2,
   LucideImage,
+  LucidePalette,
   LucideRotateCcw,
   LucideShare,
+  LucideSparkles,
   LucideUserPlus,
+  LucideUsers,
 } from '@lucide/angular';
 import { PLATFORMS, type PlatformKey } from '../../../../api/_lib/platforms.js';
 import { AuthService } from '../../core/auth.service';
-import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
 import { PsnAddAll } from '../../core/psn-add-all.service';
 import { PsnService } from '../../core/psn.service';
@@ -23,6 +29,7 @@ import { GROUNDS, GroundService, type Ground } from '../../core/ground';
 import { subscribeUrl } from '../../core/calendar-link';
 import { isAndroid } from '../../core/platform';
 import { changelogDate, WhatsNew } from '../../core/whats-new';
+import { PLAYSTATION } from '../../shared/event-icon';
 import { PinnedTop } from '../../shared/pinned-top';
 import { SheetPicker } from '../../shared/sheet-picker';
 import { TabTitle } from '../../shared/tab-title';
@@ -34,14 +41,21 @@ import { TabTitle } from '../../shared/tab-title';
     TabTitle,
     PinnedTop,
     RouterLink,
+    LucideBell,
     LucideCalendarPlus,
+    LucideCalendarSync,
     LucideChevronRight,
     LucideChevronsUpDown,
+    LucideCircleUser,
     LucideCopy,
+    LucideGamepad2,
     LucideImage,
+    LucidePalette,
     LucideRotateCcw,
     LucideShare,
+    LucideSparkles,
     LucideUserPlus,
+    LucideUsers,
   ],
   templateUrl: './settings.html',
 })
@@ -49,7 +63,6 @@ export class SettingsPage {
   protected readonly auth = inject(AuthService);
   protected readonly library = inject(LibraryService);
   protected readonly push = inject(PushService);
-  private readonly events = inject(EventsService);
   /** The background, chosen here and kept on this device. */
   protected readonly ground = inject(GroundService);
   protected readonly grounds = GROUNDS;
@@ -61,7 +74,8 @@ export class SettingsPage {
   /** What's new, and whether this phone has seen the newest entry. */
   protected readonly news = inject(WhatsNew);
   protected readonly newsDate = changelogDate;
-  protected readonly eventCount = computed(() => this.events.events().length);
+  /** The PlayStation section's icon (Simple Icons' logo, as on PlayStation events). */
+  protected readonly playstation = PLAYSTATION;
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly psn = inject(PsnService);

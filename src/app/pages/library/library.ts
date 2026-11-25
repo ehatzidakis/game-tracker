@@ -195,14 +195,12 @@ export class LibraryPage {
 
   /**
    * Gaming events in your calendar: the ones to come (or on now), soonest first, which lead
-   * the tab whatever its sort, and the ones that are over.
+   * the tab whatever its sort, and the ones that are over; archived ones in a group at the end.
    */
   private readonly splitEvents = computed(() => splitEvents(this.events.events(), Date.now()));
   protected readonly upcomingEvents = computed(() => this.splitEvents().upcoming);
   protected readonly pastEvents = computed(() => this.splitEvents().past);
-  protected readonly eventCount = computed(
-    () => this.upcomingEvents().length + this.pastEvents().length,
-  );
+  protected readonly eventCount = computed(() => this.events.events().length);
   /** "3 Sep 2026" */
   protected eventDate(event: GamingEvent): string {
     return EVENT_DATE.format(event.startsAt);
@@ -227,23 +225,28 @@ export class LibraryPage {
   private readonly sortedPast = computed(() =>
     sortEvents(this.pastEvents(), this.eventSort(), this.eventReversed()),
   );
-  /** Upcoming first (soonest first), then the past ones in the chosen order. */
-  protected readonly sortedEvents = computed(() => [
-    ...this.upcomingEvents(),
-    ...this.sortedPast(),
-  ]);
   /**
-   * By year: "2 upcoming" first, then "3 in 2026", that year's events, then the next. Each
-   * group folds away.
+   * The tab's groups. By year: "2 upcoming" first, then "3 in 2026", that year's events, then the
+   * next. Otherwise one untitled group, upcoming then past. Either way "2 archived" last (greyed
+   * out, in the same order). Each titled group folds away.
    */
   protected readonly eventGroups = computed(() => {
-    if (this.eventSort() !== 'year') return null;
     const upcoming = this.upcomingEvents();
+    const archived = sortEvents(this.splitEvents().archived, this.eventSort(), this.eventReversed());
+    const main: { key: string; title: string | null; events: GamingEvent[]; dim?: boolean }[] =
+      this.eventSort() === 'year'
+        ? [
+            ...(upcoming.length
+              ? [{ key: 'upcoming', title: `${upcoming.length} upcoming`, events: upcoming }]
+              : []),
+            ...eventYearGroups(this.sortedPast()),
+          ]
+        : [{ key: 'all', title: null, events: [...upcoming, ...this.sortedPast()] }];
     return [
-      ...(upcoming.length
-        ? [{ key: 'upcoming', title: `${upcoming.length} upcoming`, events: upcoming }]
+      ...main.filter((g) => g.events.length),
+      ...(archived.length
+        ? [{ key: 'archived', title: `${archived.length} archived`, events: archived, dim: true }]
         : []),
-      ...eventYearGroups(this.sortedPast()),
     ];
   });
 

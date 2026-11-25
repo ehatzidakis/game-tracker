@@ -396,8 +396,8 @@ describe('the Events tab', () => {
   const event = (title: string, startsAt: number, extra: Partial<GamingEvent> = {}) =>
     ({ id: title, title, startsAt, durationMinutes: 60, ...extra }) as GamingEvent;
 
-  it('splits the events into the ones to come, soonest first, and the ones that are over', () => {
-    const { upcoming, past } = splitEvents(
+  it('splits the events into the ones to come, soonest first, the ones that are over, and archived', () => {
+    const { upcoming, past, archived } = splitEvents(
       [
         event('Over', now - 48 * hour),
         event('Later', now + 300 * hour),
@@ -410,5 +410,6 @@ describe('the Events tab', () => {
     );
     expect(upcoming.map((e) => e.title)).toEqual(['On now', 'Soon', 'Later']);
     expect(past.map((e) => e.title)).toEqual(['Over']);
+    expect(archived.map((e) => e.title)).toEqual(['Archived', 'Archived past']);
   });
 });

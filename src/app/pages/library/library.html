@@ -236,11 +236,12 @@
          until they start on the card (as in the Calendar); then the ones that are over, sorted by
          air date, company or year. -->
     @if (eventCount()) {
-      @if (eventGroups(); as groups) {
-        <!-- By year: "2 upcoming", then "3 in 2026", that year's events. Tap one to fold it. -->
-        @for (group of groups; track group.key) {
+      <!-- By year: "2 upcoming", then "3 in 2026", that year's events; other sorts: one grid.
+           Archived events (gone from the Calendar) last, greyed out. Tap a title to fold it. -->
+      @for (group of eventGroups(); track group.key) {
+        @if (group.title; as title) {
           @let open = !isCollapsed(group.key);
-          <section [attr.aria-label]="group.title">
+          <section [attr.aria-label]="title">
             <h2 class="mt-6 mb-3">
               <button
                 type="button"
@@ -248,7 +249,7 @@
                 [attr.aria-expanded]="open"
                 (click)="toggleGroup(group.key)"
               >
-                <span class="min-w-0">{{ group.title }}</span>
+                <span class="min-w-0">{{ title }}</span>
                 <!-- Rotates the wrapper: the icon component manages its own classes. -->
                 <span
                   class="shrink-0 text-muted transition-transform duration-200"
@@ -262,18 +263,18 @@
             @if (open) {
               <ng-container
                 [ngTemplateOutlet]="eventGrid"
-                [ngTemplateOutletContext]="{ $implicit: group.events }"
+                [ngTemplateOutletContext]="{ $implicit: group.events, dim: group.dim }"
               />
             }
           </section>
+        } @else {
+          <div class="mt-3">
+            <ng-container
+              [ngTemplateOutlet]="eventGrid"
+              [ngTemplateOutletContext]="{ $implicit: group.events }"
+            />
+          </div>
         }
-      } @else {
-        <div class="mt-3">
-          <ng-container
-            [ngTemplateOutlet]="eventGrid"
-            [ngTemplateOutletContext]="{ $implicit: sortedEvents() }"
-          />
-        </div>
       }
     } @else {
       <div class="mx-auto mt-16 max-w-72 text-center">
@@ -505,7 +506,7 @@
   </ul>
 </ng-template>
 
-<ng-template #eventGrid let-events>
+<ng-template #eventGrid let-events let-dim="dim">
   <ul
     [class]="
       columns() === '4' ? 'grid grid-cols-4 gap-x-2 gap-y-4' : 'grid grid-cols-3 gap-x-3 gap-y-5'
@@ -515,8 +516,11 @@
       <li>
         <a [routerLink]="['/event', event.id]" class="block active:opacity-70">
           <div class="relative">
+            <!-- Archived: greyed out and faded, as cancelled games are. -->
             <app-event-art
               class="aspect-3/4 rounded-md"
+              [class.grayscale]="dim"
+              [class.opacity-45]="dim"
               fit="contain"
               [logoId]="event.logoId"
               [kind]="event.kind"

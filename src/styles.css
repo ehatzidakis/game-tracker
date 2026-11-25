@@ -218,6 +218,28 @@
     text-transform: uppercase;
     color: var(--color-muted);
   }
+  /* Settings' section titles: a bold white title led by a small Fill Blue tile with the
+     section's icon, so each section stands apart from the next. */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 36px 0 10px;
+    font-size: 20px;
+    line-height: 24px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .section-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--color-accent-fill);
+    color: #fff;
+  }
   .group-footer {
     padding: 7px 16px 0;
     font-size: 13px;

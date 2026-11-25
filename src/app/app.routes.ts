@@ -86,12 +86,6 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/art/art').then((m) => m.ArtPage),
       },
       {
-        path: 'events',
-        title: 'Gaming events · Questloggd',
-        data: { title: 'Gaming events', back: true },
-        loadComponent: () => import('./pages/events/events').then((m) => m.EventsPage),
-      },
-      {
         path: 'settings',
         title: 'Settings · Questloggd',
         data: { title: 'Settings' },

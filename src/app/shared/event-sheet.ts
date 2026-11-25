@@ -284,7 +284,7 @@ export class EventSheet {
                 <div class="min-w-0 flex-1">
                   <p id="event-archived-label">Archived</p>
                   <p class="text-[13px] leading-4.5 text-muted">
-                    Hidden from the Calendar and the Library. Still listed in Settings.
+                    Hidden from the Calendar. Kept at the end of the Library’s Events, greyed out.
                   </p>
                 </div>
                 <button
