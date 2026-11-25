@@ -5,6 +5,7 @@ import {
   LucideCalendarDays,
   LucideChevronRight,
   LucideGrid3x3,
+  LucideJoystick,
   LucideLayoutGrid,
   LucidePlus,
 } from '@lucide/angular';
@@ -26,7 +27,7 @@ import {
   vagueDateWithYear,
   type CalendarItem,
 } from './calendar-groups';
-import { NowPlaying } from './now-playing';
+import { NowPlaying, playingGames } from './now-playing';
 import { PinnedTop } from '../../shared/pinned-top';
 import { TabTitle } from '../../shared/tab-title';
 
@@ -68,6 +69,7 @@ const MONTH_ONLY = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: '
     LucideCalendarDays,
     LucideChevronRight,
     LucideGrid3x3,
+    LucideJoystick,
     LucideLayoutGrid,
     PreorderIcon,
     LucidePlus,
@@ -89,6 +91,14 @@ export class CalendarPage {
 
   /** Searching keeps the months, showing only the games and events whose title matches. */
   protected readonly query = signal(currentQuery);
+  /** Now playing: on unless turned off with its toolbar button (kept in your settings). */
+  protected readonly nowPlayingOn = computed(() => this.library.settings().nowPlaying !== false);
+  /** The button shows only while some game is marked Playing. */
+  protected readonly hasPlaying = computed(() => playingGames(this.library.games()).length > 0);
+
+  protected toggleNowPlaying(): void {
+    this.library.saveSettings({ nowPlaying: !this.nowPlayingOn() });
+  }
   protected readonly groups = computed(() => {
     const matches = titleMatcher(this.query());
     if (!matches) return this.allGroups();

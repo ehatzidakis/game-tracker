@@ -182,34 +182,6 @@
   </p>
 </section>
 
-<!-- Now playing: the area at the top of the Calendar (pages/calendar/now-playing.ts). -->
-<section aria-labelledby="now-playing-settings-title">
-  <h2 id="now-playing-settings-title" class="section-title">
-    <span class="section-icon" aria-hidden="true"
-      ><svg lucideJoystick [size]="17" [strokeWidth]="2.25"></svg
-    ></span>
-    Now playing
-  </h2>
-  <div class="grouped">
-    <div class="row">
-      <p id="now-playing-label" class="flex-1">Show on the Calendar</p>
-      <button
-        type="button"
-        role="switch"
-        class="switch"
-        aria-labelledby="now-playing-label"
-        [attr.aria-checked]="s.nowPlaying !== false"
-        (click)="library.saveSettings({ nowPlaying: s.nowPlaying === false })"
-      >
-        <span></span>
-      </button>
-    </div>
-  </div>
-  <p class="group-footer">
-    Your Playing game at the top of the Calendar. Tap it to see all of them and pick which one shows.
-  </p>
-</section>
-
 <!-- Calendar subscription -->
 <section aria-labelledby="calendar-title">
   <h2 id="calendar-title" class="section-title">

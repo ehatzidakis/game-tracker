@@ -24,7 +24,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
     summary: 'The game you’re playing now sits at the top of your Calendar, with its playtime and trophies.',
     items: [
       'Now playing: the game you’re playing sits at the top of the Calendar, with your PlayStation playtime and trophies. Playing more than one? Tap it to see them all and pick which one shows.',
-      'Don’t want it? Settings → Now playing turns it off.',
+      'Don’t want it? The joystick button next to the Calendar’s search hides it.',
       'Settings is easier to scan: each section has its own title and icon.',
       'Archived events now sit at the end of the Library’s Events tab, greyed out.',
     ],
