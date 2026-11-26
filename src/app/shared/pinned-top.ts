@@ -13,6 +13,12 @@ import { DestroyRef, Directive, ElementRef, inject } from '@angular/core';
 export class PinnedTop {
   constructor() {
     const el = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    // With a wallpaper, the top shows the same picture rather than the page colour (styles.css).
+    const wall = document.createElement('div');
+    wall.className = 'pinned-wall';
+    wall.setAttribute('aria-hidden', 'true');
+    wall.appendChild(document.createElement('div')).className = 'wall-img';
+    el.prepend(wall);
     // A ResizeObserver reports after layout but before paint, so the list never shows a frame
     // under the top. It also fires once to start with, once the page is in place.
     const observer = new ResizeObserver(([entry]) => {

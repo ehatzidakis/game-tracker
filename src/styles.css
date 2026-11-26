@@ -562,10 +562,11 @@ dialog.sheet[open]::backdrop {
 }
 .game-backdrop img {
   position: absolute;
-  /* Past the edges, so the blur doesn't darken them. */
-  inset: -15%;
-  width: 130%;
-  height: 130%;
+  /* Past the edges by twice the blur, so the blur doesn't darken them, and no further (any more
+     enlarges the picture for nothing). */
+  inset: calc(-2 * var(--art-blur, 12px));
+  width: calc(100% + 4 * var(--art-blur, 12px));
+  height: calc(100% + 4 * var(--art-blur, 12px));
   /* Not the usual cap at the frame's width (it would stop short of the right edge). */
   max-width: none;
   object-fit: cover;
@@ -574,6 +575,101 @@ dialog.sheet[open]::backdrop {
   filter: blur(var(--art-blur, 12px)) saturate(1.6);
   /* Its own layer: drawn once, not again as the page scrolls over it. */
   transform: translateZ(0);
+}
+
+/*
+ * A wallpaper (Settings → Wallpaper, core/wallpaper.ts): the picture behind the whole app, from
+ * the very top. .wall-img is the picture at the app frame's full size, dimmed row by row with the
+ * page colour (--wall-scrim) so grey text stays readable. The shell draws it behind the page
+ * (.wall-layer), and every place that would paint the page colour at the top draws its own copy
+ * instead, lined up with it from the frame's top-left: a tab screen's top (.pinned-wall, added by
+ * shared/pinned-top.ts) with the fade under it, the band while that top is away (.tab-top-fade),
+ * the back screens' top (.top-fade) and the iPhone strip (app.ts). So the top looks see-through
+ * while the list still disappears under it. Only while <html data-wall> is set.
+ */
+.wall-img {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--frame-h, 100dvh);
+  background-color: var(--color-ground);
+  background-image: var(--wall-scrim), var(--wall-image);
+  background-size:
+    100% 100%,
+    cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  image-rendering: var(--wall-rendering, auto);
+  pointer-events: none;
+}
+:root[data-wall] .wall-img {
+  display: block;
+}
+.wall-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* A tab screen's top: the picture instead of the page colour, 16px more fading out once the
+   page scrolls (in place of ::after). It stays still while the top slides away. */
+.pinned-wall {
+  display: none;
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+:root[data-wall] .pinned-wall {
+  display: block;
+}
+:root[data-wall] .is-scrolled .pinned-wall {
+  height: calc(100% + 1rem);
+  -webkit-mask-image: linear-gradient(black calc(100% - 1rem), transparent);
+  mask-image: linear-gradient(black calc(100% - 1rem), transparent);
+}
+.pinned-wall .wall-img {
+  transition: transform 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+.top-hidden .pinned-wall .wall-img {
+  transform: translateY(var(--pinned-h, 0px));
+}
+@media (prefers-reduced-motion: reduce) {
+  .pinned-wall .wall-img {
+    transition: none;
+  }
+}
+:root[data-wall] .pinned-top {
+  background: transparent;
+}
+:root[data-wall] .pinned-top::after {
+  display: none;
+}
+:root[data-wall] .tab-top-fade {
+  overflow: hidden;
+  background: none;
+  -webkit-mask-image: linear-gradient(black calc(100% - 1rem), transparent);
+  mask-image: linear-gradient(black calc(100% - 1rem), transparent);
+}
+:root[data-wall] .top-fade {
+  overflow: hidden;
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.ios-strip {
+  overflow: hidden;
+}
+.ios-strip .wall-img {
+  right: 0;
+  margin-inline: auto;
+  max-width: 28rem;
 }
 
 /*

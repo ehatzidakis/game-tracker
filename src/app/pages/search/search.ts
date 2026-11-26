@@ -17,11 +17,12 @@ import { igdbEventDocId } from '../../../../api/_lib/igdb-events.js';
 import { daysBetween } from '../../../../api/_lib/release.js';
 import { EventsService } from '../../core/events.service';
 import { localDate } from '../calendar/calendar-groups';
-import { isDlc, statusLabel, type TrackedGame } from '../../../../api/_lib/models.js';
 import { debounced } from '../../core/debounced';
-import { countdown, today } from '../../core/dates';
+import { today } from '../../core/dates';
+import { DISCOVER, trackedLabel, whenText } from './discover-lists';
 import {
   coverUrl,
+  DISCOVER_STRIP,
   IgdbService,
   logoUrl,
   type CompanySummary,
@@ -38,13 +39,6 @@ import { TabTitle } from '../../shared/tab-title';
 
 const MIN_LENGTH = 2;
 
-/** What Search shows before you type, on your default platform. */
-const DISCOVER: { kind: DiscoverKind; title: string }[] = [
-  { kind: 'anticipated', title: 'Most anticipated' },
-  { kind: 'soon', title: 'Coming soon' },
-  { kind: 'recent', title: 'Recently released' },
-];
-const SHORT_DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
 const EVENT_DATE = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
@@ -174,41 +168,39 @@ export class SearchPage {
     }
   }
 
-  /** Strips of games to browse before you type. They refresh at most once an hour. */
+  /**
+   * Strips of games to browse before you type, 10 each; "See all" opens one in full
+   * (pages/discover). They refresh at most once an hour.
+   */
   private readonly platform = computed(() => this.library.settings().defaultPlatform);
   protected readonly platformName = computed(() => platformLabel(this.platform()));
   private readonly discoverQueries = DISCOVER.map(({ kind }) =>
     injectQuery(() => ({
-      queryKey: ['igdb-discover', kind, this.platform()],
+      queryKey: ['igdb-discover', kind, this.platform(), DISCOVER_STRIP],
       queryFn: () => this.igdb.discover(kind, platformIgdbId(this.platform())),
       staleTime: 60 * 60_000,
     })),
   );
   protected readonly discover = computed(() =>
-    DISCOVER.map((section, i) => ({
-      ...section,
-      games: this.discoverQueries[i].data() ?? [],
-      loading: this.discoverQueries[i].isPending(),
-    })),
+    DISCOVER.map((section, i) => {
+      const games = this.discoverQueries[i].data() ?? [];
+      return {
+        ...section,
+        games,
+        loading: this.discoverQueries[i].isPending(),
+        // A full strip: there may be more.
+        full: games.length >= DISCOVER_STRIP,
+      };
+    }),
   );
 
-  /** "Thu 19 Nov · in 11 days" style line under a cover. */
-  protected whenText(game: GameSearchResult): string {
-    if (!game.releaseDate) return game.year ? String(game.year) : 'TBA';
-    const ms = Date.parse(game.releaseDate);
-    const left = countdown({ releaseDate: game.releaseDate, releasePrecision: 'day' });
-    return left ?? SHORT_DATE.format(ms);
-  }
+  protected readonly whenText = whenText;
 
   /** IDs of games being added (fetching their details from IGDB). */
   protected readonly adding = signal<ReadonlySet<number>>(new Set());
 
   protected readonly coverUrl = coverUrl;
-  /** What a tracked result shows instead of the + button. */
-  protected trackedLabel(game: TrackedGame): string {
-    if (!isDlc(game) || game.status === 'wishlist') return statusLabel(game.status);
-    return game.status === 'completed' ? 'Completed' : 'Owned';
-  }
+  protected readonly trackedLabel = trackedLabel;
 
   protected onInput(event: Event): void {
     this.term.set((event.target as HTMLInputElement).value);

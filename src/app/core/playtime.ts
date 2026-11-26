@@ -25,6 +25,17 @@ export function formatPlaytimeClock(hours: number | null | undefined): string {
 }
 
 /**
+ * Whole hours for a small cover, to the nearest hour: 5h 29m → "5h", 5h 30m → "6h". Under half
+ * an hour, "<1h" (rather than nothing, or 0h). Empty for nothing played.
+ */
+export function formatPlaytimeHours(hours: number | null | undefined): string {
+  if (!hours) return '';
+  const minutes = Math.round(hours * 60);
+  if (!minutes) return '';
+  return minutes < 30 ? '<1h' : `${Math.floor((minutes + 30) / 60)}h`;
+}
+
+/**
  * The hours and minutes fields → hours ("34", "21" → 34.35). An empty field counts as 0, both
  * empty (or both 0) → null. Anything that isn't a whole number, or minutes over 59 → undefined.
  */

@@ -37,10 +37,13 @@ export function readBackdrop(raw: string | null): Backdrop | null {
 @Injectable({ providedIn: 'root' })
 export class BackdropService {
   readonly current = signal<Backdrop | null>(readBackdrop(stored()));
-  /** Large enough to stay crisp with Blur off (the same size as a game screen's artwork). */
+  /**
+   * IGDB's 1080p copy: a wide picture fills a tall phone screen by its height, so only its middle
+   * shows, enlarged; the smaller sizes looked blurry and blocky with Blur low.
+   */
   readonly url = computed(() => {
     const art = this.current();
-    return art ? coverUrl(art.imageId, 'screenshot_big') : null;
+    return art ? coverUrl(art.imageId, '1080p') : null;
   });
 
   set(art: Backdrop): void {
@@ -142,13 +145,17 @@ export function artStrength(
   pixels: ArrayLike<number> | null,
   ground: string,
   muted: string,
+  /** The most it may be (a wallpaper can show at full strength where it's dark). */
+  max = MAX_STRENGTH,
+  /** How much the picture is saturated as shown (the glow's ART_SATURATE; 1 for none). */
+  saturation = ART_SATURATE,
 ): number {
-  if (!pixels || pixels.length < 4) return FALLBACK_STRENGTH;
+  if (!pixels || pixels.length < 4) return Math.min(FALLBACK_STRENGTH, max);
   const g = hexRgb(ground);
   const textL = luminance(hexRgb(muted));
   const all: Rgb[] = [];
   for (let i = 0; i + 3 < pixels.length; i += 4) {
-    all.push(saturate([pixels[i], pixels[i + 1], pixels[i + 2]], ART_SATURATE));
+    all.push(saturate([pixels[i], pixels[i + 1], pixels[i + 2]], saturation));
   }
   const patches = all
     .map((c) => ({ c, l: luminance(c) }))
@@ -160,9 +167,9 @@ export function artStrength(
       const mixed = g.map((v, k) => v + strength * (c[k] - v)) as Rgb;
       return contrast(textL, luminance(mixed)) >= MIN_CONTRAST;
     });
-  if (readable(MAX_STRENGTH)) return MAX_STRENGTH;
+  if (readable(max)) return max;
   let lo = 0;
-  let hi = MAX_STRENGTH;
+  let hi = max;
   for (let i = 0; i < 14; i++) {
     const mid = (lo + hi) / 2;
     if (readable(mid)) lo = mid;

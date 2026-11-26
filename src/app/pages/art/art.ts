@@ -4,6 +4,7 @@ import type { TrackedGame } from '../../../../api/_lib/models.js';
 import { BackdropService, BLUR_MAX, BRIGHTNESS_MAX, BRIGHTNESS_MIN } from '../../core/backdrop';
 import { coverUrl, IgdbService } from '../../core/igdb';
 import { LibraryService } from '../../core/library.service';
+import { WallpaperService } from '../../core/wallpaper';
 import { Cover } from '../../shared/cover';
 import { SearchField } from '../../shared/search-field';
 
@@ -201,6 +202,7 @@ export class ArtPage {
   protected readonly backdrop = inject(BackdropService);
   protected readonly library = inject(LibraryService);
   private readonly igdb = inject(IgdbService);
+  private readonly wallpaper = inject(WallpaperService);
   protected readonly coverUrl = coverUrl;
   protected readonly blurMax = BLUR_MAX;
   protected readonly brightnessMin = BRIGHTNESS_MIN;
@@ -268,5 +270,7 @@ export class ArtPage {
 
   protected choose(game: TrackedGame, imageId: string): void {
     this.backdrop.set({ imageId, gameId: game.igdbId, game: game.name });
+    // One picture at a time.
+    this.wallpaper.clear();
   }
 }

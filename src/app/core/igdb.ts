@@ -605,8 +605,22 @@ export type DiscoverKind = 'anticipated' | 'soon' | 'recent';
 
 const DAY = 86_400;
 
-/** Search's lists before you type, for one platform. Only games people follow on IGDB. */
-export function buildDiscoverQuery(kind: DiscoverKind, platformId: number, now: number): string {
+/** How many games each of Search's strips shows. */
+export const DISCOVER_STRIP = 10;
+/** How many a list opened in full loads at a time ("Load more" adds as many again). */
+export const DISCOVER_PAGE = 20;
+
+/**
+ * Search's lists before you type, for one platform. Only games people follow on IGDB. `limit`
+ * games from `offset`, which skips the ones already loaded, for "Load more".
+ */
+export function buildDiscoverQuery(
+  kind: DiscoverKind,
+  platformId: number,
+  now: number,
+  offset = 0,
+  limit = DISCOVER_STRIP,
+): string {
   const t = Math.floor(now / 1000);
   const where = [
     `platforms = (${Math.trunc(platformId)})`,
@@ -627,7 +641,8 @@ export function buildDiscoverQuery(kind: DiscoverKind, platformId: number, now: 
     'fields name, cover.image_id, first_release_date, platforms.abbreviation, platforms.name;',
     `where ${where.join(' & ')};`,
     `sort ${sort};`,
-    'limit 15;',
+    `limit ${Math.min(500, Math.max(1, Math.trunc(limit)))};`,
+    `offset ${Math.max(0, Math.trunc(offset))};`,
   ].join(' ');
 }
 
@@ -691,10 +706,15 @@ export class IgdbService {
     return events.map(toEventSummary).filter((e) => e !== null);
   }
 
-  async discover(kind: DiscoverKind, platformId: number): Promise<GameSearchResult[]> {
+  async discover(
+    kind: DiscoverKind,
+    platformId: number,
+    offset = 0,
+    limit = DISCOVER_STRIP,
+  ): Promise<GameSearchResult[]> {
     const games = await this.query<IgdbGame[]>(
       'games',
-      buildDiscoverQuery(kind, platformId, Date.now()),
+      buildDiscoverQuery(kind, platformId, Date.now(), offset, limit),
     );
     return games.map(toSearchResult);
   }

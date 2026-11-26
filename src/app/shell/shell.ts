@@ -27,6 +27,7 @@ import {
 } from '@lucide/angular';
 import { artStrength, BackdropService, patchesAt, sampleArt, STRENGTH_CAP } from '../core/backdrop';
 import { GROUNDS, GroundService, MUTED } from '../core/ground';
+import { WallpaperService } from '../core/wallpaper';
 import { PageTitle } from '../core/page-title';
 import { ChoiceSheetOutlet } from '../shared/choice-sheet';
 import { DetailsSheetOutlet } from '../shared/details-sheet';
@@ -81,6 +82,9 @@ export class Shell {
   private readonly router = inject(Router);
   private readonly pageTitle = inject(PageTitle);
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
+  private readonly frame = viewChild.required<ElementRef<HTMLElement>>('frame');
+  /** Started here so a saved wallpaper shows from the first screen. */
+  private readonly wallpaper = inject(WallpaperService);
 
   protected readonly route = signal<ShellRouteData>(this.routeData());
   private readonly url = signal(this.router.url);
@@ -131,6 +135,16 @@ export class Shell {
   });
 
   constructor() {
+    // The app frame's height, for the wallpaper and its copies at the top (all the frame's size).
+    const destroyRef = inject(DestroyRef);
+    afterNextRender(() => {
+      const frame = this.frame().nativeElement;
+      const observer = new ResizeObserver(() =>
+        document.documentElement.style.setProperty('--frame-h', `${frame.clientHeight}px`),
+      );
+      observer.observe(frame);
+      destroyRef.onDestroy(() => observer.disconnect());
+    });
     // Only <main> scrolls, so the router's own scroll handling (which works on the window)
     // doesn't apply. New pages start at the top; Back restores where you were.
     const positions = new Map<string, number>();
@@ -159,7 +173,6 @@ export class Shell {
         }
       }
     });
-    const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(() => sub.unsubscribe());
 
     // Read a newly chosen picture's colours (once per picture).

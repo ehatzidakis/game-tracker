@@ -14,7 +14,10 @@ import { AppUpdate } from './core/app-update';
     <div
       class="ios-strip fixed inset-x-0 top-0 z-50 h-3 bg-ground pointer-events-none"
       aria-hidden="true"
-    ></div>
+    >
+      <!-- With a wallpaper, the same picture, so the strip still can't be seen. -->
+      <div class="wall-img"></div>
+    </div>
     @if (!ready()) {
       <!-- Shown while Firebase checks whether you're already signed in. -->
       <div class="fixed inset-0 grid place-items-center" role="status" aria-label="Loading">

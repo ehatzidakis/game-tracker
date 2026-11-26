@@ -25,7 +25,7 @@ import {
 } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
 import { localDate, nextReleaseId } from '../calendar/calendar-groups';
-import { formatPlaytime, formatPlaytimeClock } from '../../core/playtime';
+import { formatPlaytime, formatPlaytimeClock, formatPlaytimeHours } from '../../core/playtime';
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
 import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
@@ -437,10 +437,10 @@ export class LibraryPage {
       .join(', ');
     return yours ? `${times}; ${yours}` : times;
   }
-  /** Time played on a cover: "137h 51m", or at four a row whole hours rounded up ("138h"). */
+  /** Time played on a cover: "137h 51m", or at four a row to the nearest hour ("138h"). */
   protected coverPlaytime(hours: number | null | undefined): string {
     if (!hours) return '';
-    return this.columns() === '4' ? `${Math.ceil(hours)}h` : formatPlaytimeClock(hours);
+    return this.columns() === '4' ? formatPlaytimeHours(hours) : formatPlaytimeClock(hours);
   }
 
   protected readonly countdown = countdown;

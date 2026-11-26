@@ -32,7 +32,7 @@ describe('game art behind the app', () => {
   it('keeps the choice on this device and clears it', () => {
     const service = TestBed.inject(BackdropService);
     service.set({ imageId: 'sc6abc', gameId: 7, game: 'Elden Ring' });
-    expect(service.url()).toContain('t_screenshot_big/sc6abc');
+    expect(service.url()).toContain('t_1080p/sc6abc');
     expect(readBackdrop(localStorage.getItem(BACKDROP_KEY))?.game).toBe('Elden Ring');
 
     service.clear();

@@ -7,12 +7,17 @@
   top edge (see app.ts) covers its first 12px, so back screens (and the game's artwork) start
   12px down; tab screens start higher, like a native app's, with their title clear of the strip.
 -->
-<div class="fixed inset-x-0 top-0 bottom-0 mx-auto flex max-w-md flex-col bg-ground">
+<div #frame class="fixed inset-x-0 top-0 bottom-0 mx-auto flex max-w-md flex-col bg-ground">
   <div class="relative min-h-0 flex-1">
     <!-- Game art chosen in Settings → Game art: blurred and see-through behind the page, as set
          by that screen's Blur and Brightness sliders (core/backdrop.ts). It stays still while the page scrolls. It starts below a
          tab screen's top (which is solid), so there's no edge, and the game screen, which has
          its own artwork, hides it. -->
+    <!-- A wallpaper (Settings → Wallpaper): the picture behind the whole app, from the very top
+         (core/wallpaper.ts). The game screen has its own artwork, so it hides it. -->
+    <div class="wall-layer" [class.hidden]="route().hero" aria-hidden="true">
+      <div class="wall-img"></div>
+    </div>
     @if (backdrop.url(); as art) {
       <div
         class="game-backdrop"
@@ -38,7 +43,9 @@
           class="top-fade pointer-events-none absolute inset-x-0 top-0 -bottom-5 transition-opacity duration-200"
           [class.opacity-0]="!scrolled()"
           aria-hidden="true"
-        ></div>
+        >
+          <div class="wall-img"></div>
+        </div>
         <div class="relative flex h-14 items-center px-3">
           <button
             type="button"
@@ -64,7 +71,9 @@
         class="tab-top-fade pointer-events-none absolute inset-x-0 top-0 z-20 transition-opacity duration-300"
         [class.opacity-0]="!topHidden()"
         aria-hidden="true"
-      ></div>
+      >
+        <div class="wall-img"></div>
+      </div>
     }
 
     <!-- overflow-x-hidden: overflow-y:auto would otherwise let wide content scroll sideways.

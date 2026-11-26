@@ -108,10 +108,11 @@
   </p>
 </section>
 
-<!-- Background: two rows, so the choices only take room when you're choosing. Colour opens a
+<!-- Background: three rows, so the choices only take room when you're choosing. Colour opens a
      picker (the iPhone's own menu; the app's sheet elsewhere, with each colour's hint), the
-     swatch beside it showing the one in use. Game art opens its own screen (pages/art). Both
-     are kept on this device and apply at once. -->
+     swatch beside it showing the one in use. Wallpaper (pages/wallpaper) and Game art
+     (pages/art) open their own screens; only one picture shows at a time. All are kept on this
+     device and apply at once. -->
 <section aria-labelledby="ground-title">
   <h2 id="ground-title" class="section-title">
     <span class="section-icon" aria-hidden="true"><svg lucidePalette [size]="17" [strokeWidth]="2.25"></svg></span>
@@ -155,6 +156,32 @@
         <svg lucideChevronsUpDown [size]="15" class="pointer-events-none absolute right-0"></svg>
       </span>
     </label>
+
+    <a routerLink="/settings/wallpaper" class="row">
+      <span
+        class="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg bg-fill text-muted ring-[0.5px] ring-white/20"
+        aria-hidden="true"
+      >
+        @if (wallpaper.option(); as w) {
+          <img
+            [src]="w.src"
+            alt=""
+            class="size-full object-cover"
+            [style.image-rendering]="w.pixelated ? 'pixelated' : 'auto'"
+          />
+        } @else {
+          <svg lucideWallpaper [size]="17" [strokeWidth]="1.75"></svg>
+        }
+      </span>
+      <span class="flex-1">Wallpaper</span>
+      <span class="row-value max-w-[50%] truncate">{{ wallpaper.option()?.label ?? 'None' }}</span>
+      <svg
+        lucideChevronRight
+        [size]="18"
+        [strokeWidth]="2.25"
+        class="-mr-1 shrink-0 text-faint"
+      ></svg>
+    </a>
 
     <a routerLink="/settings/art" class="row">
       <span

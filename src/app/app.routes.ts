@@ -48,6 +48,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/search/search').then((m) => m.SearchPage),
       },
       {
+        // One of Search's lists in full, from "See all" by its strip.
+        path: 'search/:kind',
+        title: 'Search · Questloggd',
+        data: { back: true },
+        loadComponent: () => import('./pages/discover/discover').then((m) => m.DiscoverPage),
+      },
+      {
         path: 'game/:id',
         title: 'Game · Questloggd',
         data: { back: true, hero: true },
@@ -85,6 +92,12 @@ export const routes: Routes = [
         title: 'What’s new · Questloggd',
         data: { title: 'What’s new', back: true },
         loadComponent: () => import('./pages/whats-new/whats-new').then((m) => m.WhatsNewPage),
+      },
+      {
+        path: 'settings/wallpaper',
+        title: 'Wallpaper · Questloggd',
+        data: { title: 'Wallpaper', back: true },
+        loadComponent: () => import('./pages/wallpaper/wallpaper').then((m) => m.WallpaperPage),
       },
       {
         path: 'settings/art',

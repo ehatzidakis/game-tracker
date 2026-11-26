@@ -18,6 +18,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    id: '2026-11-26-wallpapers',
+    date: '2026-11-26',
+    title: 'Wallpapers, and every list in Search',
+    summary: 'Put a pixel-art wallpaper behind the whole app, and see Search’s lists in full.',
+    items: [
+      'Wallpapers: two pixel-art pictures, Pink planet and Galaxy, behind the whole app from the top of the screen. Settings → Background → Wallpaper, with a Brightness slider.',
+      'Game art is much sharper, especially with Blur turned down.',
+      'Search: “See all” by Most anticipated, Coming soon and Recently released opens the whole list, three a row, 20 at a time.',
+      'Library at four a row: time played rounds to the nearest hour (5h 29m shows 5h, 5h 30m shows 6h).',
+    ],
+  },
+  {
     id: '2026-11-26-trophies-sold',
     date: '2026-11-26',
     title: 'Every trophy, one tap away',

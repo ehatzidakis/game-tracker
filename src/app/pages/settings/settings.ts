@@ -14,6 +14,7 @@ import {
   LucideRotateCcw,
   LucideShare,
   LucideSparkles,
+  LucideWallpaper,
   LucideUserPlus,
   LucideUsers,
 } from '@lucide/angular';
@@ -25,6 +26,7 @@ import { PsnService } from '../../core/psn.service';
 import { PushService } from '../../core/push.service';
 import { ToastService } from '../../core/toast.service';
 import { BackdropService } from '../../core/backdrop';
+import { WallpaperService } from '../../core/wallpaper';
 import { GROUNDS, GroundService, type Ground } from '../../core/ground';
 import { subscribeUrl } from '../../core/calendar-link';
 import { isAndroid } from '../../core/platform';
@@ -54,6 +56,7 @@ import { TabTitle } from '../../shared/tab-title';
     LucideRotateCcw,
     LucideShare,
     LucideSparkles,
+    LucideWallpaper,
     LucideUserPlus,
     LucideUsers,
   ],
@@ -71,6 +74,8 @@ export class SettingsPage {
   );
   /** Game art behind the app (its own screen, pages/art), also kept on this device. */
   protected readonly backdrop = inject(BackdropService);
+  /** A wallpaper behind the whole app (pages/wallpaper), also kept on this device. */
+  protected readonly wallpaper = inject(WallpaperService);
   /** What's new, and whether this phone has seen the newest entry. */
   protected readonly news = inject(WhatsNew);
   protected readonly newsDate = changelogDate;

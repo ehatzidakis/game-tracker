@@ -228,6 +228,12 @@ describe('game page extras', () => {
     expect(buildDiscoverQuery('soon', 167, now)).toContain('sort first_release_date asc');
     expect(buildDiscoverQuery('recent', 48, now)).toContain('platforms = (48)');
   });
+
+  it('loads 10 for a strip, or a page of a full list after the ones already loaded', () => {
+    const now = Date.UTC(2026, 10, 8);
+    expect(buildDiscoverQuery('anticipated', 167, now)).toContain('limit 10; offset 0;');
+    expect(buildDiscoverQuery('anticipated', 167, now, 40, 20)).toContain('limit 20; offset 40;');
+  });
 });
 
 describe('remakeOf', () => {
