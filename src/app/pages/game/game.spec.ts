@@ -407,6 +407,16 @@ describe('GamePage', () => {
     expect(el.textContent).not.toContain('On PS5');
     expect(el.textContent).not.toContain('Last played');
   });
+  const sold = (soldFor: number | null) =>
+    tracked({ status: 'completed', releaseDate: '2020-01-01', completion: 'main', sold: true, soldFor });
+  it('shows a sold game and what it went for', async () => {
+    const { el } = await render(sold(25));
+    expect(stats(el, 'Purchase')).toEqual(['Digital / Copy', '€25.00 / Sold for']);
+  });
+  it('shows a sold game without an amount as a dash', async () => {
+    const { el } = await render(sold(null));
+    expect(stats(el, 'Purchase')).toEqual(['Digital / Copy', '– / Sold for']);
+  });
   it('shows PlayStation’s playtime and trophies, and keeps the hours out of the sheet', async () => {
     const { el, sheet2 } = await render(
       tracked({

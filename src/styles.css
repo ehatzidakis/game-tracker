@@ -408,6 +408,13 @@ dialog.sheet[open]::backdrop {
   border-radius: 8px;
 }
 
+/* A game you sold, in the Library: still in its list, greyed out and faded (badges too), like a
+   cancelled game or an archived event. */
+.sold-cover {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
 /* Round frosted button on the top bar (Back), the same glass as the tab bar. */
 .glass-button {
   background: rgb(36 36 38 / 0.62);

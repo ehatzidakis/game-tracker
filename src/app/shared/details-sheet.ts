@@ -30,6 +30,9 @@ export interface MyData {
   /** "YYYY-MM-DD" */
   orderedOn: string | null;
   physical: boolean;
+  /** You sold it, and for how much (optional). Asked on a game's page once you own it. */
+  sold: boolean;
+  soldFor: number | null;
   hoursPlayed: number | null;
   /** Milliseconds. */
   completedAt: number | null;
@@ -173,6 +176,8 @@ export class DetailsSheet {
         boughtFrom: game.boughtFrom ?? null,
         orderedOn: game.orderedOn ?? null,
         physical: !!game.physical,
+        sold: !!game.sold,
+        soldFor: game.soldFor ?? null,
         hoursPlayed: game.hoursPlayed,
         completedAt: game.completedAt,
         completion: game.completion,
@@ -451,6 +456,40 @@ export function parsePrice(text: string): number | null | undefined {
                   <span></span>
                 </button>
               </div>
+              <!-- Sold: on a game's page, once you own it. It stays in its list, greyed out. -->
+              @if (req.statusEdit && status() !== 'wishlist') {
+                <div class="row">
+                  <p id="sheet-sold-label" class="flex-1">Sold</p>
+                  <button
+                    type="button"
+                    role="switch"
+                    class="switch"
+                    aria-labelledby="sheet-sold-label"
+                    [attr.aria-checked]="sold()"
+                    (click)="sold.set(!sold())"
+                  >
+                    <span></span>
+                  </button>
+                </div>
+                @if (sold()) {
+                  <label class="row">
+                    <span class="flex-1">Sold for</span>
+                    <span class="flex items-baseline gap-0.5">
+                      <span class="text-muted">€</span>
+                      <input
+                        appFitWidth
+                        name="soldFor"
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="Optional"
+                        autocomplete="off"
+                        class="num bg-transparent text-right text-[17px] outline-none"
+                        [value]="req.initial.soldFor != null ? req.initial.soldFor.toFixed(2) : ''"
+                      />
+                    </span>
+                  </label>
+                }
+              }
             }
           </div>
           @let extras = req.extras;
@@ -637,6 +676,7 @@ export class DetailsSheetOutlet {
   /** What's in the store field, so the matching store button shows as picked. */
   protected readonly storeText = signal('');
   protected readonly physical = signal(false);
+  protected readonly sold = signal(false);
   protected readonly completion = signal<Completion | null>(null);
   protected readonly completions = COMPLETIONS;
   protected readonly statuses = STATUSES;
@@ -689,6 +729,7 @@ export class DetailsSheetOutlet {
         this.error.set('');
         this.storeText.set(req.initial.boughtFrom ?? '');
         this.physical.set(!!req.initial.physical);
+        this.sold.set(!!req.initial.sold);
         this.completion.set(req.initial.completion ?? null);
         this.status.set(req.statusEdit?.status ?? null);
         this.rating.set(req.statusEdit?.rating ?? null);
@@ -736,6 +777,12 @@ export class DetailsSheetOutlet {
       data.boughtFrom = field('store').trim().slice(0, 60) || null;
       data.orderedOn = /^\d{4}-\d{2}-\d{2}$/.test(ordered) ? ordered : null;
       data.physical = this.physical();
+      if (req.statusEdit && this.status() !== 'wishlist') {
+        const soldFor = this.sold() ? parsePrice(field('soldFor')) : null;
+        if (soldFor === undefined) return this.error.set('Sold for should be a number, like 25.');
+        data.sold = this.sold();
+        data.soldFor = soldFor;
+      }
     }
     const extras = req.extras;
     if (extras?.scores) {

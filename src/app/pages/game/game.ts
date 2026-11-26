@@ -334,8 +334,15 @@ export class GamePage {
         caption: t.preordered ? 'Preordered' : 'Bought',
       });
     }
-    if (stats.length || t.physical) {
+    if (stats.length || t.physical || t.sold) {
       stats.push({ value: t.physical ? 'Physical' : 'Digital', caption: 'Copy' });
+    }
+    // Sold, for how much ("–" when no amount was given).
+    if (t.sold) {
+      stats.push({
+        value: t.soldFor != null ? `€${t.soldFor.toFixed(2)}` : '–',
+        caption: 'Sold for',
+      });
     }
     return stats;
   });

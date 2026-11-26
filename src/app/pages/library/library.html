@@ -356,10 +356,12 @@
       <li>
         <a [routerLink]="['/game', game.igdbId]" class="block active:opacity-70">
           <!-- Games you're playing get a blue outline. -->
+          <!-- Sold: still in its list, greyed out (its badges too), "Sold" under it. -->
           <app-cover
             [coverId]="game.coverId"
             [name]="game.name"
             [class.playing-cover]="game.playing && game.status === 'backlog'"
+            [class.sold-cover]="game.sold"
           >
             @if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
               <span
@@ -468,10 +470,15 @@
               </span>
             }
           </app-cover>
-          <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">{{ game.name }}</p>
+          <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal" [class.text-muted]="game.sold">
+            {{ game.name }}
+          </p>
           <p
             class="num mt-0.5 flex items-center gap-1 text-[12px] leading-4 tracking-normal text-muted"
           >
+            @if (game.sold) {
+              <span class="shrink-0 rounded-[4px] bg-fill px-1 font-semibold text-label">Sold</span>
+            }
             @if (searching()) {
               {{ statusLabel(game.status) }}
             } @else {

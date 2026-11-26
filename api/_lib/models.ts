@@ -119,6 +119,10 @@ export interface TrackedGame {
   orderedOn?: string | null;
   /** You own (or pre-ordered) it on disc rather than as a download. */
   physical?: boolean;
+  /** You sold it: it stays in its list, greyed out. */
+  sold?: boolean;
+  /** What you sold it for, in euros (optional). */
+  soldFor?: number | null;
 
   /** HowLongToBeat's times, typed in from its page (it has no API). */
   hltb?: HltbTimes | null;

@@ -46,6 +46,8 @@ export type GameEdits = Partial<
     | 'orderedOn'
     | 'completedAt'
     | 'physical'
+    | 'sold'
+    | 'soldFor'
     | 'hltb'
   >
 >;
