@@ -18,6 +18,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    id: '2026-11-26-trophies-sold',
+    date: '2026-11-26',
+    title: 'Every trophy, one tap away',
+    summary: 'See every trophy in a game with your progress, and mark the games you’ve sold.',
+    items: [
+      'Tap the Trophies card on a game’s page to see every trophy, with its description, when you earned it, how far along you are and how rare it is. Hidden ones stay hidden until you tap to see them.',
+      'Sold a game? Mark it Sold when you edit it, with what you got for it if you like. It stays in its list, greyed out.',
+    ],
+  },
+  {
     id: '2026-11-26-now-playing',
     date: '2026-11-26',
     title: 'Now playing, on your Calendar',
