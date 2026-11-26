@@ -2,6 +2,7 @@ import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { collection, doc, onSnapshot, updateDoc, type FirestoreError } from 'firebase/firestore';
 import type { PsnGameRecord, PsnLink, PsnSyncState } from '../../../api/_lib/models.js';
 import type { ImportChoice } from '../../../api/_lib/psn-import.js';
+import type { TrophyListView } from '../../../api/_lib/psn-trophies.js';
 import { AuthService } from './auth.service';
 import { db } from './db';
 import { ToastService } from './toast.service';
@@ -58,6 +59,16 @@ export class PsnService {
     });
     const body = (await res.json().catch(() => ({}))) as PsnSyncState & { error?: string };
     if (!res.ok) throw new Error(body.error ?? 'PlayStation didn’t answer. Try again later.');
+    return body;
+  }
+
+  /** A game's trophies with your progress (api/psn-trophies.ts). Throws with a message to show. */
+  async trophies(igdbId: number): Promise<TrophyListView> {
+    const res = await fetch(`/api/psn-trophies?game=${Math.trunc(igdbId)}`, {
+      headers: { Authorization: `Bearer ${await this.auth.idToken()}` },
+    });
+    const body = (await res.json().catch(() => ({}))) as TrophyListView & { error?: string };
+    if (!res.ok) throw new Error(body.error ?? 'PlayStation didn’t answer. Try again in a moment.');
     return body;
   }
 

@@ -54,6 +54,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/game/game').then((m) => m.GamePage),
       },
       {
+        // A game's trophies, from the Trophies card on its page.
+        path: 'game/:id/trophies',
+        title: 'Trophies · Questloggd',
+        data: { title: 'Trophies', back: true },
+        loadComponent: () => import('./pages/trophies/trophies').then((m) => m.TrophiesPage),
+      },
+      {
         path: 'company/:id',
         title: 'Company · Questloggd',
         data: { back: true },

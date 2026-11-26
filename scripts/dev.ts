@@ -20,6 +20,7 @@ import {
 import { DELETE as psnUnlink, POST as psnLink } from '../api/psn.ts';
 import { POST as psnImport } from '../api/psn-import.ts';
 import { POST as psnSync } from '../api/psn-sync.ts';
+import { GET as psnTrophies } from '../api/psn-trophies.ts';
 import { POST as pushTest } from '../api/push-test.ts';
 import { GET as signupCheck, POST as signup } from '../api/signup.ts';
 
@@ -33,6 +34,7 @@ const routes: Record<string, Partial<Record<string, Handler>>> = {
   '/api/psn': { POST: psnLink, DELETE: psnUnlink },
   '/api/psn-sync': { POST: psnSync },
   '/api/psn-import': { POST: psnImport },
+  '/api/psn-trophies': { GET: psnTrophies },
   '/api/invite': { POST: invite },
   '/api/signup': { GET: signupCheck, POST: signup },
   '/api/cron/daily': { GET: daily },

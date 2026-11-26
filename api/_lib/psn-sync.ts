@@ -52,6 +52,8 @@ function trophiesOf(list: TrophyListData | null): TrophyProgress | null {
     progress: list.progress,
     lastEarnedAt: Number.isNaN(at) ? null : at,
     platform: list.trophyTitlePlatform,
+    listId: list.npCommunicationId,
+    ...(list.npServiceName ? { serviceName: list.npServiceName } : {}),
   };
 }
 

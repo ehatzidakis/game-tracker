@@ -312,6 +312,10 @@ export interface TrophyProgress {
   lastEarnedAt: number | null;
   /** "PS5", "PS4", "PS5,PSPC"… */
   platform: string;
+  /** PlayStation's id of the list (NPWR…), for the game's Trophies page. Kept from 2026-11-26. */
+  listId?: string;
+  /** "trophy" for PS4 lists, "trophy2" for PS5 ones: needed to ask for the list's trophies. */
+  serviceName?: 'trophy' | 'trophy2';
 }
 
 /** What the sync keeps on a library game (TrackedGame.playstation). */

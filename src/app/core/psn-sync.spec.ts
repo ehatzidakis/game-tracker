@@ -70,6 +70,7 @@ describe('PlayStation sync updates', () => {
           progress: 72,
           lastEarnedAt: Date.parse('2026-11-01T21:00:00Z'),
           platform: 'PS5',
+          listId: 'NPWR1',
         },
         syncedAt: now,
       },
