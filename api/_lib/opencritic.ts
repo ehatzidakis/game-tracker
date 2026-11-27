@@ -8,28 +8,27 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { igdbQuery } from './igdb-client.js';
 import {
+  buildQueue,
   entryFrom,
   isStale,
   lookupRank,
+  lowOn as allowanceLow,
   matchCandidates,
-  maxAgeDays,
+  queueExpired,
   sameYear,
   withOwnScores,
+  type Allowance,
   type OcGame,
   type OcSearchResult,
   type OpenCriticEntry,
+  type OpenCriticQueue,
   type OwnScores,
 } from './opencritic-match.js';
 
 const HOST = 'opencritic-api.p.rapidapi.com';
 
 /** What's left in the current window, from the last reply's headers (null until known). */
-export const remaining: {
-  requests: number | null;
-  searches: number | null;
-  /** When the window ends and the allowance is full again (ms). */
-  resetAt: number | null;
-} = {
+export const remaining: Allowance = {
   requests: null,
   searches: null,
   resetAt: null,
@@ -37,10 +36,7 @@ export const remaining: {
 
 /** True when at most `keep` of that allowance is left and it hasn't reset since. */
 function lowOn(kind: 'requests' | 'searches', keep: number, now = Date.now()): boolean {
-  const left = remaining[kind];
-  if (left === null) return false;
-  if (remaining.resetAt !== null && now >= remaining.resetAt) return false;
-  return left <= keep;
+  return allowanceLow(remaining, kind, keep, now);
 }
 
 const quotaRef = (db: Firestore) => db.collection('meta').doc('opencriticQuota');
@@ -62,7 +58,7 @@ export class OutOfQuota extends Error {}
 let lastCall = 0;
 
 async function call<T>(path: string): Promise<T> {
-  const key = process.env.RAPIDAPI_KEY;
+  const key = process.env['RAPIDAPI_KEY'];
   if (!key) throw new OutOfQuota('RAPIDAPI_KEY is not set');
   // At most 4 calls a second.
   const wait = lastCall + 260 - Date.now();
@@ -235,13 +231,13 @@ const KEEP_REQUESTS = 30;
 /** Stays well inside the function's time limit. */
 const MAX_CALLS = 100;
 
+const queueRef = (db: Firestore) => db.collection('meta').doc('opencriticQueue');
+
 /**
- * Refreshes due scores for every game in anyone's library (games around release first), then
- * looks up games not looked up yet (Completed, then Backlog, Shelved, Wishlist, owned DLC last),
- * as far as the allowance goes. Runs every hour, so a big library fills in as soon as the
- * allowance comes back. Keeps a few searches and requests for opening game pages.
+ * Reads every library (one read per game in it) and every stored score, and saves the queue of
+ * games due before the next daily build. The expensive part: the daily job does it once a day.
  */
-export async function runOpenCriticRefresh(db: Firestore, now = Date.now(), maxCalls = MAX_CALLS) {
+async function rebuildQueue(db: Firestore, now: number): Promise<OpenCriticQueue> {
   // Each game's most important status across everyone who has it.
   const rank = new Map<number, number>();
   for (const user of await db.collection('users').listDocuments()) {
@@ -251,43 +247,77 @@ export async function runOpenCriticRefresh(db: Firestore, now = Date.now(), maxC
       rank.set(id, Math.min(rank.get(id) ?? r, r));
     }
   }
-  const ids = new Set(rank.keys());
-  await loadQuota(db, now);
-
-  const refs = [...ids].map((id) => entryRef(db, id));
+  const refs = [...rank.keys()].map((id) => entryRef(db, id));
   const stored = new Map<number, OpenCriticEntry>();
   for (let i = 0; i < refs.length; i += 300) {
     for (const snap of await db.getAll(...refs.slice(i, i + 300))) {
       if (snap.exists) stored.set(Number(snap.id), snap.data() as OpenCriticEntry);
     }
   }
+  const queue = buildQueue(rank, stored, now);
+  await queueRef(db).set(queue);
+  return queue;
+}
 
-  // Matched games that are due, those around release first, then games not matched yet.
-  const due = [...ids].filter((id) => {
-    const entry = stored.get(id);
-    return !entry || isStale(entry, now);
-  });
-  const refreshes = due
-    .filter((id) => stored.get(id)?.ocId)
-    .sort((a, b) => maxAgeDays(stored.get(a)!, now) - maxAgeDays(stored.get(b)!, now));
-  const searches = due
-    .filter((id) => !stored.get(id)?.ocId)
-    .sort((a, b) => rank.get(a)! - rank.get(b)!);
+/**
+ * Refreshes due scores (games around release first), then looks up games not looked up yet
+ * (Completed, then Backlog, Shelved, Wishlist, owned DLC last), as far as the allowance goes.
+ * Keeps a few searches and requests for opening game pages.
+ *
+ * Works from the queue in meta/opencriticQueue. The daily job (`rebuild`) builds it by reading
+ * every library; the hourly runs only read the queue and the scores they're about to update, and
+ * read nothing more when the allowance is used up. So a big library fills in as soon as the
+ * allowance comes back (it resets at about 18:57 UTC, not midnight) without reading every
+ * library every hour. A game added during the day waits for the next daily build, unless its
+ * game page is opened (that looks it up there and then).
+ */
+export async function runOpenCriticRefresh(
+  db: Firestore,
+  now = Date.now(),
+  maxCalls = MAX_CALLS,
+  { rebuild = false }: { rebuild?: boolean } = {},
+) {
+  await loadQuota(db, now);
+  const usedUp = () => lowOn('requests', KEEP_REQUESTS, now);
+  // Nothing to spend: stop before reading anything else.
+  if (!rebuild && usedUp()) return { skipped: 'allowance used up', left: { ...remaining } };
+
+  let queue: OpenCriticQueue | null = null;
+  let built = false;
+  if (!rebuild) {
+    const snap = await queueRef(db).get();
+    queue = snap.exists ? (snap.data() as OpenCriticQueue) : null;
+  }
+  if (!queue || queueExpired(queue, now)) {
+    queue = await rebuildQueue(db, now);
+    built = true;
+  }
 
   let refreshed = 0;
   let matched = 0;
   let notFound = 0;
   let calls = 0;
-
   let failed = 0;
+  /** Off the queue: looked up, or no longer due (refreshed on its game page meanwhile). */
+  const done = new Set<number>();
+
   // One game failing (a bad reply) doesn't stop the rest; running out of quota does.
   const update = async (id: number) => {
+    // Read just before asking: a game page may have refreshed it since the queue was built.
+    const snap = await entryRef(db, id).get();
+    const stored = snap.exists ? (snap.data() as OpenCriticEntry) : null;
+    if (stored && !isStale(stored, now)) {
+      done.add(id);
+      return undefined;
+    }
     try {
-      const entry = await lookUp(id, stored.get(id) ?? null, now);
+      const entry = await lookUp(id, stored, now);
       await entryRef(db, id).set(entry);
+      done.add(id);
       return entry;
     } catch (error) {
       if (error instanceof OutOfQuota) throw error;
+      // Stays on the queue, to be tried again next hour.
       console.error(`OpenCritic update for ${id} failed`, error);
       failed++;
       return null;
@@ -295,13 +325,15 @@ export async function runOpenCriticRefresh(db: Firestore, now = Date.now(), maxC
   };
 
   try {
-    for (const id of refreshes) {
-      if (calls >= maxCalls || lowOn('requests', KEEP_REQUESTS, now)) break;
+    for (const { id, dueAt } of queue.refreshes) {
+      if (dueAt > now) continue;
+      if (calls >= maxCalls || usedUp()) break;
       calls++;
       if (await update(id)) refreshed++;
     }
-    for (const id of searches) {
-      if (calls >= maxCalls || lowOn('requests', KEEP_REQUESTS, now)) break;
+    for (const { id, dueAt } of queue.searches) {
+      if (dueAt > now) continue;
+      if (calls >= maxCalls || usedUp()) break;
       if (lowOn('searches', KEEP_SEARCHES, now)) break;
       calls += 2;
       const entry = await update(id);
@@ -314,13 +346,21 @@ export async function runOpenCriticRefresh(db: Firestore, now = Date.now(), maxC
     await saveQuota(db).catch((error: unknown) => console.error(error));
   }
 
+  const left = (games: OpenCriticQueue['refreshes']) => games.filter((g) => !done.has(g.id));
+  const after: OpenCriticQueue = {
+    builtAt: queue.builtAt,
+    refreshes: left(queue.refreshes),
+    searches: left(queue.searches),
+  };
+  if (done.size) await queueRef(db).set(after);
+
   return {
-    games: ids.size,
+    built,
     refreshed,
     matched,
     notFound,
     failed,
-    waiting: due.length - refreshed - matched - notFound - failed,
+    waiting: [...after.refreshes, ...after.searches].filter((g) => g.dueAt <= now).length,
     left: { ...remaining },
   };
 }

@@ -1,6 +1,7 @@
 // Hourly: moves pre-orders that came out today to the Backlog, sends release alerts that are
 // due, announces a new What's new entry once it's live, syncs PlayStation for those whose last sync is 8 hours old, then fills in OpenCritic
-// scores with whatever is left of its allowance. Called by the hourly trigger with CRON_SECRET.
+// scores with whatever is left of its allowance, from the queue the daily job builds (so it
+// doesn't read every library each hour). Called by the hourly trigger with CRON_SECRET.
 import { adminDb } from '../_lib/admin.js';
 import { isCron, json } from '../_lib/auth.js';
 import { runAnnounce, runNotify, runPreorderArrivals } from '../_lib/jobs.js';

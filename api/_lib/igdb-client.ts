@@ -7,8 +7,8 @@ async function getTwitchToken(): Promise<string> {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value;
 
   const params = new URLSearchParams({
-    client_id: process.env.TWITCH_CLIENT_ID ?? '',
-    client_secret: process.env.TWITCH_CLIENT_SECRET ?? '',
+    client_id: process.env['TWITCH_CLIENT_ID'] ?? '',
+    client_secret: process.env['TWITCH_CLIENT_SECRET'] ?? '',
     grant_type: 'client_credentials',
   });
   const res = await fetch(`https://id.twitch.tv/oauth2/token?${params}`, { method: 'POST' });
@@ -23,7 +23,7 @@ async function post(endpoint: string, query: string): Promise<Response> {
   return fetch(`https://api.igdb.com/v4/${endpoint}`, {
     method: 'POST',
     headers: {
-      'Client-ID': process.env.TWITCH_CLIENT_ID ?? '',
+      'Client-ID': process.env['TWITCH_CLIENT_ID'] ?? '',
       Authorization: `Bearer ${await getTwitchToken()}`,
       'Content-Type': 'text/plain',
     },

@@ -17,7 +17,10 @@ export async function GET(request: Request): Promise<Response> {
       console.error(error);
       return { error: 'Event refresh failed' };
     });
-    const opencritic = await runOpenCriticRefresh(db).catch((error: unknown) => {
+    // Also rebuilds the queue the hourly runs work through (the only run that reads every library).
+    const opencritic = await runOpenCriticRefresh(db, Date.now(), undefined, {
+      rebuild: true,
+    }).catch((error: unknown) => {
       console.error(error);
       return { error: 'OpenCritic refresh failed' };
     });
