@@ -12,6 +12,7 @@ import { EVENT_KINDS, type EventKind, type GamingEvent } from '../../../api/_lib
 import { readAnnouncedTime } from '../core/announced-time';
 import { EventsService, type EventFields } from '../core/events.service';
 import { EventIcon } from './event-icon';
+import { SheetError, SheetErrorNote } from './sheet-error';
 
 export { guessKind };
 
@@ -150,7 +151,7 @@ export class EventSheet {
 /** Rendered once, in the shell. */
 @Component({
   selector: 'app-event-sheet',
-  imports: [EventIcon],
+  imports: [EventIcon, SheetErrorNote],
   template: `
     <dialog
       #dialog
@@ -165,6 +166,8 @@ export class EventSheet {
           novalidate
           class="px-2 pb-[max(env(safe-area-inset-bottom),8px)]"
           (submit)="onSubmit($event)"
+          (input)="err.touched($event)"
+          (click)="err.touched($event)"
         >
           <div class="grouped rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
             <h2
@@ -174,7 +177,7 @@ export class EventSheet {
               {{ req.event ? 'Edit gaming event' : 'New gaming event' }}
             </h2>
             <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
-            <label class="row">
+            <label class="row" data-field="title" [class.field-invalid]="err.field() === 'title'">
               <span class="sr-only">Title</span>
               <input
                 #title
@@ -214,7 +217,11 @@ export class EventSheet {
                 </p>
               }
             </div>
-            <label class="row">
+            <label
+              class="row"
+              data-field="startsAt"
+              [class.field-invalid]="err.field() === 'startsAt'"
+            >
               <span class="flex-1">Starts</span>
               <input
                 #starts
@@ -226,7 +233,11 @@ export class EventSheet {
               />
             </label>
             <!-- A time field so the iPhone opens its hours and minutes wheel; read as a length. -->
-            <label class="row">
+            <label
+              class="row"
+              data-field="duration"
+              [class.field-invalid]="err.field() === 'duration'"
+            >
               <span class="flex-1">
                 Duration
                 <span class="block text-[13px] leading-4.5 text-muted"
@@ -266,7 +277,7 @@ export class EventSheet {
                 }
               </div>
             </div>
-            <label class="row">
+            <label class="row" data-field="link" [class.field-invalid]="err.field() === 'link'">
               <span class="shrink-0">Link</span>
               <input
                 name="link"
@@ -300,11 +311,6 @@ export class EventSheet {
               </div>
             }
           </div>
-          @if (error()) {
-            <p class="px-4 pt-2 text-center text-[13px] text-[#ff6961]" role="alert">
-              {{ error() }}
-            </p>
-          }
           @if (req.event) {
             <div class="grouped mt-2 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
               <button
@@ -316,20 +322,27 @@ export class EventSheet {
               </button>
             </div>
           }
-          <div class="mt-2 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              class="grouped min-h-14.25 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
-              (click)="sheet.finish(null)"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="min-h-14.25 rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
-            >
-              Save
-            </button>
+          <!-- Stays at the foot of the screen when the sheet is taller than it, with why it
+               couldn't save just above Save, so that's never off screen. -->
+          <div class="sticky bottom-[max(env(safe-area-inset-bottom),8px)] mt-2">
+            @if (err.message(); as message) {
+              <app-sheet-error [message]="message" />
+            }
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                class="grouped min-h-14.25 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
+                (click)="sheet.finish(null)"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="min-h-14.25 rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </form>
       }
@@ -354,7 +367,8 @@ export class EventSheetOutlet {
   protected readonly announcedNote = signal<{ ok: boolean; text: string } | null>(null);
   protected readonly kind = signal<EventKind>('other');
   protected readonly archived = signal(false);
-  protected readonly error = signal('');
+  /** Why Save didn't save, and the field to fix. */
+  protected readonly err = new SheetError(() => this.dialog().nativeElement);
   protected readonly deleting = signal(false);
   protected readonly dateTimeFieldValue = dateTimeFieldValue;
   /** Once you pick who's hosting, typing the title stops guessing it. */
@@ -369,7 +383,7 @@ export class EventSheetOutlet {
         this.kind.set(req.initial.kind);
         this.announcedNote.set(null);
         this.archived.set(req.initial.archived);
-        this.error.set('');
+        this.err.clear();
         this.deleting.set(false);
         this.kindPicked = !!req.event;
         el.showModal();
@@ -390,6 +404,8 @@ export class EventSheetOutlet {
       });
     }
     starts.value = dateTimeFieldValue(read.startsAt);
+    // Filled in for you (no typing in Starts), so a message about it goes too.
+    if (this.err.field() === 'startsAt') this.err.clear();
     const when = DAY_TIME.format(read.startsAt).replace(',', '');
     this.announcedNote.set({
       ok: true,
@@ -420,15 +436,17 @@ export class EventSheetOutlet {
     const field = (name: string) =>
       (form.elements.namedItem(name) as HTMLInputElement | null)?.value ?? '';
     const title = field('title').trim().slice(0, 80);
-    if (!title) return this.error.set('Give the event a title.');
+    if (!title) return this.err.show('title', 'Give the event a title.');
     const startsAt = fromDateTimeField(field('startsAt'));
-    if (startsAt === null) return this.error.set('Pick a date and time.');
+    if (startsAt === null) return this.err.show('startsAt', 'Pick when it starts.');
     const durationMinutes = fromDurationField(field('duration'));
     if (durationMinutes === undefined) {
-      return this.error.set('Duration goes up to 9 hours and 59 minutes.');
+      return this.err.show('duration', 'Duration goes up to 9 hours and 59 minutes.');
     }
     const link = cleanLink(field('link'));
-    if (link === undefined) return this.error.set('The link should be a web address.');
+    if (link === undefined) {
+      return this.err.show('link', 'The link should be a web address, like nintendo.com.');
+    }
     this.sheet.save({
       title,
       startsAt,

@@ -100,7 +100,12 @@ export class SettingsPage {
   protected async linkPsn(event: Event, field: HTMLInputElement): Promise<void> {
     event.preventDefault();
     const onlineId = field.value.trim();
-    if (!onlineId || this.psnBusy()) return;
+    if (this.psnBusy()) return;
+    if (!onlineId) {
+      this.toast.error('Type your PlayStation Online ID first.');
+      field.focus();
+      return;
+    }
     this.psnBusy.set(true);
     try {
       const link = await this.psn.link(onlineId);

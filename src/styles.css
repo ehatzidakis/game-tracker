@@ -408,11 +408,12 @@ dialog.sheet[open]::backdrop {
   border-radius: 8px;
 }
 
-/* A game you sold, in the Library: still in its list, greyed out and faded (badges too), like a
-   cancelled game or an archived event. */
-.sold-cover {
-  filter: grayscale(1);
-  opacity: 0.45;
+/* A sheet's field that stopped it saving (shared/sheet-error.ts): outlined and tinted red until
+   you change it. The message sits by Save. */
+.field-invalid {
+  box-shadow: inset 0 0 0 1.5px var(--color-danger);
+  background: rgb(255 69 58 / 0.12);
+  border-radius: 10px;
 }
 
 /* Round frosted button on the top bar (Back), the same glass as the tab bar. */

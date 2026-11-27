@@ -356,14 +356,22 @@
       <li>
         <a [routerLink]="['/game', game.igdbId]" class="block active:opacity-70">
           <!-- Games you're playing get a blue outline. -->
-          <!-- Sold: still in its list, greyed out (its badges too), "Sold" under it. -->
+          <!-- Sold: still in its list, in full colour. A euro sign takes the disc's place (only a
+               physical copy can be sold), and "Sold" is under it. -->
           <app-cover
             [coverId]="game.coverId"
             [name]="game.name"
             [class.playing-cover]="game.playing && game.status === 'backlog'"
-            [class.sold-cover]="game.sold"
           >
-            @if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
+            @if (game.sold) {
+              <span
+                class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
+                [class]="dense ? 'size-6' : 'size-7'"
+                aria-label="Sold"
+              >
+                <svg lucideEuro [size]="dense ? 13 : 16" [strokeWidth]="2.25"></svg>
+              </span>
+            } @else if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
               <span
                 class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
                 [class]="dense ? 'size-6' : 'size-7'"
@@ -470,7 +478,7 @@
               </span>
             }
           </app-cover>
-          <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal" [class.text-muted]="game.sold">
+          <p class="mt-1.5 line-clamp-2 text-[13px] leading-4 tracking-normal">
             {{ game.name }}
           </p>
           <p

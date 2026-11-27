@@ -18,6 +18,7 @@ import {
   type TrackedGame,
 } from '../../../api/_lib/models.js';
 import { LucideExternalLink } from '@lucide/angular';
+import { SheetError, SheetErrorNote } from './sheet-error';
 import type { OwnScores } from '../../../api/_lib/opencritic-match.js';
 import { parsePlaytime, splitPlaytime } from '../core/playtime';
 import { FitWidth } from './fit-content';
@@ -257,7 +258,7 @@ export function parsePrice(text: string): number | null | undefined {
 /** Rendered once, in the shell. */
 @Component({
   selector: 'app-details-sheet',
-  imports: [FitWidth, RatingSlider, LucideExternalLink],
+  imports: [FitWidth, RatingSlider, LucideExternalLink, SheetErrorNote],
   template: `
     <dialog
       #dialog
@@ -267,7 +268,12 @@ export function parsePrice(text: string): number | null | undefined {
       (click)="onBackdropClick($event)"
     >
       @if (sheet.request(); as req) {
-        <form class="px-2 pb-[max(env(safe-area-inset-bottom),8px)]" (submit)="save($event)">
+        <form
+          class="px-2 pb-[max(env(safe-area-inset-bottom),8px)]"
+          (submit)="save($event)"
+          (input)="err.touched($event)"
+          (click)="err.touched($event)"
+        >
           <div class="grouped rounded-[14px]! bg-[rgb(44_44_46/0.94)]! backdrop-blur-xl">
             <h2
               id="details-sheet-title"
@@ -291,7 +297,7 @@ export function parsePrice(text: string): number | null | undefined {
                       role="radio"
                       class="text-[12.5px]!"
                       [attr.aria-checked]="status() === s.key"
-                      (click)="status.set(s.key)"
+                      (click)="status.set(s.key); err.clear()"
                     >
                       {{ s.label }}
                     </button>
@@ -303,7 +309,7 @@ export function parsePrice(text: string): number | null | undefined {
             <!-- 17px inputs: 16px or more stops iOS zooming in on focus. -->
             @if (fields.hours) {
               @let played = req.initial.hoursPlayed ? splitPlaytime(req.initial.hoursPlayed) : null;
-              <div class="row">
+              <div class="row" data-field="hours" [class.field-invalid]="err.field() === 'hours'">
                 <span class="flex-1">Playtime</span>
                 <label class="flex items-baseline gap-0.5">
                   <input
@@ -336,7 +342,11 @@ export function parsePrice(text: string): number | null | undefined {
               </div>
             }
             @if (fields.completed) {
-              <div class="row flex-col items-stretch! gap-2! py-2.5!">
+              <div
+                class="row flex-col items-stretch! gap-2! py-2.5!"
+                data-field="completion"
+                [class.field-invalid]="err.field() === 'completion'"
+              >
                 <span id="sheet-completion-label" class="text-[13px] leading-4.5 text-muted"
                   >How far you got</span
                 >
@@ -389,7 +399,7 @@ export function parsePrice(text: string): number | null | undefined {
               }
             }
             @if (fields.purchase) {
-              <label class="row">
+              <label class="row" data-field="price" [class.field-invalid]="err.field() === 'price'">
                 <span class="flex-1">Price</span>
                 <span class="flex items-baseline gap-0.5">
                   <span class="text-muted">€</span>
@@ -451,13 +461,15 @@ export function parsePrice(text: string): number | null | undefined {
                   class="switch"
                   aria-labelledby="sheet-physical-label"
                   [attr.aria-checked]="physical()"
-                  (click)="physical.set(!physical())"
+                  (click)="togglePhysical()"
                 >
                   <span></span>
                 </button>
               </div>
-              <!-- Sold: on a game's page, once you own it. It stays in its list, greyed out. -->
-              @if (req.statusEdit && status() !== 'wishlist') {
+              <!-- Sold: on a game's page, once you own it, for a physical copy (only those can be
+                   sold; turning Physical copy off turns it off). A game marked sold before this
+                   still shows it. It stays in its list, with a euro sign on its cover. -->
+              @if (req.statusEdit && status() !== 'wishlist' && (physical() || sold())) {
                 <div class="row">
                   <p id="sheet-sold-label" class="flex-1">Sold</p>
                   <button
@@ -472,7 +484,11 @@ export function parsePrice(text: string): number | null | undefined {
                   </button>
                 </div>
                 @if (sold()) {
-                  <label class="row">
+                  <label
+                    class="row"
+                    data-field="soldFor"
+                    [class.field-invalid]="err.field() === 'soldFor'"
+                  >
                     <span class="flex-1">Sold for</span>
                     <span class="flex items-baseline gap-0.5">
                       <span class="text-muted">€</span>
@@ -499,7 +515,7 @@ export function parsePrice(text: string): number | null | undefined {
               <h3 class="px-4 pt-3 pb-1 text-[13px] leading-4.5 text-muted">Scores</h3>
               @if (extras?.scores; as scores) {
                 <!-- Each score, then how many it's from (shown as the card's caption). -->
-                <label class="row">
+                <label class="row" data-field="critic" [class.field-invalid]="err.field() === 'critic'">
                   <span class="flex-1">Critic score</span>
                   <span class="flex items-baseline gap-0.5">
                     <input
@@ -515,7 +531,7 @@ export function parsePrice(text: string): number | null | undefined {
                     <span class="text-muted">/100</span>
                   </span>
                 </label>
-                <label class="row">
+                <label class="row" data-field="critics" [class.field-invalid]="err.field() === 'critics'">
                   <span class="flex-1">Critics</span>
                   <span class="flex items-baseline gap-0.5">
                     <input
@@ -531,7 +547,7 @@ export function parsePrice(text: string): number | null | undefined {
                     <span class="text-muted">&nbsp;critics</span>
                   </span>
                 </label>
-                <label class="row">
+                <label class="row" data-field="players" [class.field-invalid]="err.field() === 'players'">
                   <span class="flex-1">User score</span>
                   <span class="flex items-baseline gap-0.5">
                     <input
@@ -547,7 +563,7 @@ export function parsePrice(text: string): number | null | undefined {
                     <span class="text-muted">/100</span>
                   </span>
                 </label>
-                <label class="row">
+                <label class="row" data-field="users" [class.field-invalid]="err.field() === 'users'">
                   <span class="flex-1">Users</span>
                   <span class="flex items-baseline gap-0.5">
                     <input
@@ -598,7 +614,11 @@ export function parsePrice(text: string): number | null | undefined {
               </a>
               @for (t of hltbTimes; track t.key) {
                 @let time = times?.[t.key] ? splitPlaytime(times![t.key]!) : null;
-                <div class="row">
+                <div
+                  class="row"
+                  [attr.data-field]="'hltb-' + t.key"
+                  [class.field-invalid]="err.field() === 'hltb-' + t.key"
+                >
                   <span class="flex-1">{{ t.label }}</span>
                   <label class="flex items-baseline gap-0.5">
                     <input
@@ -632,28 +652,27 @@ export function parsePrice(text: string): number | null | undefined {
               }
             </div>
           }
-          @if (error()) {
-            <p class="px-4 pt-2 text-center text-[13px] text-[#ff6961]" role="alert">
-              {{ error() }}
-            </p>
-          }
-          <!-- Stays at the foot of the screen when the sheet is taller than it. -->
-          <div
-            class="sticky bottom-[max(env(safe-area-inset-bottom),8px)] mt-2 grid grid-cols-2 gap-2"
-          >
-            <button
-              type="button"
-              class="grouped min-h-14.25 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
-              (click)="sheet.finish(null)"
-            >
-              {{ req.dismiss }}
-            </button>
-            <button
-              type="submit"
-              class="min-h-14.25 rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
-            >
-              {{ req.confirm ?? 'Save' }}
-            </button>
+          <!-- Stays at the foot of the screen when the sheet is taller than it, with why it
+               couldn't save just above Save, so that's never off screen. -->
+          <div class="sticky bottom-[max(env(safe-area-inset-bottom),8px)] mt-2">
+            @if (err.message(); as message) {
+              <app-sheet-error [message]="message" />
+            }
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                class="grouped min-h-14.25 rounded-[14px]! bg-[rgb(44_44_46/0.94)]! text-[17px] text-accent-raised backdrop-blur-xl active:bg-pressed!"
+                (click)="sheet.finish(null)"
+              >
+                {{ req.dismiss }}
+              </button>
+              <button
+                type="submit"
+                class="min-h-14.25 rounded-[14px] bg-accent-fill text-[17px] font-semibold text-white active:brightness-90"
+              >
+                {{ req.confirm ?? 'Save' }}
+              </button>
+            </div>
           </div>
         </form>
       }
@@ -672,7 +691,9 @@ export function parsePrice(text: string): number | null | undefined {
 })
 export class DetailsSheetOutlet {
   protected readonly sheet = inject(DetailsSheet);
-  protected readonly error = signal('');
+  private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
+  /** Why Save didn't save, and the field to fix. */
+  protected readonly err = new SheetError(() => this.dialog().nativeElement);
   /** What's in the store field, so the matching store button shows as picked. */
   protected readonly storeText = signal('');
   protected readonly physical = signal(false);
@@ -719,14 +740,13 @@ export class DetailsSheetOutlet {
   });
   protected readonly splitPlaytime = splitPlaytime;
   protected readonly hltbTimes = HLTB_TIMES;
-  private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
   constructor() {
     effect(() => {
       const el = this.dialog().nativeElement;
       const req = this.sheet.request();
       if (req && !el.open) {
-        this.error.set('');
+        this.err.clear();
         this.storeText.set(req.initial.boughtFrom ?? '');
         this.physical.set(!!req.initial.physical);
         this.sold.set(!!req.initial.sold);
@@ -742,6 +762,13 @@ export class DetailsSheetOutlet {
     });
   }
 
+  /** Physical copy on or off. Only a physical copy can be sold, so off turns Sold off too. */
+  protected togglePhysical(): void {
+    const on = !this.physical();
+    this.physical.set(on);
+    if (!on) this.sold.set(false);
+  }
+
   protected save(event: Event): void {
     event.preventDefault();
     const req = this.sheet.request();
@@ -755,13 +782,16 @@ export class DetailsSheetOutlet {
     if (req.statusEdit && this.status()) {
       data.status = this.status()!;
       if (data.status === 'completed' && !this.completion()) {
-        return this.error.set('Pick how far you got.');
+        return this.err.show('completion', 'Pick how far you got before saving.');
       }
     }
     if (fields.hours) {
       const hours = parsePlaytime(field('hours'), field('minutes'));
       if (hours === undefined) {
-        return this.error.set('Playtime should be whole hours and minutes, up to 59 minutes.');
+        return this.err.show(
+          'hours',
+          'Playtime should be whole hours and minutes, up to 59 minutes.',
+        );
       }
       data.hoursPlayed = hours;
     }
@@ -771,7 +801,9 @@ export class DetailsSheetOutlet {
     }
     if (fields.purchase) {
       const price = parsePrice(field('price'));
-      if (price === undefined) return this.error.set('Price should be a number, like 69.99.');
+      if (price === undefined) {
+        return this.err.show('price', 'Price should be a number, like 69.99.');
+      }
       const ordered = field('ordered');
       data.pricePaid = price;
       data.boughtFrom = field('store').trim().slice(0, 60) || null;
@@ -779,7 +811,9 @@ export class DetailsSheetOutlet {
       data.physical = this.physical();
       if (req.statusEdit && this.status() !== 'wishlist') {
         const soldFor = this.sold() ? parsePrice(field('soldFor')) : null;
-        if (soldFor === undefined) return this.error.set('Sold for should be a number, like 25.');
+        if (soldFor === undefined) {
+          return this.err.show('soldFor', 'Sold for should be a number, like 25.');
+        }
         data.sold = this.sold();
         data.soldFor = soldFor;
       }
@@ -790,12 +824,12 @@ export class DetailsSheetOutlet {
       const players = parseScore(field('players'));
       const critics = parseCount(field('critics'));
       const users = parseCount(field('users'));
-      if (critic === undefined || players === undefined) {
-        return this.error.set('Scores should be whole numbers from 0 to 100.');
-      }
-      if (critics === undefined || users === undefined) {
-        return this.error.set('Critics and users should be whole numbers.');
-      }
+      const outOf100 = 'Scores should be whole numbers from 0 to 100.';
+      if (critic === undefined) return this.err.show('critic', outOf100);
+      if (players === undefined) return this.err.show('players', outOf100);
+      const count = 'Critics and users should be whole numbers.';
+      if (critics === undefined) return this.err.show('critics', count);
+      if (users === undefined) return this.err.show('users', count);
       const own: OwnScores = { critic, critics, players, users };
       if (JSON.stringify(own) !== JSON.stringify(extras.scores.own)) data.scores = own;
     }
@@ -804,7 +838,10 @@ export class DetailsSheetOutlet {
       for (const { key } of HLTB_TIMES) {
         const hours = parsePlaytime(field(`hltb-${key}-h`), field(`hltb-${key}-m`));
         if (hours === undefined) {
-          return this.error.set('Times should be whole hours and minutes, up to 59 minutes.');
+          return this.err.show(
+            'hltb-' + key,
+            'Times should be whole hours and minutes, up to 59 minutes.',
+          );
         }
         times[key] = hours;
       }
