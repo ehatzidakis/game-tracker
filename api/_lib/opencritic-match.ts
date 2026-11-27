@@ -266,3 +266,83 @@ export function isStale(entry: OpenCriticEntry, now: number): boolean {
   if (entry.manual) return false;
   return now - entry.checkedAt >= maxAgeDays(entry, now) * DAY - 2 * 3_600_000;
 }
+
+/** When a stored score falls due (ms). Never for scores typed in by hand. */
+export function dueAt(entry: OpenCriticEntry, now: number): number {
+  if (entry.manual) return Infinity;
+  return entry.checkedAt + maxAgeDays(entry, now) * DAY - 2 * 3_600_000;
+}
+
+/** One game waiting in the queue, with when it falls due (ms). */
+export interface QueuedGame {
+  id: number;
+  dueAt: number;
+}
+
+/**
+ * The games the hourly runs work through, kept in meta/opencriticQueue (server only). Built once
+ * a day from everyone's libraries, so the hourly runs don't read every library each time.
+ */
+export interface OpenCriticQueue {
+  builtAt: number;
+  /** Matched games, in order: games around release first. */
+  refreshes: QueuedGame[];
+  /** Games not matched yet, in lookup order (Completed first, owned DLC last). */
+  searches: QueuedGame[];
+}
+
+/** Games due within this long go in the queue: until the next daily build, with slack. */
+export const QUEUE_HORIZON_MS = 26 * 3_600_000;
+
+/** A queue older than this missed a daily build (it failed or didn't run), so it's built again. */
+export function queueExpired(queue: OpenCriticQueue, now: number): boolean {
+  return now - queue.builtAt > QUEUE_HORIZON_MS;
+}
+
+/**
+ * Builds the queue from each game's lookup rank (games in anyone's library) and its stored
+ * score, if any. Games due before the next build are in it; those not due yet wait until then.
+ */
+export function buildQueue(
+  rank: ReadonlyMap<number, number>,
+  stored: ReadonlyMap<number, OpenCriticEntry>,
+  now: number,
+): OpenCriticQueue {
+  const refreshes: (QueuedGame & { maxAge: number })[] = [];
+  const searches: (QueuedGame & { rank: number })[] = [];
+  for (const [id, r] of rank) {
+    const entry = stored.get(id);
+    const due = entry ? dueAt(entry, now) : now;
+    if (due > now + QUEUE_HORIZON_MS) continue;
+    if (entry?.ocId) refreshes.push({ id, dueAt: due, maxAge: maxAgeDays(entry, now) });
+    else searches.push({ id, dueAt: due, rank: r });
+  }
+  refreshes.sort((a, b) => a.maxAge - b.maxAge || a.dueAt - b.dueAt);
+  searches.sort((a, b) => a.rank - b.rank || a.dueAt - b.dueAt);
+  return {
+    builtAt: now,
+    refreshes: refreshes.map(({ id, dueAt }) => ({ id, dueAt })),
+    searches: searches.map(({ id, dueAt }) => ({ id, dueAt })),
+  };
+}
+
+/** What's left of OpenCritic's allowance in the current window (null until known). */
+export interface Allowance {
+  requests: number | null;
+  searches: number | null;
+  /** When the window ends and the allowance is full again (ms). */
+  resetAt: number | null;
+}
+
+/** True when at most `keep` of that allowance is left and it hasn't reset since. */
+export function lowOn(
+  allowance: Allowance,
+  kind: 'requests' | 'searches',
+  keep: number,
+  now: number,
+): boolean {
+  const left = allowance[kind];
+  if (left === null) return false;
+  if (allowance.resetAt !== null && now >= allowance.resetAt) return false;
+  return left <= keep;
+}
