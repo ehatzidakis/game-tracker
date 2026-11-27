@@ -19,40 +19,20 @@ export class PinnedTop {
     wall.setAttribute('aria-hidden', 'true');
     wall.appendChild(document.createElement('div')).className = 'wall-img';
     el.prepend(wall);
-    // Set on the frame around <main>, so the game art behind it (shell) can start below it too.
-    // Measured afresh each time (the transform that slides it away doesn't change offsetHeight).
-    const measure = () => {
-      const frame = el.closest('main')?.parentElement;
-      if (!frame || !el.isConnected) return;
-      const value = `${el.offsetHeight}px`;
-      if (frame.style.getPropertyValue('--pinned-h') !== value) {
-        frame.style.setProperty('--pinned-h', value);
-      }
-    };
     // A ResizeObserver reports after layout but before paint, so the list never shows a frame
     // under the top. It also fires once to start with, once the page is in place.
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    // iOS can open the home-screen app in the background, where it doesn't lay out or deliver
-    // resize reports; when the app then shows, the top had grown (search, toolbar) but the list
-    // still started under the old, shorter top, cutting off its first row until you changed tab.
-    // So measure again whenever the app shows or the screen changes size, and once the fonts are
-    // in.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') requestAnimationFrame(measure);
-    };
-    const later = () => requestAnimationFrame(measure);
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('pageshow', later);
-    window.addEventListener('resize', later);
-    void document.fonts?.ready.then(later);
+    const observer = new ResizeObserver(([entry]) => {
+      const height = entry.borderBoxSize?.[0]?.blockSize ?? el.offsetHeight;
+      // Set on the frame around <main>, so the game art behind it (shell) can start below it too.
+      el.closest('main')?.parentElement?.style.setProperty('--pinned-h', `${height}px`);
+    });
+    // The border box, padding included: by default only the content box is watched, and the top
+    // padding holds the status bar's height (--tab-top), which iOS can fill in just after the
+    // app opens. A padding-only change then went unreported, and the list started that much too
+    // high (under the title and toolbar) until you changed tab.
+    observer.observe(el, { box: 'border-box' });
     // The value is left behind on purpose: the next tab screen sets its own before it's
     // painted, and screens with a back button don't use it.
-    inject(DestroyRef).onDestroy(() => {
-      observer.disconnect();
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('pageshow', later);
-      window.removeEventListener('resize', later);
-    });
+    inject(DestroyRef).onDestroy(() => observer.disconnect());
   }
 }
