@@ -1,5 +1,6 @@
 import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
 import {
+  browseOrder,
   compareBy,
   EVENT_SORTS,
   eventYearGroups,
@@ -418,5 +419,18 @@ describe('the Events tab', () => {
     expect(upcoming.map((e) => e.title)).toEqual(['On now', 'Soon', 'Later']);
     expect(past.map((e) => e.title)).toEqual(['Over']);
     expect(archived.map((e) => e.title)).toEqual(['Archived', 'Archived past']);
+  });
+});
+
+describe('browseOrder', () => {
+  const g = (igdbId: number) => ({ igdbId }) as TrackedGame;
+  it('is the games in the order shown, leaving out folded years', () => {
+    const groups = [
+      { key: '2026', title: '', games: [g(1), g(2)] },
+      { key: '2025', title: '', games: [g(3)] },
+      { key: '2024', title: '', games: [g(4), g(5)] },
+    ];
+    expect(browseOrder(groups, [], (key) => key === '2025')).toEqual([1, 2, 4, 5]);
+    expect(browseOrder(null, [g(9), g(8)], () => true)).toEqual([9, 8]);
   });
 });

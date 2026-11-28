@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import {
   LucideArrowUpDown,
@@ -33,6 +33,7 @@ import { countdown, today } from '../../core/dates';
 import { localDate, nextReleaseId } from '../calendar/calendar-groups';
 import { formatPlaytime, formatPlaytimeClock, formatPlaytimeHours } from '../../core/playtime';
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
+import { BrowseService } from '../../core/browse';
 import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
 import { OpenCriticService } from '../../core/opencritic';
@@ -47,6 +48,7 @@ import {
   eventYearGroups,
   sortEvents,
   type EventSort,
+  browseOrder,
   compareBy,
   COPY_TABS,
   matchesCopy,
@@ -189,6 +191,8 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
 })
 export class LibraryPage {
   protected readonly library = inject(LibraryService);
+  private readonly browse = inject(BrowseService);
+  private readonly router = inject(Router);
   private readonly events = inject(EventsService);
   private readonly openCritic = inject(OpenCriticService);
   protected readonly tabs: { key: Tab; label: string }[] = [
@@ -463,6 +467,12 @@ export class LibraryPage {
   protected readonly copyOf = copyOf;
   protected copyLabel(copy: CopyType): string {
     return COPY_TYPES.find((c) => c.key === copy)!.label;
+  }
+
+  /** Tapping a game hands over the tab's games as shown, so its page swipes through them. */
+  protected browseFrom(id: number): void {
+    const order = browseOrder(this.yearGroups(), this.shown(), (key) => this.isCollapsed(key));
+    this.browse.start(order, id, this.router.url);
   }
 
   protected isCollapsed(key: string): boolean {

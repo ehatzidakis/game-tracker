@@ -1,8 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, ElementRef, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { LucideCheck, LucideChevronDown, LucideChevronRight, LucideTrophy } from '@lucide/angular';
 import type { TrackedGame, TrophyCounts } from '../../../../api/_lib/models.js';
+import { BrowseService } from '../../core/browse';
 import { LibraryService } from '../../core/library.service';
 import { formatPlaytime } from '../../core/playtime';
 import { Cover } from '../../shared/cover';
@@ -106,6 +107,7 @@ export function psnPlaytime(game: TrackedGame): string {
                     [routerLink]="['/game', g.igdbId]"
                     class="grid size-11 shrink-0 place-items-center text-faint active:opacity-60"
                     [attr.aria-label]="'Open ' + g.name"
+                    (click)="browseFrom(g.igdbId)"
                   >
                     <svg lucideChevronRight [size]="18" [strokeWidth]="2.25"></svg>
                   </a>
@@ -115,7 +117,7 @@ export function psnPlaytime(game: TrackedGame): string {
           }
         } @else {
           <!-- Only one: nothing to pick, so it opens the game. -->
-          <a [routerLink]="['/game', game.igdbId]" class="row">
+          <a [routerLink]="['/game', game.igdbId]" class="row" (click)="browseFrom(game.igdbId)">
             <ng-container [ngTemplateOutlet]="summary" [ngTemplateOutletContext]="{ $implicit: game, label: true }" />
             <svg
               lucideChevronRight
@@ -175,9 +177,20 @@ export function psnPlaytime(game: TrackedGame): string {
 })
 export class NowPlaying {
   private readonly library = inject(LibraryService);
+  private readonly browse = inject(BrowseService);
+  private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly games = computed(() => playingGames(this.library.games()));
+
+  /** Opening a game hands over the games you're playing, so its page swipes through them. */
+  protected browseFrom(id: number): void {
+    this.browse.start(
+      this.games().map((g) => g.igdbId),
+      id,
+      this.router.url,
+    );
+  }
   protected readonly shown = computed(() =>
     shownGame(this.games(), this.library.settings().nowPlayingId),
   );

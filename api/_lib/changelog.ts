@@ -18,6 +18,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    id: '2026-11-28-swipe-games',
+    date: '2026-11-28',
+    title: 'Swipe through your games',
+    summary: 'On a game’s page, swipe left or right to go to the next or previous game in your list.',
+    items: [
+      'Open a game from the Library, the Calendar or Now playing, then swipe left for the next game and right for the previous one, in the order you saw them.',
+      'Back takes you straight to your list, scrolled to the last game you looked at.',
+    ],
+  },
+  {
     id: '2026-11-28-copy-types',
     date: '2026-11-28',
     title: 'Physical, digital, subscription or rent',

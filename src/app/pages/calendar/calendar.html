@@ -163,6 +163,8 @@
               [routerLink]="['/game', game.igdbId]"
               class="block active:opacity-70"
               [attr.aria-label]="gameCardLabel(game)"
+              [attr.data-browse-id]="game.igdbId"
+              (click)="browseFrom(game.igdbId)"
             >
               <app-cover
                 [coverId]="game.coverId"
@@ -278,7 +280,12 @@
               } @else {
                 @let game = item.game;
                 <li class="row p-0!">
-                  <a [routerLink]="['/game', game.igdbId]" class="row py-2!">
+                  <a
+                    [routerLink]="['/game', game.igdbId]"
+                    class="row py-2!"
+                    [attr.data-browse-id]="game.igdbId"
+                    (click)="browseFrom(game.igdbId)"
+                  >
                     <app-cover
                       class="w-10 shrink-0 rounded-[5px]!"
                       [coverId]="game.coverId"

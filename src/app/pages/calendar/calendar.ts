@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   LucideBell,
   LucideCalendarDays,
@@ -11,6 +11,7 @@ import {
 } from '@lucide/angular';
 import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
 import { countdown, today } from '../../core/dates';
+import { BrowseService } from '../../core/browse';
 import { EventsService } from '../../core/events.service';
 import { LibraryService } from '../../core/library.service';
 import { titleMatcher } from '../../core/title-search';
@@ -21,6 +22,7 @@ import { PreorderIcon } from '../../shared/preorder-icon';
 import { remember, remembered } from '../../core/remembered';
 import { SearchField } from '../../shared/search-field';
 import {
+  calendarBrowseOrder,
   calendarGroups,
   nextReleaseId,
   vagueDate,
@@ -79,6 +81,8 @@ const MONTH_ONLY = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: '
 })
 export class CalendarPage {
   protected readonly library = inject(LibraryService);
+  private readonly browse = inject(BrowseService);
+  private readonly router = inject(Router);
   private readonly events = inject(EventsService);
   private readonly eventSheet = inject(EventSheet);
   private readonly today = today();
@@ -122,6 +126,13 @@ export class CalendarPage {
   /** Folded, unless you're searching: a fold never hides a match. */
   protected isCollapsed(key: string): boolean {
     return !this.query().trim() && this.collapsed().has(key);
+  }
+
+  /** Tapping a game hands over the Calendar's games as shown, so its page swipes through them. */
+  protected browseFrom(id: number): void {
+    // Cards have no month headers, so nothing is folded there.
+    const folded = (key: string) => !this.cardView() && this.isCollapsed(key);
+    this.browse.start(calendarBrowseOrder(this.groups(), folded), id, this.router.url);
   }
 
   protected toggleGroup(key: string): void {

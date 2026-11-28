@@ -1,5 +1,6 @@
 import type { GamingEvent, TrackedGame } from '../../../../api/_lib/models.js';
 import {
+  calendarBrowseOrder,
   calendarGroups,
   nextReleaseId,
   vagueDate,
@@ -132,5 +133,19 @@ describe('vagueDateWithYear', () => {
     expect(at('2027-09-30', 'quarter', 'Q3 2027')).toBe('Jul–Sep 2027');
     expect(at('2028-12-31', 'year', '2028')).toBe('2028');
     expect(at(null, 'tbd', 'TBA')).toBe('Date not announced');
+  });
+});
+
+describe('calendarBrowseOrder', () => {
+  const game = (igdbId: number) => ({ type: 'game', id: `g${igdbId}`, game: { igdbId } as TrackedGame }) as const;
+  const event = { type: 'event', id: 'e', event: {} as GamingEvent, date: '2026-12-01' } as const;
+  it('is the games in calendar order, skipping events and folded months', () => {
+    const groups: CalendarGroup[] = [
+      { key: '2026-11', title: '', items: [game(1), event, game(2)] },
+      { key: '2026-12', title: '', items: [game(3)] },
+      { key: '2027-01', title: '', items: [event, game(4)] },
+    ];
+    expect(calendarBrowseOrder(groups, (key) => key === '2026-12')).toEqual([1, 2, 4]);
+    expect(calendarBrowseOrder(groups, () => false)).toEqual([1, 2, 3, 4]);
   });
 });

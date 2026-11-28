@@ -331,3 +331,16 @@ export function splitEvents(
     archived: events.filter((e) => e.archived),
   };
 }
+
+/**
+ * The games a tab shows, in order, for swiping between them on a game's page: a folded year's
+ * games are left out (you didn't see them).
+ */
+export function browseOrder(
+  groups: readonly YearGroup[] | null,
+  shown: readonly TrackedGame[],
+  folded: (key: string) => boolean,
+): number[] {
+  const games = groups ? groups.filter((g) => !folded(g.key)).flatMap((g) => g.games) : shown;
+  return games.map((g) => g.igdbId);
+}

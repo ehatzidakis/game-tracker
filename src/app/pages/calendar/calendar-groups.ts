@@ -152,3 +152,17 @@ export function calendarGroups(
 
   return groups;
 }
+
+/**
+ * The Calendar's games, in order, for swiping between them on a game's page: events are left out,
+ * and so are a folded month's games (you didn't see them).
+ */
+export function calendarBrowseOrder(
+  groups: readonly CalendarGroup[],
+  folded: (key: string) => boolean,
+): number[] {
+  return groups
+    .filter((g) => !folded(g.key))
+    .flatMap((g) => g.items)
+    .flatMap((item) => (item.type === 'game' ? [item.game.igdbId] : []));
+}

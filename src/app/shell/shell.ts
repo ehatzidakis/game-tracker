@@ -25,6 +25,7 @@ import {
   LucideSearch,
   LucideSettings,
 } from '@lucide/angular';
+import { BrowseService } from '../core/browse';
 import { artStrength, BackdropService, patchesAt, sampleArt, STRENGTH_CAP } from '../core/backdrop';
 import { GROUNDS, GroundService, MUTED } from '../core/ground';
 import { WallpaperService } from '../core/wallpaper';
@@ -81,6 +82,7 @@ export class Shell {
 
   private readonly router = inject(Router);
   private readonly pageTitle = inject(PageTitle);
+  private readonly browse = inject(BrowseService);
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
   private readonly frame = viewChild.required<ElementRef<HTMLElement>>('frame');
   /** Started here so a saved wallpaper shows from the first screen. */
@@ -173,6 +175,7 @@ export class Shell {
           this.resetScroll();
           requestAnimationFrame(() => {
             scroller.scrollTop = top;
+            this.reveal(event.urlAfterRedirects);
             this.resetScroll();
           });
         }
@@ -242,6 +245,27 @@ export class Shell {
     this.lastTop = top;
     this.travel = 0;
     this.topHidden.set(false);
+  }
+
+  /**
+   * Back to a list after swiping through its games: the game you ended on comes into view (centred,
+   * clear of the pinned top and the tab bar), unless it's already on screen.
+   */
+  private reveal(url: string): void {
+    const id = this.browse.takeReveal(url);
+    if (id === null) return;
+    const scroller = this.scroller().nativeElement;
+    const target = scroller.querySelector(`[data-browse-id="${id}"]`);
+    if (!target) return;
+    const box = target.getBoundingClientRect();
+    const view = scroller.getBoundingClientRect();
+    const pinned =
+      parseFloat(getComputedStyle(scroller.parentElement!).getPropertyValue('--pinned-h')) || 0;
+    const tabBar = this.frame().nativeElement.querySelector('nav')?.getBoundingClientRect().top;
+    const top = view.top + pinned;
+    const bottom = Math.min(view.bottom, tabBar ?? view.bottom);
+    if (box.top >= top && box.bottom <= bottom) return;
+    scroller.scrollTop += box.top + box.height / 2 - (top + bottom) / 2;
   }
 
   protected back(): void {

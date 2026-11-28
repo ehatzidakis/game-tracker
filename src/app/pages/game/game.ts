@@ -1,7 +1,17 @@
-import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import {
   LucideChevronRight,
@@ -38,8 +48,11 @@ import {
   linksOf,
   remakeOf,
   seriesOf,
+  type GameDetails,
   type GameSummary,
 } from '../../core/igdb';
+import { BrowseService } from '../../core/browse';
+import { attachSwipe, reducedMotion, type SwipeDir } from '../../shared/swipe';
 import { describeCheck, OpenCriticService } from '../../core/opencritic';
 import type { OpenCriticScore } from '../../../../api/_lib/opencritic-match.js';
 import { PLAYSTATION } from '../../shared/event-icon';
@@ -104,6 +117,9 @@ interface Stat {
     LucideTrophy,
   ],
   templateUrl: './game.html',
+  // Sideways swipes go to the next or previous game in the list you came from; the browser keeps
+  // vertical scrolling.
+  host: { class: 'block', style: 'touch-action: pan-y' },
 })
 export class GamePage {
   /** Route parameter: the IGDB game ID. */
@@ -196,12 +212,7 @@ export class GamePage {
       publisher ? { id: publisher.id ?? null, name: publisher.name } : null,
     ].filter((m) => m !== null);
   });
-  protected readonly heroUrl = computed(() => {
-    const d = this.details.data();
-    // Screenshots first: IGDB "artworks" are often logos or text.
-    const id = d?.screenshots?.[0]?.image_id ?? d?.artworks?.[0]?.image_id;
-    return id ? coverUrl(id, 'screenshot_big') : null;
-  });
+  protected readonly heroUrl = computed(() => heroUrlOf(this.details.data()));
 
   /** The release for your platform (or your default platform if the game isn't added yet). */
   protected readonly release = computed<Release>(() => {
@@ -620,7 +631,29 @@ export class GamePage {
   protected readonly formatPlaytime = formatPlaytime;
   protected readonly playstationLogo = PLAYSTATION;
 
+  private readonly browse = inject(BrowseService);
+  private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor() {
+    // Swiping to the games either side, when you came from a list (core/browse.ts).
+    afterNextRender(() => {
+      const detach = attachSwipe(this.host.nativeElement, {
+        neighbours: () => this.browse.neighbours(this.gameId()),
+        canStart: (target) =>
+          !target.closest('.shots, dialog, input, textarea, select, [role="slider"]') &&
+          !document.querySelector('dialog[open]'),
+        go: (dir, dx) => this.swipeTo(dir, dx),
+      });
+      this.destroyRef.onDestroy(detach);
+    });
+    // The games either side load ahead, artwork too, so a swipe lands on a ready page.
+    effect(() => {
+      const { prev, next } = this.browse.neighbours(this.gameId());
+      for (const id of [next, prev]) if (id !== null) void this.loadAhead(id);
+    });
+
     // The top bar shows the game's name once you scroll past the artwork.
     const pageTitle = inject(PageTitle);
     effect(() => pageTitle.override.set(this.name() || null));
@@ -639,6 +672,43 @@ export class GamePage {
       const d = this.details.data();
       if (t && d) this.library.refresh(t, d);
     });
+  }
+
+  /**
+   * The page slides off the way you swiped, the next game takes its place (replacing this page in
+   * the history, so Back still goes to the list) and slides in from the other side, at its top.
+   */
+  private async swipeTo(dir: SwipeDir, dx: number): Promise<void> {
+    const { prev, next } = this.browse.neighbours(this.gameId());
+    const to = dir === 'next' ? next : prev;
+    if (to === null) return;
+    const el = this.host.nativeElement;
+    // The whole width of the page, artwork included (it reaches past the page's side margins).
+    const width = el.closest('main')?.clientWidth ?? window.innerWidth;
+    const off = dir === 'next' ? -width : width;
+    const motion = !reducedMotion() && typeof el.animate === 'function';
+    try {
+      if (motion) await slide(el, dx, off, 170, 'cubic-bezier(0.4, 0, 1, 1)');
+      this.browse.moved(to);
+      await this.router.navigate(['/game', to], { replaceUrl: true });
+      // Two frames: the new game has rendered before it slides in.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      if (motion) await slide(el, -off, 0, 260, 'cubic-bezier(0.2, 0.8, 0.2, 1)');
+    } finally {
+      el.style.transform = '';
+    }
+  }
+
+  private async loadAhead(id: number): Promise<void> {
+    const d = await this.queryClient
+      .fetchQuery({
+        queryKey: ['igdb-game', id],
+        queryFn: () => this.igdb.game(id),
+        staleTime: 60 * 60_000,
+      })
+      .catch(() => null);
+    const url = heroUrlOf(d);
+    if (url) new Image().src = url;
   }
 
   protected async add(): Promise<void> {
@@ -850,4 +920,24 @@ export class GamePage {
     if (!t || !confirm(`Remove ${t.name} from your library?`)) return;
     this.library.remove(t);
   }
+}
+
+/** The artwork across the top of a game's page. Screenshots first: IGDB "artworks" are often logos or text. */
+function heroUrlOf(d: GameDetails | null | undefined): string | null {
+  const id = d?.screenshots?.[0]?.image_id ?? d?.artworks?.[0]?.image_id;
+  return id ? coverUrl(id, 'screenshot_big') : null;
+}
+
+/** Moves the page from one place to another along the x axis; resolves when it's there. */
+function slide(el: HTMLElement, from: number, to: number, ms: number, easing: string): Promise<void> {
+  el.style.transform = `translate3d(${to}px, 0, 0)`;
+  return el
+    .animate(
+      [{ transform: `translate3d(${from}px, 0, 0)` }, { transform: `translate3d(${to}px, 0, 0)` }],
+      { duration: ms, easing },
+    )
+    .finished.then(
+      () => undefined,
+      () => undefined,
+    );
 }

@@ -359,7 +359,12 @@
   <ul [class]="dense ? 'grid grid-cols-4 gap-x-2 gap-y-4' : 'grid grid-cols-3 gap-x-3 gap-y-5'">
     @for (game of games; track game.igdbId) {
       <li>
-        <a [routerLink]="['/game', game.igdbId]" class="block active:opacity-70">
+        <a
+          [routerLink]="['/game', game.igdbId]"
+          class="block active:opacity-70"
+          [attr.data-browse-id]="game.igdbId"
+          (click)="browseFrom(game.igdbId)"
+        >
           <!-- Games you're playing get a blue outline. -->
           <!-- Top right, your copy: a disc (physical), a cloud (digital), a ticket (a
                subscription's pass) or a handshake (rented from a friend), once you've said
