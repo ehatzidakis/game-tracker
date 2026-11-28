@@ -40,14 +40,23 @@ export function completionLabel(completion: Completion | null | undefined): stri
   return COMPLETIONS.find((c) => c.key === completion)?.label ?? null;
 }
 
-/** How you have a game: on disc, as a download, or in a subscription (PS Plus, Game Pass…). */
-export type CopyType = 'physical' | 'digital' | 'subscription';
+/**
+ * How you have a game: on disc, as a download, in a subscription (PS Plus, Game Pass…), or rented
+ * (most likely borrowed from a friend; disc or download doesn't matter, since it isn't yours).
+ */
+export type CopyType = 'physical' | 'digital' | 'subscription' | 'rent';
 
 export const COPY_TYPES: readonly { key: CopyType; label: string }[] = [
   { key: 'physical', label: 'Physical' },
   { key: 'digital', label: 'Digital' },
   { key: 'subscription', label: 'Subscription' },
+  { key: 'rent', label: 'Rent' },
 ];
+
+/** Copies you didn't buy: no price, store or date, and never on a pre-order. */
+export function notBought(copy: CopyType | null): boolean {
+  return copy === 'subscription' || copy === 'rent';
+}
 
 /**
  * A game's copy, or null if you haven't said. Games saved before `copy` existed (2026-11-28) only
@@ -134,7 +143,7 @@ export interface TrackedGame {
   boughtFrom?: string | null;
   /** "YYYY-MM-DD": when you pre-ordered or bought it. */
   orderedOn?: string | null;
-  /** Physical, digital or in a subscription; null or missing: not said. Read it with copyOf(). */
+  /** Physical, digital, in a subscription or rented; null or missing: not said. Read it with copyOf(). */
   copy?: CopyType | null;
   /**
    * On disc. Before `copy` (2026-11-28) the only choice; still written, as copy === 'physical',

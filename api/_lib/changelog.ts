@@ -20,13 +20,14 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
   {
     id: '2026-11-28-copy-types',
     date: '2026-11-28',
-    title: 'Physical, digital or subscription',
-    summary: 'Mark each game as Physical, Digital or Subscription, and see it on its cover.',
+    title: 'Physical, digital, subscription or rent',
+    summary: 'Mark each game as Physical, Digital, Subscription or Rent, and see it on its cover.',
     items: [
-      'Edit my data has a new Copy choice: Physical, Digital or Subscription. It replaces the Physical copy switch, and games you marked physical stay physical.',
+      'Edit my data has a new Copy choice: Physical, Digital, Subscription or Rent. It replaces the Physical copy switch, and games you marked physical stay physical.',
       'Subscription games (PS Plus, Game Pass…) skip the price, store and date, since you didn’t buy them.',
-      'Library covers show your copy top right: a disc for physical, a cloud for digital, a ticket for subscription. Sold games keep their colour, with a € sign instead.',
-      'The copies button in the Library can now show only your subscription games.',
+      'Rent: a game you borrowed from a friend to play. Like Subscription, it skips the price, store and date.',
+      'Library covers show your copy top right: a disc for physical, a cloud for digital, a ticket for subscription, a handshake for rent. Sold games keep their colour, with coins instead.',
+      'The copies button in the Library can now show only your subscription games, or only rented ones.',
     ],
   },
   {

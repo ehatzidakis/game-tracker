@@ -11,8 +11,8 @@ import {
 import { isReleased } from '../../core/dates';
 import { searchable, titleMatcher } from '../../core/title-search';
 
-/** Which copies a tab shows: everything, only discs, only downloads, or only subscription games. */
-export type CopyFilter = 'all' | 'physical' | 'digital' | 'subscription';
+/** Which copies a tab shows: everything, or only discs, downloads, subscription or rented games. */
+export type CopyFilter = 'all' | 'physical' | 'digital' | 'subscription' | 'rent';
 
 /** The owned tabs, where physical or digital means something. */
 export const COPY_TABS: readonly Status[] = ['completed', 'backlog', 'shelved'];

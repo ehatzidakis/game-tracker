@@ -136,12 +136,37 @@ describe('DetailsSheetOutlet', () => {
     });
   });
 
-  it('reads an older physical copy as Physical, and offers no Subscription for a pre-order', async () => {
+  it('hides them for a rented game too, which can’t be sold', async () => {
+    const { el, click, button, save, result } = await open({
+      completion: 'main',
+      pricePaid: 70,
+      boughtFrom: 'Amazon',
+      orderedOn: '2026-01-02',
+    });
+    click(button('Rent'));
+    expect(el.querySelector('input[name="price"]')).toBeNull();
+    expect(el.querySelector('input[name="store"]')).toBeNull();
+    expect(el.querySelector('input[name="ordered"]')).toBeNull();
+    expect(el.querySelector('#sheet-sold-label')).toBeNull();
+    save();
+    await Promise.resolve();
+    expect(result()).toMatchObject({
+      copy: 'rent',
+      physical: false,
+      sold: false,
+      pricePaid: null,
+      boughtFrom: null,
+      orderedOn: null,
+    });
+  });
+
+  it('reads an older physical copy as Physical, and offers no Subscription or Rent for a pre-order', async () => {
     const { button } = await open({ physical: true });
     expect(button('Physical').getAttribute('aria-checked')).toBe('true');
 
     const preorder = await open({ preordered: true });
     expect(preorder.button('Subscription')).toBeUndefined();
+    expect(preorder.button('Rent')).toBeUndefined();
     expect(preorder.button('Digital')).toBeDefined();
   });
 });

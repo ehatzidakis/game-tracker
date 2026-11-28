@@ -25,7 +25,7 @@ const Choice = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .nullable()
     .optional(),
-  copy: z.enum(['physical', 'digital', 'subscription']).nullable().optional(),
+  copy: z.enum(['physical', 'digital', 'subscription', 'rent']).nullable().optional(),
   physical: z.boolean().optional(),
 });
 const Body = z.object({ games: z.array(Choice).min(1).max(500) });

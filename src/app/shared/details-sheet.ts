@@ -11,6 +11,7 @@ import {
 import {
   COMPLETIONS,
   COPY_TYPES,
+  notBought,
   copyOf,
   HLTB_TIMES,
   STATUSES,
@@ -33,7 +34,7 @@ export interface MyData {
   boughtFrom: string | null;
   /** "YYYY-MM-DD" */
   orderedOn: string | null;
-  /** Physical, digital or subscription; null: not said. */
+  /** Physical, digital, subscription or rent; null: not said. */
   copy: CopyType | null;
   /** Kept in step with copy (copy === 'physical'), for app versions that only know it. */
   physical: boolean;
@@ -410,8 +411,8 @@ export function parsePrice(text: string): number | null | undefined {
               }
             }
             @if (fields.purchase) {
-              <!-- How you have it, first: Subscription hides the price, store and date (you
-                   didn't buy it). No Subscription for a pre-order. -->
+              <!-- How you have it, first: Subscription and Rent hide the price, store and date
+                   (you didn't buy it). Neither for a pre-order. -->
               <div class="row flex-col items-stretch! gap-2! py-2.5!">
                 <span id="sheet-copy-label" class="text-[13px] leading-4.5 text-muted">Copy</span>
                 <div class="segmented" role="radiogroup" aria-labelledby="sheet-copy-label">
@@ -428,7 +429,7 @@ export function parsePrice(text: string): number | null | undefined {
                 </div>
               </div>
             }
-            @if (fields.purchase && copy() !== 'subscription') {
+            @if (fields.purchase && !notBought(copy())) {
               <label class="row" data-field="price" [class.field-invalid]="err.field() === 'price'">
                 <span class="flex-1">Price</span>
                 <span class="flex items-baseline gap-0.5">
@@ -715,7 +716,7 @@ export class DetailsSheetOutlet {
   protected readonly err = new SheetError(() => this.dialog().nativeElement);
   /** What's in the store field, so the matching store button shows as picked. */
   protected readonly storeText = signal('');
-  /** Physical, digital or subscription, as picked (null: not said). */
+  /** Physical, digital, subscription or rent, as picked (null: not said). */
   protected readonly copy = signal<CopyType | null>(null);
   protected readonly sold = signal(false);
   protected readonly completion = signal<Completion | null>(null);
@@ -782,17 +783,19 @@ export class DetailsSheetOutlet {
     });
   }
 
-  /** Copy's choices: no Subscription for a pre-order (you're buying it). */
+  /** Copy's choices: no Subscription or Rent for a pre-order (you're buying it). */
   protected copyTypesFor(req: SheetRequest): typeof COPY_TYPES {
-    return req.preorder ? COPY_TYPES.filter((c) => c.key !== 'subscription') : COPY_TYPES;
+    return req.preorder ? COPY_TYPES.filter((c) => !notBought(c.key)) : COPY_TYPES;
   }
+
+  protected readonly notBought = notBought;
 
   /** Only a physical copy can be sold, so another choice turns Sold off. */
   protected pickCopy(copy: CopyType): void {
     this.copy.set(copy);
     if (copy !== 'physical') this.sold.set(false);
-    // A message about a field Subscription hides goes with it.
-    if (copy === 'subscription' && this.err.field() === 'price') this.err.clear();
+    // A message about a field Subscription or Rent hides goes with it.
+    if (notBought(copy) && this.err.field() === 'price') this.err.clear();
   }
 
   protected save(event: Event): void {
