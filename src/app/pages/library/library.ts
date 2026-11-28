@@ -9,6 +9,7 @@ import {
   LucideCloudDownload,
   LucideDisc3,
   LucideEuro,
+  LucideTicket,
   LucideGrid3x3,
   LucideHourglass,
   LucideLibraryBig,
@@ -16,6 +17,9 @@ import {
   LucideTrophy,
 } from '@lucide/angular';
 import {
+  COPY_TYPES,
+  copyOf,
+  type CopyType,
   eventEnd,
   type GamingEvent,
   isDlc,
@@ -135,9 +139,10 @@ let platinumOnlyNow = false;
 let copyNow: CopyFilter = 'all';
 
 const COPY_OPTIONS: { key: CopyFilter; label: string }[] = [
-  { key: 'all', label: 'Physical and digital' },
+  { key: 'all', label: 'All copies' },
   { key: 'physical', label: 'Physical only' },
   { key: 'digital', label: 'Digital only' },
+  { key: 'subscription', label: 'Subscription only' },
 ];
 /** Year groups you've folded ("completed:2025"), kept while the app is open. */
 const collapsedGroups = new Set<string>();
@@ -170,6 +175,7 @@ const EMPTY: Record<Status, { title: string; text: string }> = {
     LucideCloudDownload,
     LucideDisc3,
     LucideEuro,
+    LucideTicket,
     LucideGrid3x3,
     LucideHourglass,
     LucideLibraryBig,
@@ -384,16 +390,16 @@ export class LibraryPage {
   private readonly collapsed = signal<ReadonlySet<string>>(new Set(collapsedGroups));
 
   protected readonly emptyTitle = computed(() => {
-    if (this.copyActive() !== 'all') {
-      return this.copyActive() === 'physical'
-        ? 'No physical copies here'
-        : 'No digital copies here';
+    const copy = this.copyActive();
+    if (copy !== 'all') {
+      if (copy === 'subscription') return 'No subscription games here';
+      return copy === 'physical' ? 'No physical copies here' : 'No digital copies here';
     }
     return this.onlyPlatinum() ? 'No Platinum games yet' : EMPTY[this.filter()].title;
   });
   protected readonly emptyText = computed(() => {
     if (this.copyActive() !== 'all') {
-      return 'Mark a game as a physical copy in Edit my data. The disc button switches back to all.';
+      return 'Pick a game’s copy (Physical, Digital or Subscription) in Edit my data. This button switches back to all.';
     }
     return this.onlyPlatinum()
       ? 'Games you completed with every trophy show here. Tap the trophy to see them all.'
@@ -450,6 +456,10 @@ export class LibraryPage {
   protected readonly nextId = computed(() => nextReleaseId(this.library.games(), today()));
   protected readonly formatPlaytime = formatPlaytime;
   protected readonly isDlc = isDlc;
+  protected readonly copyOf = copyOf;
+  protected copyLabel(copy: CopyType): string {
+    return COPY_TYPES.find((c) => c.key === copy)!.label;
+  }
 
   protected isCollapsed(key: string): boolean {
     return this.collapsed().has(`${this.tab()}:${key}`);

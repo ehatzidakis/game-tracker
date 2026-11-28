@@ -1,6 +1,7 @@
 import { eventCompany } from '../../../../api/_lib/igdb-events.js';
 import {
   type Completion,
+  copyOf,
   eventEnd,
   type GamingEvent,
   type HltbTimes,
@@ -10,16 +11,18 @@ import {
 import { isReleased } from '../../core/dates';
 import { searchable, titleMatcher } from '../../core/title-search';
 
-/** Which copies a tab shows: everything, only discs, or only downloads. */
-export type CopyFilter = 'all' | 'physical' | 'digital';
+/** Which copies a tab shows: everything, only discs, only downloads, or only subscription games. */
+export type CopyFilter = 'all' | 'physical' | 'digital' | 'subscription';
 
 /** The owned tabs, where physical or digital means something. */
 export const COPY_TABS: readonly Status[] = ['completed', 'backlog', 'shelved'];
 
 export function matchesCopy(game: TrackedGame, copy: CopyFilter): boolean {
-  if (copy === 'physical') return !!game.physical;
-  if (copy === 'digital') return !game.physical;
-  return true;
+  if (copy === 'all') return true;
+  const type = copyOf(game);
+  // Digital: also games whose copy you haven't said (most are downloads), as before copy types.
+  if (copy === 'digital') return type === 'digital' || type === null;
+  return type === copy;
 }
 
 export type Sort =

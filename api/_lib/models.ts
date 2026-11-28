@@ -40,6 +40,23 @@ export function completionLabel(completion: Completion | null | undefined): stri
   return COMPLETIONS.find((c) => c.key === completion)?.label ?? null;
 }
 
+/** How you have a game: on disc, as a download, or in a subscription (PS Plus, Game Pass…). */
+export type CopyType = 'physical' | 'digital' | 'subscription';
+
+export const COPY_TYPES: readonly { key: CopyType; label: string }[] = [
+  { key: 'physical', label: 'Physical' },
+  { key: 'digital', label: 'Digital' },
+  { key: 'subscription', label: 'Subscription' },
+];
+
+/**
+ * A game's copy, or null if you haven't said. Games saved before `copy` existed (2026-11-28) only
+ * have `physical`: true reads as Physical; false was the switch left off, which says nothing.
+ */
+export function copyOf(game: { copy?: CopyType | null; physical?: boolean }): CopyType | null {
+  return game.copy ?? (game.physical ? 'physical' : null);
+}
+
 /** One release date as IGDB reports it, trimmed to what we use. */
 export interface ReleaseDateInfo {
   platform: number;
@@ -117,9 +134,14 @@ export interface TrackedGame {
   boughtFrom?: string | null;
   /** "YYYY-MM-DD": when you pre-ordered or bought it. */
   orderedOn?: string | null;
-  /** You own (or pre-ordered) it on disc rather than as a download. */
+  /** Physical, digital or in a subscription; null or missing: not said. Read it with copyOf(). */
+  copy?: CopyType | null;
+  /**
+   * On disc. Before `copy` (2026-11-28) the only choice; still written, as copy === 'physical',
+   * for app versions that only know it.
+   */
   physical?: boolean;
-  /** You sold it: it stays in its list, greyed out. */
+  /** You sold it (only a physical copy): it stays in its list, with a euro sign on its cover. */
   sold?: boolean;
   /** What you sold it for, in euros (optional). */
   soldFor?: number | null;

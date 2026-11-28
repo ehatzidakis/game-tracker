@@ -10,9 +10,12 @@ import {
 } from '@angular/core';
 import {
   COMPLETIONS,
+  COPY_TYPES,
+  copyOf,
   HLTB_TIMES,
   STATUSES,
   type Completion,
+  type CopyType,
   type HltbTimes,
   type Status,
   type TrackedGame,
@@ -30,6 +33,9 @@ export interface MyData {
   boughtFrom: string | null;
   /** "YYYY-MM-DD" */
   orderedOn: string | null;
+  /** Physical, digital or subscription; null: not said. */
+  copy: CopyType | null;
+  /** Kept in step with copy (copy === 'physical'), for app versions that only know it. */
   physical: boolean;
   /** You sold it, and for how much (optional). Asked on a game's page once you own it. */
   sold: boolean;
@@ -111,6 +117,8 @@ interface SheetRequest {
   name: string;
   /** "Preordered on" for pre-orders, "Bought on" otherwise. */
   dateLabel: string;
+  /** A pre-order: you're buying it, so Copy has no Subscription. */
+  preorder?: boolean;
   /** "Skip" when asked as you buy or pre-order, "Cancel" when editing. */
   dismiss: string;
   /** The button that saves: "Save", or "Add" when adding a game. */
@@ -145,6 +153,7 @@ export class DetailsSheet {
       title: kind === 'preorder' ? 'Pre-order details for ' : 'Purchase details for ',
       name,
       dateLabel: kind === 'preorder' ? 'Preordered on' : 'Bought on',
+      preorder: kind === 'preorder',
       dismiss: 'Skip',
       fields: { purchase: true, hours: false, completed: false },
       initial: { orderedOn: today },
@@ -170,13 +179,15 @@ export class DetailsSheet {
       extras,
       name: game.name,
       dateLabel: game.preordered ? 'Preordered on' : 'Bought on',
+      preorder: !!game.preordered,
       dismiss: 'Cancel',
       fields,
       initial: {
         pricePaid: game.pricePaid ?? null,
         boughtFrom: game.boughtFrom ?? null,
         orderedOn: game.orderedOn ?? null,
-        physical: !!game.physical,
+        copy: copyOf(game),
+        physical: copyOf(game) === 'physical',
         sold: !!game.sold,
         soldFor: game.soldFor ?? null,
         hoursPlayed: game.hoursPlayed,
@@ -208,7 +219,7 @@ export class DetailsSheet {
       dismiss: 'Cancel',
       confirm: 'Add',
       fields: { purchase: true, hours: false, completed: initial.status === 'completed' },
-      initial: { completion: initial.completion, physical: false },
+      initial: { completion: initial.completion, copy: null, physical: false },
       statusEdit: {
         status: initial.status,
         rating: null,
@@ -399,6 +410,25 @@ export function parsePrice(text: string): number | null | undefined {
               }
             }
             @if (fields.purchase) {
+              <!-- How you have it, first: Subscription hides the price, store and date (you
+                   didn't buy it). No Subscription for a pre-order. -->
+              <div class="row flex-col items-stretch! gap-2! py-2.5!">
+                <span id="sheet-copy-label" class="text-[13px] leading-4.5 text-muted">Copy</span>
+                <div class="segmented" role="radiogroup" aria-labelledby="sheet-copy-label">
+                  @for (c of copyTypesFor(req); track c.key) {
+                    <button
+                      type="button"
+                      role="radio"
+                      [attr.aria-checked]="copy() === c.key"
+                      (click)="pickCopy(c.key)"
+                    >
+                      {{ c.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+            @if (fields.purchase && copy() !== 'subscription') {
               <label class="row" data-field="price" [class.field-invalid]="err.field() === 'price'">
                 <span class="flex-1">Price</span>
                 <span class="flex items-baseline gap-0.5">
@@ -453,23 +483,12 @@ export function parsePrice(text: string): number | null | undefined {
                   [max]="req.today"
                 />
               </label>
-              <div class="row">
-                <p id="sheet-physical-label" class="flex-1">Physical copy</p>
-                <button
-                  type="button"
-                  role="switch"
-                  class="switch"
-                  aria-labelledby="sheet-physical-label"
-                  [attr.aria-checked]="physical()"
-                  (click)="togglePhysical()"
-                >
-                  <span></span>
-                </button>
-              </div>
+            }
+            @if (fields.purchase) {
               <!-- Sold: on a game's page, once you own it, for a physical copy (only those can be
-                   sold; turning Physical copy off turns it off). A game marked sold before this
-                   still shows it. It stays in its list, with a euro sign on its cover. -->
-              @if (req.statusEdit && status() !== 'wishlist' && (physical() || sold())) {
+                   sold; picking another copy turns it off). A game marked sold before this still
+                   shows it. It stays in its list, with a euro sign on its cover. -->
+              @if (req.statusEdit && status() !== 'wishlist' && (copy() === 'physical' || sold())) {
                 <div class="row">
                   <p id="sheet-sold-label" class="flex-1">Sold</p>
                   <button
@@ -696,7 +715,8 @@ export class DetailsSheetOutlet {
   protected readonly err = new SheetError(() => this.dialog().nativeElement);
   /** What's in the store field, so the matching store button shows as picked. */
   protected readonly storeText = signal('');
-  protected readonly physical = signal(false);
+  /** Physical, digital or subscription, as picked (null: not said). */
+  protected readonly copy = signal<CopyType | null>(null);
   protected readonly sold = signal(false);
   protected readonly completion = signal<Completion | null>(null);
   protected readonly completions = COMPLETIONS;
@@ -748,7 +768,7 @@ export class DetailsSheetOutlet {
       if (req && !el.open) {
         this.err.clear();
         this.storeText.set(req.initial.boughtFrom ?? '');
-        this.physical.set(!!req.initial.physical);
+        this.copy.set(copyOf(req.initial));
         this.sold.set(!!req.initial.sold);
         this.completion.set(req.initial.completion ?? null);
         this.status.set(req.statusEdit?.status ?? null);
@@ -762,11 +782,17 @@ export class DetailsSheetOutlet {
     });
   }
 
-  /** Physical copy on or off. Only a physical copy can be sold, so off turns Sold off too. */
-  protected togglePhysical(): void {
-    const on = !this.physical();
-    this.physical.set(on);
-    if (!on) this.sold.set(false);
+  /** Copy's choices: no Subscription for a pre-order (you're buying it). */
+  protected copyTypesFor(req: SheetRequest): typeof COPY_TYPES {
+    return req.preorder ? COPY_TYPES.filter((c) => c.key !== 'subscription') : COPY_TYPES;
+  }
+
+  /** Only a physical copy can be sold, so another choice turns Sold off. */
+  protected pickCopy(copy: CopyType): void {
+    this.copy.set(copy);
+    if (copy !== 'physical') this.sold.set(false);
+    // A message about a field Subscription hides goes with it.
+    if (copy === 'subscription' && this.err.field() === 'price') this.err.clear();
   }
 
   protected save(event: Event): void {
@@ -808,7 +834,9 @@ export class DetailsSheetOutlet {
       data.pricePaid = price;
       data.boughtFrom = field('store').trim().slice(0, 60) || null;
       data.orderedOn = /^\d{4}-\d{2}-\d{2}$/.test(ordered) ? ordered : null;
-      data.physical = this.physical();
+      // With Subscription the price, store and date aren't shown, so they're saved empty.
+      data.copy = this.copy();
+      data.physical = this.copy() === 'physical';
       if (req.statusEdit && this.status() !== 'wishlist') {
         const soldFor = this.sold() ? parsePrice(field('soldFor')) : null;
         if (soldFor === undefined) {

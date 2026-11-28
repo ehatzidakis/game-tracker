@@ -45,6 +45,7 @@ export type GameEdits = Partial<
     | 'boughtFrom'
     | 'orderedOn'
     | 'completedAt'
+    | 'copy'
     | 'physical'
     | 'sold'
     | 'soldFor'
@@ -292,6 +293,7 @@ const NOT_PREORDERED = {
   pricePaid: null,
   boughtFrom: null,
   orderedOn: null,
+  copy: null,
   physical: false,
 };
 

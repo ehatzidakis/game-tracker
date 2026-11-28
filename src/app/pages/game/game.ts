@@ -19,6 +19,8 @@ import {
   type TrophyCounts,
   MAX_PLAYING,
   completionLabel,
+  COPY_TYPES,
+  copyOf,
   HLTB_TIMES,
   isDlc,
   statusLabel,
@@ -334,8 +336,11 @@ export class GamePage {
         caption: t.preordered ? 'Preordered' : 'Bought',
       });
     }
-    if (stats.length || t.physical || t.sold) {
-      stats.push({ value: t.physical ? 'Physical' : 'Digital', caption: 'Copy' });
+    // Your copy; with other purchase details but none chosen, Digital (as before copy types).
+    const copy = copyOf(t);
+    if (stats.length || copy || t.sold) {
+      const type = copy ?? 'digital';
+      stats.push({ value: COPY_TYPES.find((c) => c.key === type)!.label, caption: 'Copy' });
     }
     // Sold, for how much ("–" when no amount was given).
     if (t.sold) {

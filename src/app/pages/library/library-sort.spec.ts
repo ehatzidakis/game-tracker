@@ -218,13 +218,18 @@ describe('library search', () => {
   });
 });
 
-describe('physical and digital copies', () => {
-  it('filters the owned tabs by disc or download', () => {
-    const disc = { name: 'Disc', physical: true } as TrackedGame;
-    const download = { name: 'Download' } as TrackedGame;
-    expect([disc, download].filter((g) => matchesCopy(g, 'physical'))).toEqual([disc]);
-    expect([disc, download].filter((g) => matchesCopy(g, 'digital'))).toEqual([download]);
-    expect([disc, download].filter((g) => matchesCopy(g, 'all'))).toHaveLength(2);
+describe('physical, digital and subscription copies', () => {
+  it('filters the owned tabs by disc, download or subscription', () => {
+    const disc = { name: 'Disc', copy: 'physical' } as TrackedGame;
+    const oldDisc = { name: 'Old disc', physical: true } as TrackedGame;
+    const download = { name: 'Download', copy: 'digital' } as TrackedGame;
+    const unsaid = { name: 'Unsaid' } as TrackedGame;
+    const pass = { name: 'Pass', copy: 'subscription', physical: false } as TrackedGame;
+    const all = [disc, oldDisc, download, unsaid, pass];
+    expect(all.filter((g) => matchesCopy(g, 'physical'))).toEqual([disc, oldDisc]);
+    expect(all.filter((g) => matchesCopy(g, 'digital'))).toEqual([download, unsaid]);
+    expect(all.filter((g) => matchesCopy(g, 'subscription'))).toEqual([pass]);
+    expect(all.filter((g) => matchesCopy(g, 'all'))).toHaveLength(5);
     expect(COPY_TABS).toEqual(['completed', 'backlog', 'shelved']);
   });
 });

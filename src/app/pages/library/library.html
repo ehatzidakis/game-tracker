@@ -147,7 +147,8 @@
           </button>
         }
         @if (copyShown()) {
-          <!-- Physical or digital only: a round button with the real menu laid invisibly on top. -->
+          <!-- Physical, digital or subscription only: a round button with the real menu laid
+               invisibly on top, showing the copy's icon. -->
           <label
             class="relative grid size-8 shrink-0 place-items-center rounded-full"
             [class]="
@@ -159,6 +160,8 @@
             <span class="sr-only">Copies</span>
             @if (copy() === 'digital') {
               <svg lucideCloudDownload [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
+            } @else if (copy() === 'subscription') {
+              <svg lucideTicket [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
             } @else {
               <svg lucideDisc3 [size]="17" [strokeWidth]="2.25" aria-hidden="true"></svg>
             }
@@ -356,8 +359,10 @@
       <li>
         <a [routerLink]="['/game', game.igdbId]" class="block active:opacity-70">
           <!-- Games you're playing get a blue outline. -->
-          <!-- Sold: still in its list, in full colour. A euro sign takes the disc's place (only a
-               physical copy can be sold), and "Sold" is under it. -->
+          <!-- Top right, your copy: a disc (physical), a cloud (digital) or a ticket (a
+               subscription's pass), once you've said which. Sold: still in its list, in full
+               colour, a euro sign in the disc's place (only a physical copy can be sold) and
+               "Sold" under it. -->
           <app-cover
             [coverId]="game.coverId"
             [name]="game.name"
@@ -371,14 +376,27 @@
               >
                 <svg lucideEuro [size]="dense ? 13 : 16" [strokeWidth]="2.25"></svg>
               </span>
-            } @else if (game.physical && (game.status !== 'wishlist' || game.preordered)) {
-              <span
-                class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
-                [class]="dense ? 'size-6' : 'size-7'"
-                aria-label="Physical copy"
-              >
-                <svg lucideDisc3 [size]="dense ? 14 : 17" [strokeWidth]="2"></svg>
-              </span>
+            } @else if (game.status !== 'wishlist' || game.preordered) {
+              @let copyType = copyOf(game);
+              @if (copyType) {
+                <span
+                  class="absolute top-1.5 right-1.5 grid place-items-center rounded-full bg-black/75 ring-[0.5px] ring-white/20 badge-glass"
+                  [class]="dense ? 'size-6' : 'size-7'"
+                  [attr.aria-label]="copyLabel(copyType)"
+                >
+                  @switch (copyType) {
+                    @case ('physical') {
+                      <svg lucideDisc3 [size]="dense ? 14 : 17" [strokeWidth]="2"></svg>
+                    }
+                    @case ('digital') {
+                      <svg lucideCloudDownload [size]="dense ? 13 : 16" [strokeWidth]="2"></svg>
+                    }
+                    @case ('subscription') {
+                      <svg lucideTicket [size]="dense ? 13 : 16" [strokeWidth]="2"></svg>
+                    }
+                  }
+                </span>
+              }
             }
             <!-- Top left: OpenCritic's Top Critic Average, in a ring filled as far as the score. -->
             @let score = scores()[game.igdbId];

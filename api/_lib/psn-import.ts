@@ -1,7 +1,14 @@
 // Adding PlayStation games to the library (api/psn-import.ts). No network or database here, so
 // it's easy to test.
 import { syncedFields, type IgdbSyncGame } from './igdb-sync.js';
-import type { Completion, PsnGameRecord, Status, TrackedGame } from './models.js';
+import {
+  copyOf,
+  type Completion,
+  type CopyType,
+  type PsnGameRecord,
+  type Status,
+  type TrackedGame,
+} from './models.js';
 
 /** The lists a PlayStation game can go to: you've played it, so never the Wishlist. */
 export const IMPORT_STATUSES = ['backlog', 'shelved', 'completed'] as const;
@@ -20,6 +27,8 @@ export interface ImportChoice {
   boughtFrom?: string | null;
   /** "YYYY-MM-DD" */
   orderedOn?: string | null;
+  copy?: CopyType | null;
+  /** From app versions before `copy`. */
   physical?: boolean;
 }
 
@@ -74,7 +83,8 @@ export function importedGame(
     pricePaid: choice.pricePaid ?? null,
     boughtFrom: choice.boughtFrom ?? null,
     orderedOn: choice.orderedOn ?? null,
-    physical: !!choice.physical,
+    copy: copyOf(choice),
+    physical: copyOf(choice) === 'physical',
     addedAt: now,
     purchasedAt: Number.isFinite(ordered) ? ordered : (record.firstPlayedAt ?? now),
     startedAt: record.firstPlayedAt ?? null,

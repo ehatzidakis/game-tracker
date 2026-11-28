@@ -75,29 +75,73 @@ describe('DetailsSheetOutlet', () => {
     expect(result()).toMatchObject({ status: 'completed', completion: 'main' });
   });
 
-  it('offers Sold only for a physical copy, and turning that off turns Sold off', async () => {
+  it('offers Sold only for a physical copy, and another copy turns Sold off', async () => {
     const { el, click, button } = await open();
     const soldRow = () => el.querySelector('#sheet-sold-label');
     expect(soldRow()).toBeNull();
 
-    const physical = el.querySelector('[aria-labelledby="sheet-physical-label"]')!;
-    click(physical);
+    click(button('Physical'));
     expect(soldRow()).not.toBeNull();
     const sold = el.querySelector('[aria-labelledby="sheet-sold-label"]')!;
     click(sold);
     expect(sold.getAttribute('aria-checked')).toBe('true');
 
-    click(physical);
+    click(button('Digital'));
     expect(soldRow()).toBeNull();
-    click(physical);
+    click(button('Physical'));
     expect(el.querySelector('[aria-labelledby="sheet-sold-label"]')!.getAttribute('aria-checked')).toBe(
       'false',
     );
-    expect(button('Save')).toBeDefined();
   });
 
   it('still shows Sold for a game marked sold before it had to be physical', async () => {
     const { el } = await open({ sold: true, physical: false });
     expect(el.querySelector('#sheet-sold-label')).not.toBeNull();
+  });
+
+  it('picks the copy, Copy sitting first in the purchase details', async () => {
+    const { el, click, button, save, result } = await open({ completion: 'main' });
+    const labels = [...el.querySelectorAll('form .row')].map((r) => r.textContent!.trim());
+    const copyAt = labels.findIndex((t) => t.startsWith('Copy'));
+    expect(labels.findIndex((t) => t.startsWith('Rating'))).toBeLessThan(copyAt);
+    expect(labels.findIndex((t) => t.startsWith('Price'))).toBe(copyAt + 1);
+    // Nothing picked yet (you haven't said).
+    expect(el.querySelector('[aria-labelledby="sheet-copy-label"] [aria-checked="true"]')).toBeNull();
+
+    click(button('Digital'));
+    save();
+    await Promise.resolve();
+    expect(result()).toMatchObject({ copy: 'digital', physical: false });
+  });
+
+  it('hides the price, store and date for a subscription, and saves them empty', async () => {
+    const { el, click, button, save, result } = await open({
+      completion: 'main',
+      pricePaid: 70,
+      boughtFrom: 'Amazon',
+      orderedOn: '2026-01-02',
+    });
+    click(button('Subscription'));
+    expect(el.querySelector('input[name="price"]')).toBeNull();
+    expect(el.querySelector('input[name="store"]')).toBeNull();
+    expect(el.querySelector('input[name="ordered"]')).toBeNull();
+    save();
+    await Promise.resolve();
+    expect(result()).toMatchObject({
+      copy: 'subscription',
+      physical: false,
+      pricePaid: null,
+      boughtFrom: null,
+      orderedOn: null,
+    });
+  });
+
+  it('reads an older physical copy as Physical, and offers no Subscription for a pre-order', async () => {
+    const { button } = await open({ physical: true });
+    expect(button('Physical').getAttribute('aria-checked')).toBe('true');
+
+    const preorder = await open({ preordered: true });
+    expect(preorder.button('Subscription')).toBeUndefined();
+    expect(preorder.button('Digital')).toBeDefined();
   });
 });

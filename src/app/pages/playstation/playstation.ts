@@ -228,7 +228,7 @@ export class PlaystationPage {
           pricePaid: data.pricePaid ?? null,
           boughtFrom: data.boughtFrom ?? null,
           orderedOn: data.orderedOn ?? null,
-          physical: data.physical ?? false,
+          copy: data.copy ?? null,
         },
       ]);
       if (!added) this.toast.error(`${name} is already in your Library.`);
