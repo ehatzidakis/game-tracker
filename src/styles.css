@@ -484,10 +484,12 @@ dialog.sheet[open]::backdrop {
   width: calc((100% - 8px) / 4);
   border-radius: 999px;
   background: rgb(255 255 255 / 0.1);
+  /* No will-change: kept on a layer of its own, iOS sometimes left it drawn under the old tab
+     after the app came back (Library highlighted, Calendar coloured). Without it, it's painted with
+     the labels at rest; the browser still gives it a layer while it slides. */
   transition:
     transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
     opacity 200ms ease-out;
-  will-change: transform;
 }
 
 /* The search field draws its own clear button (iOS shows none, Chrome its own). */

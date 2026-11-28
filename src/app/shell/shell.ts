@@ -87,11 +87,17 @@ export class Shell {
   private readonly wallpaper = inject(WallpaperService);
 
   protected readonly route = signal<ShellRouteData>(this.routeData());
-  private readonly url = signal(this.router.url);
-  /** Which tab the sliding highlight sits under; -1 off the tabs (a game's page). */
-  protected readonly activeTab = computed(() =>
-    this.tabs.findIndex((t) => this.url() === t.path || this.url().startsWith(t.path + '?')),
-  );
+  /**
+   * Which tab the sliding highlight sits under; -1 off the tabs (a game's page). Set by each tab's
+   * routerLinkActive, the same check that colours its label, so the two can't disagree (the pill
+   * was once seen under Library with Calendar coloured).
+   */
+  protected readonly activeTab = signal(-1);
+
+  protected tabActive(index: number, active: boolean): void {
+    if (active) this.activeTab.set(index);
+    else if (this.activeTab() === index) this.activeTab.set(-1);
+  }
   /**
    * Past the large title (or the artwork): the bar turns solid and shows the small title.
    * The scroll position itself is never a signal: the screen is only re-checked when one of these
@@ -155,7 +161,6 @@ export class Shell {
         restoring = event.navigationTrigger === 'popstate';
       } else if (event instanceof NavigationEnd) {
         this.route.set(this.routeData());
-        this.url.set(event.urlAfterRedirects);
         const scroller = this.scroller().nativeElement;
         if (!restoring) {
           // A new page starts at the top straight away, so it never shows for a frame at the

@@ -115,6 +115,7 @@
         [routerLink]="tab.path"
         routerLinkActive="tab-active"
         ariaCurrentWhenActive="page"
+        (isActiveChange)="tabActive($index, $event)"
         class="relative flex h-13.5 flex-col items-center justify-center gap-0.75 rounded-full text-[10.5px] leading-none font-semibold tracking-normal text-label/80"
       >
         @switch (tab.path) {
